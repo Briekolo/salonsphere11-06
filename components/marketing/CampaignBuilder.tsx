@@ -146,7 +146,7 @@ export function CampaignBuilder() {
                     placeholder="Bijv. 🌸 Lente Specials - 20% korting op alle behandelingen!"
                   />
                   <p className="text-sm text-gray-600 mt-1">
-                    Tip: Gebruik emoji's en personalisatie voor hogere open rates
+                    Tip: Gebruik emoji&apos;s en personalisatie voor hogere open rates
                   </p>
                 </div>
 

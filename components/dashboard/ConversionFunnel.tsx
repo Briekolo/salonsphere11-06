@@ -130,7 +130,7 @@ export function ConversionFunnel({ dateRange }: ConversionFunnelProps) {
           <h4 className="font-medium text-yellow-900 mb-2">🎯 Optimalisatie Kansen</h4>
           <ul className="text-sm text-yellow-800 space-y-1">
             <li>• 36% dropoff bij formulier - vereenvoudig het proces</li>
-            <li>• Voeg vertrouwenssignalen toe op behandelingspagina's</li>
+            <li>• Voeg vertrouwenssignalen toe op behandelingspagina&apos;s</li>
             <li>• Test verschillende call-to-action buttons</li>
           </ul>
         </div>
