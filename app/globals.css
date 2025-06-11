@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+@layer base {
+  html {
+    font-family: Poppins, sans-serif;
+    letter-spacing: -0.03em;
+  }
+  
+  body {
+    @apply bg-background text-gray-900 antialiased;
+    letter-spacing: -0.03em;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl lg:rounded-3xl shadow-card p-4 lg:p-6;
+  }
+  
+  .card:hover {
+    @apply shadow-hover -translate-y-0.5 transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-[#02011F] text-white rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:opacity-90 transition-opacity duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+  }
+  
+  .btn-secondary {
+    @apply bg-white border border-primary-500 text-primary-500 rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-primary-50 transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+  }
+  
+  .btn-outlined {
+    @apply bg-transparent border border-[#02011F] text-[#02011F] rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-[#02011F] hover:text-white transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl lg:rounded-lg text-[#010009] hover:bg-sidebar-hover hover:text-primary-700 transition-colors duration-200 min-h-[44px];
+  }
+  
+  .sidebar-item.active {
+    @apply bg-sidebar-hover text-primary-700 font-semibold;
+  }
+  
+  .sidebar-item svg {
+    @apply text-sidebar-icon;
+  }
+  
+  .sidebar-item:hover svg,
+  .sidebar-item.active svg {
+    @apply text-primary-700;
+  }
+  
+  .metric-card {
+    @apply bg-white rounded-2xl lg:rounded-3xl shadow-card p-4 lg:p-6 relative overflow-hidden;
+    min-height: 100px;
+  }
+  
+  .metric-icon {
+    @apply w-8 h-8 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl flex items-center justify-center mb-3 lg:mb-4;
+  }
+  
+  .metric-title {
+    @apply text-xs lg:text-sm text-metric-title mb-1;
+  }
+  
+  .metric-value {
+    @apply text-xl lg:text-2xl font-bold text-metric-value;
+  }
+  
+  .status-chip {
+    @apply inline-flex items-center px-2 py-1 rounded-xl lg:rounded-full text-xs font-medium;
+  }
+  
+  .status-chip.confirmed {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .status-chip.new {
+    @apply bg-blue-100 text-blue-800;
+  }
+  
+  .status-chip.delivered {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .status-chip.in-transit {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .text-heading {
+    @apply text-lg lg:text-xl font-semibold text-gray-900;
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-stack {
+    @apply flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4;
+  }
+
+  .mobile-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .mobile-table {
+    @apply block lg:table w-full;
+  }
+
+  .mobile-table-row {
+    @apply block lg:table-row border-b border-gray-200 lg:border-none;
+  }
+
+  .mobile-table-cell {
+    @apply block lg:table-cell px-4 py-2 lg:py-4;
+  }
+
+  /* Touch-friendly form elements */
+  input, select, textarea, button {
+    @apply min-h-[44px];
+  }
+
+  /* Enhanced rounded form elements for mobile */
+  input, select, textarea {
+    @apply rounded-xl lg:rounded-lg;
+  }
+
+  /* Responsive text sizes */
+  .responsive-text-xs { @apply text-xs lg:text-sm; }
+  .responsive-text-sm { @apply text-sm lg:text-base; }
+  .responsive-text-base { @apply text-base lg:text-lg; }
+  .responsive-text-lg { @apply text-lg lg:text-xl; }
+  .responsive-text-xl { @apply text-xl lg:text-2xl; }
+  .responsive-text-2xl { @apply text-2xl lg:text-3xl; }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent;
+  }
+  
+  .animate-in {
+    @apply animate-fade-in;
+  }
+
+  /* Mobile-first spacing utilities */
+  .mobile-p { @apply p-4 lg:p-6; }
+  .mobile-px { @apply px-4 lg:px-6; }
+  .mobile-py { @apply py-4 lg:py-6; }
+  .mobile-m { @apply m-4 lg:m-6; }
+  .mobile-mx { @apply mx-4 lg:mx-6; }
+  .mobile-my { @apply my-4 lg:my-6; }
+
+  /* Mobile-first gap utilities */
+  .mobile-gap { @apply gap-4 lg:gap-6; }
+  .mobile-gap-x { @apply gap-x-4 lg:gap-x-6; }
+  .mobile-gap-y { @apply gap-y-4 lg:gap-y-6; }
+
+  /* Hide/show utilities for different screen sizes */
+  .mobile-only { @apply block lg:hidden; }
+  .desktop-only { @apply hidden lg:block; }
+  .tablet-up { @apply hidden md:block; }
+  .mobile-down { @apply block md:hidden; }
+
+  /* Enhanced rounded utilities for mobile */
+  .mobile-rounded { @apply rounded-2xl lg:rounded-xl; }
+  .mobile-rounded-lg { @apply rounded-3xl lg:rounded-2xl; }
+  .mobile-rounded-full { @apply rounded-2xl lg:rounded-full; }
+}
+
+/* Custom scrollbar for mobile */
+@media (max-width: 1024px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
+}
