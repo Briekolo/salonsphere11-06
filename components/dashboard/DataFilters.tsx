@@ -21,6 +21,7 @@ export function DataFilters({ selectedMetrics, onMetricsChange, dateRange }: Dat
     { id: 'satisfaction', label: 'Tevredenheid', category: 'Quality' }
   ]
 
+  // Converteer Set naar array voor compatibiliteit met oudere JS-targets
   const categories = Array.from(new Set(availableMetrics.map(m => m.category)))
 
   const toggleMetric = (metricId: string) => {
