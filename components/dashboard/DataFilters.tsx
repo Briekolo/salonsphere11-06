@@ -21,7 +21,7 @@ export function DataFilters({ selectedMetrics, onMetricsChange, dateRange }: Dat
     { id: 'satisfaction', label: 'Tevredenheid', category: 'Quality' }
   ]
 
-  const categories = [...new Set(availableMetrics.map(m => m.category))]
+  const categories = Array.from(new Set(availableMetrics.map(m => m.category)))
 
   const toggleMetric = (metricId: string) => {
     if (selectedMetrics.includes(metricId)) {
