@@ -279,7 +279,8 @@ DROP POLICY IF EXISTS "Users can manage PO items in their tenant" ON supplier_po
 CREATE POLICY "Users can manage PO items in their tenant"
   ON supplier_po_items FOR ALL
   TO authenticated
-  USING (po_id IN (SELECT id FROM supplier_pos WHERE tenant_id = public.tenant_id()));
+  USING (po_id IN (SELECT id FROM supplier_pos WHERE tenant_id = public.tenant_id()))
+  WITH CHECK (po_id IN (SELECT id FROM supplier_pos WHERE tenant_id = public.tenant_id()));
 
 -- Bookings policies
 DROP POLICY IF EXISTS "Users can manage bookings in their tenant" ON bookings;

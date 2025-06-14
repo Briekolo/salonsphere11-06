@@ -11,7 +11,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    pathname.includes('.') // statische bestanden
+    /\.[a-zA-Z0-9]+$/.test(pathname) // eindigt op bestandsextensie
   ) {
     return NextResponse.next()
   }

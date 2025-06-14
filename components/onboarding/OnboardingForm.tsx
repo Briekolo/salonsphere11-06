@@ -108,7 +108,7 @@ export default function OnboardingForm() {
                   name="plan"
                   value={plan.id}
                   checked={selectedPlan === plan.id}
-                  onChange={(e) => setSelectedPlan(e.target.value as any)}
+                  onChange={e => setSelectedPlan(e.target.value as 'starter' | 'pro' | 'growth')}
                   className="sr-only"
                 />
                 <div className="flex justify-between items-start mb-2">
@@ -146,4 +146,5 @@ export default function OnboardingForm() {
       </div>
     </div>
   )
+}   )
 } 

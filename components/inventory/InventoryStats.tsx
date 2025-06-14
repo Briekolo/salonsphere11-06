@@ -8,84 +8,56 @@ import { Package, AlertTriangle, TrendingDown, ShoppingCart } from 'lucide-react
 export function InventoryStats() {
   const { tenantId } = useTenant()
 
-  const { data: metrics, isLoading } = useQuery<{
-    totalProducts: number
-    lowStockItems: number
-    outOfStockItems: number
-    ordersLast30: number
-  } | null>({
+  interface InventoryMetrics {
+    total_products: number
+    low_stock_items: number
+    out_of_stock_items: number
+    orders_last30: number
+  }
+
+  const { data: metrics, isLoading } = useQuery<InventoryMetrics | null>({
     queryKey: ['inventory_stats', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return null
-
-      // 1. Alle voorraaditems ophalen (id, current_stock, min_stock)
-      const { data: items, error: errItems } = await supabase
-        .from('inventory_items')
-        .select('id, current_stock, min_stock')
-        .eq('tenant_id', tenantId)
-
-      if (errItems) throw errItems
-
-      const totalProducts = items?.length ?? 0
-      let lowStockItems = 0
-      let outOfStockItems = 0
-
-      items?.forEach((item: any) => {
-        if (item.current_stock === 0) {
-          outOfStockItems++
-        } else if (item.current_stock <= item.min_stock) {
-          lowStockItems++
-        }
-      })
-
-      // 2. Aantal bestellingen van de voorbije 30 dagen
-      const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - 30)
-
-      const { count: ordersLast30, error: errOrders } = await supabase
-        .from('supplier_pos')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .gte('order_date', fromDate.toISOString())
-
-      if (errOrders) throw errOrders
-
-      return {
-        totalProducts,
-        lowStockItems,
-        outOfStockItems,
-        ordersLast30: ordersLast30 ?? 0,
-      }
-    },
     enabled: !!tenantId,
     staleTime: 60_000,
+    queryFn: async (): Promise<InventoryMetrics | null> => {
+      if (!tenantId) return null
+
+      // Eén enkele RPC-call die alle aggregaties server-side afhandelt
+      const { data, error } = await (supabase as any).rpc('get_inventory_stats', {
+        _tenant: tenantId,
+      }).single()
+
+      if (error) throw error
+
+      return data as InventoryMetrics
+    },
   })
 
   const stats = [
     {
       title: 'Totaal producten',
-      value: isLoading || !metrics ? '–' : String(metrics.totalProducts),
+      value: isLoading || !metrics ? '–' : String(metrics.total_products),
       icon: <Package className="w-5 h-5" />,
       iconColor: 'text-icon-blue',
       iconBgColor: 'bg-icon-blue-bg'
     },
     {
       title: 'Lage voorraad',
-      value: isLoading || !metrics ? '–' : String(metrics.lowStockItems),
+      value: isLoading || !metrics ? '–' : String(metrics.low_stock_items),
       icon: <AlertTriangle className="w-5 h-5" />,
       iconColor: 'text-icon-orange',
       iconBgColor: 'bg-icon-orange-bg'
     },
     {
       title: 'Uit voorraad',
-      value: isLoading || !metrics ? '–' : String(metrics.outOfStockItems),
+      value: isLoading || !metrics ? '–' : String(metrics.out_of_stock_items),
       icon: <TrendingDown className="w-5 h-5" />,
       iconColor: 'text-red-500',
       iconBgColor: 'bg-red-100'
     },
     {
       title: 'Bestellingen laatste 30 dagen',
-      value: isLoading || !metrics ? '–' : String(metrics.ordersLast30),
+      value: isLoading || !metrics ? '–' : String(metrics.orders_last30),
       icon: <ShoppingCart className="w-5 h-5" />,
       iconColor: 'text-icon-green',
       iconBgColor: 'bg-icon-green-bg'

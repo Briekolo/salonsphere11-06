@@ -33,14 +33,21 @@ export function ClientsStats() {
       const weekStart = sow(now, { weekStartsOn: 1 })
       const weekEnd = eow(now, { weekStartsOn: 1 })
 
-      const countExact = async (table: any, builder: (q:any)=>any = (q)=>q) => {
-        const { count } = await builder(
-          supabase.from(table as any).select('*', { count: 'exact', head: true })
+      type CountTable = 'clients' | 'bookings'
+      const countExact = async (
+        table: CountTable,
+        builder: (q: any) => any = (q) => q
+      ): Promise<number> => {
+        const { count, error } = await builder(
+          supabase.from(table).select('*', { count: 'exact', head: true })
         )
-        return count || 0
+
+        if (error) throw new Error(error.message)
+
+        return count ?? 0
       }
 
-      const total = await countExact('clients', q=> q.eq('tenant_id', tenantId))
+      const total = await countExact('clients', q => q.eq('tenant_id', tenantId))
       const newClients = await countExact('clients', q=> q.eq('tenant_id', tenantId).gte('created_at', from30.toISOString()))
       const activeClients = await countExact('clients', q=> q.eq('tenant_id', tenantId).gte('last_visit_date', from90.toISOString()))
       const appointmentsWeek = await countExact('bookings', q=> q.eq('tenant_id', tenantId).gte('scheduled_at', weekStart.toISOString()).lte('scheduled_at', weekEnd.toISOString()))

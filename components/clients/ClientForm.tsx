@@ -95,10 +95,10 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
             Annuleren
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={submitting || createMutation.isPending || updateMutation.isPending}
-            className="btn-primary flex items-center gap-2"
-          >
+            type="submit"
+             disabled={submitting || createMutation.isPending || updateMutation.isPending}
+             className="btn-primary flex items-center gap-2"
+           >
             <Save className="w-4 h-4" />
             {isEditing ? 'Wijzigingen opslaan' : 'Klant opslaan'}
           </button>

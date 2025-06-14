@@ -19,11 +19,7 @@ function formatTimeRange(startISO: string, endISO: string) {
 }
 
 export function AppointmentsList() {
-  const {
-    data: bookingData,
-    isLoading,
-    isFetching,
-  } = useBookings()
+  const { data: bookingData, isLoading } = useBookings()
 
   const bookings = bookingData ?? []
 

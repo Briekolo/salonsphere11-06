@@ -57,7 +57,7 @@ export function AnalyticsDashboard() {
       <div className="grid grid-cols-12 gap-6">
         {/* User Activity Trends */}
         <div className="col-span-8">
-          <UserActivityChart dateRange={dateRange} />
+          <UserActivityChart />
         </div>
 
         {/* System Health */}

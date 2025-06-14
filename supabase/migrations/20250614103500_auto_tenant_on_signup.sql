@@ -13,6 +13,9 @@ DECLARE
     v_tenant_name  text;
     v_role         text;
 BEGIN
+    -- Forceer het verwachte search_path om privilege-escalatie te voorkomen
+    PERFORM set_config('search_path', 'public,auth', TRUE);
+
     -- Als de user al een tenant_id heeft, niets doen
     IF NEW.raw_user_meta_data ? 'tenant_id' THEN
         RETURN NEW;
@@ -22,14 +25,21 @@ BEGIN
     v_tenant_name := COALESCE(NEW.raw_user_meta_data ->> 'pending_tenant_name', 'Naamloos Salon');
     v_role        := COALESCE(NEW.raw_user_meta_data ->> 'role', 'admin');
 
-    -- 1) Maak tenant aan
+    -- 1) Maak tenant aan of haal bestaande op
     INSERT INTO public.tenants (name, email)
     VALUES (v_tenant_name, NEW.email)
+    ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
     RETURNING id INTO v_tenant_id;
 
-    -- 2) Voeg bijhorende rij toe in application users-table
+    -- Wanneer er al een tenant bestond (geen row returned)
+    IF v_tenant_id IS NULL THEN
+        SELECT id INTO v_tenant_id FROM public.tenants WHERE email = NEW.email;
+    END IF;
+
+    -- 2) Voeg bijhorende rij toe in application users-table (idempotent)
     INSERT INTO public.users (id, tenant_id, email, role, first_name, last_name)
-    VALUES (NEW.id, v_tenant_id, NEW.email, v_role, '', '');
+    VALUES (NEW.id, v_tenant_id, NEW.email, v_role, '', '')
+    ON CONFLICT (id) DO NOTHING;
 
     -- 3) Schrijf tenant_id terug in de metadata
     UPDATE auth.users

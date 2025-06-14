@@ -55,8 +55,8 @@ export function useBookings(startDate?: string, endDate?: string) {
 export function useBooking(bookingId: string | null) {
   const { tenantId } = useTenant()
 
-  return useQuery<Booking | null>({
-    queryKey: ['booking', bookingId],
+return useQuery<Booking | null>({
+  queryKey: ['booking', tenantId, bookingId],
     queryFn: async () => {
       if (!tenantId || !bookingId) return null
       return BookingService.getById(bookingId)

@@ -27,16 +27,21 @@ export function ProductHistoryModal({ productId, onClose }: ProductHistoryModalP
     enabled: !!tenantId && !!productId,
   })
   
-  const { data: history = [], isLoading: isLoadingHistory } = useQuery({
+  const {
+    data: history,
+    isLoading: isLoadingHistory,
+    error: historyError,
+  } = useQuery({
     queryKey: ['product_history', tenantId, productId],
     queryFn: () => {
-      if (!tenantId) return []
+      if (!tenantId) return Promise.resolve([])
       return InventoryService.getHistoryByProductId(tenantId, productId)
     },
     enabled: !!tenantId && !!productId,
   })
 
   const isLoading = isLoadingProduct || isLoadingHistory
+  const hasError = !!historyError
 
   const getTypeIcon = (change: number) => {
     if (change > 0) return <Plus className="w-4 h-4 text-green-600" />
@@ -96,7 +101,11 @@ export function ProductHistoryModal({ productId, onClose }: ProductHistoryModalP
             <div className="flex justify-center items-center h-full">
               <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
             </div>
-          ) : history.length === 0 ? (
+          ) : hasError ? (
+            <div className="text-center text-red-500">
+              <p>Er is een fout opgetreden bij het laden van de historie.</p>
+            </div>
+          ) : !history || history.length === 0 ? (
             <div className="text-center text-gray-500">
               <p>Geen historie gevonden voor dit product.</p>
             </div>

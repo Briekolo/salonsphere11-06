@@ -40,7 +40,8 @@ const getStockBarProps = (item: InventoryItem) => {
   const status = InventoryService.getStockStatus(item)
   let color = 'bg-green-500'
   if (status === 'critical') color = 'bg-red-600'
-  else if (status === 'low-stock' || status === 'out-of-stock') color = 'bg-yellow-500'
+  else if (status === 'low-stock') color = 'bg-yellow-500'
+else if (status === 'out-of-stock') color = 'bg-red-600'
 
   return {
     percentage: Math.min(percentage, 100),

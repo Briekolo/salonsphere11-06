@@ -16,7 +16,7 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
   const { data: treatments = [], isLoading } = useServices()
 
   const searchedTreatments = treatments.filter(treatment =>
-    treatment.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (treatment.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (isLoading) {

@@ -13,7 +13,9 @@ export function useRevenueSeries(from: Date, to: Date) {
   const { tenantId } = useTenant()
 
   return useQuery<RevenuePoint[]>({
-    queryKey: ['revenue_series', tenantId, from.toISOString(), to.toISOString()],
+    const fromIso = useMemo(() => from.toISOString().slice(0,10), [from])
+ const toIso   = useMemo(() => to.toISOString().slice(0,10), [to])
+ queryKey: ['revenue_series', tenantId, fromIso, toIso],
     enabled: !!tenantId,
     queryFn: async () => {
       if (!tenantId) return []

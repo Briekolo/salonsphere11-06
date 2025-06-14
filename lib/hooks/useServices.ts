@@ -14,7 +14,7 @@ export function useServices() {
 
   const query = useQuery<Service[]>({
     queryKey: ['services', tenantId],
-    queryFn: () => ServiceService.getAll(),
+    queryFn: () => ServiceService.getAll(tenantId),
     enabled: !!tenantId, // Alleen runnen als tenant bekend is
   })
 

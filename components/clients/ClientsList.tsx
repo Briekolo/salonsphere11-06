@@ -27,7 +27,7 @@ export function ClientsList({ onClientSelect, searchTerm }: ClientsListProps) {
       {/* Mobile Card View */}
       <div className="block lg:hidden space-y-4">
         {clients.map((client: Client) => (
-          <div key={client.id} className="p-4 border border-gray-200 rounded-lg">
+          <div key={client.id} className="p-4 border border-gray-200 rounded-lg cursor-pointer" onClick={() => onClientSelect(client.id)}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-100 text-primary-800 rounded-full flex items-center justify-center font-medium">
@@ -87,7 +87,7 @@ export function ClientsList({ onClientSelect, searchTerm }: ClientsListProps) {
           </thead>
           <tbody>
             {clients.map((client: Client) => (
-              <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => onClientSelect(client.id)}>
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-100 text-primary-800 rounded-full flex items-center justify-center font-medium">

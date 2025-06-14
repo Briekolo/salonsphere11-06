@@ -15,17 +15,17 @@ import {
 import { Calendar } from 'lucide-react'
 import { useBookingSeries } from '@/lib/hooks/useBookingSeries'
 
-interface UserActivityChartProps {
-  dateRange: string // wordt momenteel genegeerd; chart toont vaste periode
-}
-
-export function UserActivityChart({ dateRange: _dateRange }: UserActivityChartProps) {
+// Geen props nodig – de component toont altijd de laatste 14 dagen.
+export function UserActivityChart() {
   const [chartType, setChartType] = useState<'line' | 'bar'>('line')
 
   // Bereken datumrange (laatste 14 dagen)
-  const end = new Date()
-  const start = new Date()
-  start.setDate(end.getDate() - 13)
+  const [start, end] = useMemo(() => {
+    const e = new Date()
+    const s = new Date()
+    s.setDate(e.getDate() - 13)
+    return [s, e]
+  }, []) // recomputed only once per mount
 
   const { data: series = [], isLoading } = useBookingSeries(start, end)
 

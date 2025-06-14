@@ -15,7 +15,7 @@ export type User = {
 
 export function useUsers(filters: { role?: string } = {}) {
     const { tenantId } = useTenant()
-    const queryKey = ['users', tenantId, filters]
+    const queryKey = ['users', tenantId, JSON.stringify(filters)]
 
     return useQuery<User[]>({
         queryKey,

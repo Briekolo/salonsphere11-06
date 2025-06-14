@@ -22,11 +22,23 @@ export async function POST(req: NextRequest) {
   const user = session?.user
   if (!user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
 
-  // Bepaal tenant_id indien aanwezig in metadata
-  // @ts-ignore
-  const tenantId: string | undefined = user.user_metadata?.tenant_id
+  // Haal de tenant_id op uit de users-tabel i.p.v. vertrouwen op metadata
+  const { data: userRecord, error: userErr } = await supabaseAdmin
+    .from('users')
+    .select('tenant_id')
+    .eq('id', user.id)
+    .single()
+
+  if (userErr) {
+    console.error('onboarding/complete – user lookup failed', userErr)
+    return NextResponse.json({ error: 'Gebruiker niet gevonden' }, { status: 500 })
+  }
+
+  const tenantId: string | undefined = userRecord?.tenant_id ?? undefined
 
   if (tenantId) {
+    // Controleer of de tenant_id uit de request body (indien meegekomen) overeenkomt
+    // Hier updaten we alléén de tenant die gekoppeld is aan de ingelogde gebruiker
     // Tenant bestaat al (aangemaakt door DB-trigger).  Alleen details bijwerken.
     const { error: tUpdateErr } = await supabaseAdmin
       .from('tenants')
@@ -54,7 +66,13 @@ export async function POST(req: NextRequest) {
   if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 })
 
   // Need admin endpoint to update metadata
-  await supabaseAdmin.auth.admin.updateUserById(user.id, { user_metadata: { tenant_id: tenant.id, role: 'admin' } })
+  const { error: metaErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+    user_metadata: { tenant_id: tenant.id, role: 'admin' }
+  })
+  if (metaErr) {
+    console.error('onboarding/complete – updateUserById failed', metaErr)
+    return NextResponse.json({ error: metaErr.message }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 } 

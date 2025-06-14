@@ -2,9 +2,13 @@ import { Sparkles, Clock, Euro, TrendingUp } from 'lucide-react'
 import { useTreatmentStats } from '@/lib/hooks/useTreatmentStats'
 
 export function TreatmentsStats() {
-  const { total, avgDuration, avgPrice, popularName, isLoading } = useTreatmentStats()
+ const { total = 0, avgDuration = 0, avgPrice = 0, popularName, isLoading } = useTreatmentStats()
 
-  const stats = [
+ if (isLoading) {
+   return <SkeletonCards />   // keep existing skeleton block
+ }
+
+ const stats = [
     {
       title: 'Totaal behandelingen',
       value: total.toString(),

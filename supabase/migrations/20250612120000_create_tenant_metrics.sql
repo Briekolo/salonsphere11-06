@@ -2,9 +2,12 @@
 -- Beschrijving: berekent kerncijfers (omzet, afspraken, nieuwe klanten, lage voorraad) per tenant
 -- ---------------------------------------------------------------
 -- 1. VIEW
-create or replace view public.tenant_metrics_view as
-select
-  t.id                                                    as tenant_id,
+create or replace view public.tenant_metrics_view
+with (security_barrier=true) as
+ …
+        join bookings b
+          on b.id = p.booking_id
+         and b.tenant_id = t.id
   -- Totale betaalde omzet laatste 30 dagen
   coalesce(
     (
@@ -57,7 +60,7 @@ from tenants t;
 create or replace function public.tenant_metrics(_tenant uuid)
 returns jsonb
 language sql
-security definer
+security invoker                -- respect caller’s RLS
 set search_path = public, pg_temp
 as $$
   select row_to_json(tm.*)::jsonb

@@ -25,7 +25,7 @@ export function usePopularServices(from: Date, to: Date, limit = 5) {
         _limit: limit,
       })
       if (error) throw error
-      return data as PopularService[]
+      return (data ?? []) as PopularService[]
     },
     staleTime: 1000 * 60,
   })

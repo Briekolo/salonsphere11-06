@@ -51,6 +51,12 @@ export function StockAdjustmentModal({ productId, onClose }: StockAdjustmentModa
     e.preventDefault()
     if (!product || !reason) return
 
+    // Extra validatie om negatieve of niet-gehele waarden te voorkomen
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      alert('Voer een geldig (niet-negatief) geheel getal in voor het aantal.')
+      return
+    }
+
     let adjustment = quantity
     if (adjustmentType === 'remove') {
       adjustment = -quantity
@@ -58,12 +64,17 @@ export function StockAdjustmentModal({ productId, onClose }: StockAdjustmentModa
       adjustment = quantity - product.current_stock
     }
 
-    await adjustStockMutation.mutateAsync({
-      id: productId,
-      adjustment,
-      reason,
-    })
-    onClose()
+    try {
+      await adjustStockMutation.mutateAsync({
+        id: productId,
+        adjustment,
+        reason,
+      })
+      onClose()
+    } catch (error) {
+      console.error(error)
+      alert('Aanpassing mislukt. Probeer het opnieuw of neem contact op met de beheerder.')
+    }
   }
 
   return (

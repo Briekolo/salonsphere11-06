@@ -100,7 +100,7 @@ const mockCommunications: Communication[] = [
 ]
 
 const ProgressBar = ({ value, max }: { value: number; max: number }) => {
-  const percentage = max > 0 ? (value / max) * 100 : 0;
+  const percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
     <div className="w-full bg-gray-200 rounded-full h-2.5">
       <div
@@ -296,7 +296,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Geboortedatum</label>
-                    <p className="text-gray-900">{format(client.date_of_birth, 'd MMMM yyyy', { locale: nl })}</p>
+<p>{client.date_of_birth ? format(new Date(client.date_of_birth), 'd MMMM yyyy', { locale: nl }) : 'Onbekend'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>

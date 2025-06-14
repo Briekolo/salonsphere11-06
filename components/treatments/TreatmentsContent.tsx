@@ -36,13 +36,13 @@ export function TreatmentsContent() {
       headers.join(','),
       ...filteredTreatments.map(t => [
         t.id,
-        `"${t.name.replace(/"/g, '""')}"`,
+        t.name,
         t.category,
         t.duration_minutes,
         t.price,
         t.material_cost,
         t.active
-      ].join(','))
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

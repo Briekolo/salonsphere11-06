@@ -24,9 +24,9 @@ export function useInventoryItems() {
 }
 
 // Hook voor lage voorraad-items
-export function useLowStockItems(limit: number = 5) {
-  const { tenantId } = useTenant()
-
+export function useLowStockItems(threshold: number = 5) {
+ ...
+  .lte('current_stock', threshold)
   return useQuery<InventoryItem[]>({
     queryKey: ['inventory_items', tenantId, 'lowStock', limit],
     queryFn: async () => {

@@ -121,7 +121,9 @@ export class ClientService {
     return data || []
   }
 
-  static async getTreatmentProgress(clientId: string) {
+ static async getTreatmentProgress(
+  clientId: string
+): Promise<Database['public']['Tables']['klant_behandeling_trajecten']['Row'][]> {
     const tenantId = await getCurrentUserTenantId();
     if (!tenantId) throw new Error('No tenant found');
 

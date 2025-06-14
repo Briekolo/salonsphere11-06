@@ -10,33 +10,39 @@ function formatDuration(minutes: number) {
 }
 
 export function QuickStats() {
-  const { countToday, totalMinutes, uniqueClients, completedCount, isLoading } = useAgendaStats()
+  const {
+    countToday = 0,
+    totalMinutes = 0,
+    uniqueClients = 0,
+    completedCount = 0,
+    isLoading
+  } = useAgendaStats()
 
   const stats = [
     {
-      title: 'Afspraken vandaag',
-      value: countToday.toString(),
+      value: countToday,
+
       icon: <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-blue',
       iconBgColor: 'bg-icon-blue-bg'
     },
     {
-      title: 'Totale tijd',
       value: formatDuration(totalMinutes),
+
       icon: <Clock className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-green',
       iconBgColor: 'bg-icon-green-bg'
     },
     {
-      title: 'Unieke klanten',
-      value: uniqueClients.toString(),
+      value: uniqueClients,
+
       icon: <Users className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-purple',
       iconBgColor: 'bg-icon-purple-bg'
     },
     {
       title: 'Afgerond',
-      value: completedCount.toString(),
+      value: completedCount,
       icon: <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-orange',
       iconBgColor: 'bg-icon-orange-bg'

@@ -4,12 +4,13 @@
 create or replace view public.revenue_daily as
 select
   tenant_id,
-  date_trunc('day', created_at)::date as day,
-  sum(amount)::numeric(10,2)         as revenue
-from payments
-where status = 'paid'
-group by tenant_id, day;
-
+  date_trunc('day', created_at)::date                       as day,
+   sum(amount)::numeric(10,2)         as revenue
+ ...
+where status = 'completed'
+ ...
+group by tenant_id,
+         date_trunc('day', created_at)::date;
 -- 2. Dagelijkse afspraakcount per tenant
 create or replace view public.bookings_daily as
 select
@@ -18,7 +19,8 @@ select
   count(*)                            as bookings
 from bookings
 where status in ('scheduled','confirmed','completed')
-group by tenant_id, day;
+group by tenant_id,
+         date_trunc('day', scheduled_at)::date;
 
 -- ---------------------------------------------------------------
 -- 3. RPC functies

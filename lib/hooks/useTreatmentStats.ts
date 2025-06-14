@@ -17,6 +17,9 @@ export function useTreatmentStats(): TreatmentStats {
   const { data: bookings, isLoading: bookingsLoading } = useBookings()
 
   const stats = useMemo(() => {
+    if (servicesLoading || bookingsLoading) {
+      return null
+    }
     if (!services) {
       return {
         total: 0,

@@ -156,7 +156,7 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [])
+}, [updateMutation]);
 
   return (
     <>
