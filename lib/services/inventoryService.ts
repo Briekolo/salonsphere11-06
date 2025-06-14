@@ -1,42 +1,47 @@
-import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
-import { Database } from '@/types/database'
+import { supabase } from '../supabase'
+import { Database } from '../../types/database'
 
 type InventoryItem = Database['public']['Tables']['inventory_items']['Row']
 type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
 type InventoryItemUpdate = Database['public']['Tables']['inventory_items']['Update']
+type ProductHistory = Database['public']['Tables']['product_history']['Row']
 
 export class InventoryService {
-  static async getAll(): Promise<InventoryItem[]> {
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
-
-    const { data, error } = await supabase
-      .from('inventory_items')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .order('name', { ascending: true })
+  static async getAll(tenantId: string): Promise<InventoryItem[]> {
+    if (!tenantId) {
+      console.warn('InventoryService.getAll called without tenantId')
+      return []
+    }
+    const { data, error } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenantId)
 
     if (error) throw error
     return data || []
   }
 
-  static async getLowStock(): Promise<InventoryItem[]> {
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
+  static async getLowStock(tenantId: string): Promise<InventoryItem[]> {
+    if (!tenantId) {
+      console.warn('InventoryService.getLowStock called without tenantId')
+      return []
+    }
 
+    // Supabase filters kunnen geen kolom-naar-kolom vergelijking maken (current_stock <= min_stock).
+    // Daarom halen we alle records op en filteren we in JavaScript.
     const { data, error } = await supabase
       .from('inventory_items')
       .select('*')
       .eq('tenant_id', tenantId)
-      .filter('current_stock', 'lte', 'min_stock')
-      .order('current_stock', { ascending: true })
 
     if (error) throw error
-    return data || []
+
+    const lowStockItems = (data || []).filter((item) => item.current_stock <= item.min_stock)
+
+    // Sorteer van laag naar hoog aantal stuks
+    lowStockItems.sort((a, b) => a.current_stock - b.current_stock)
+
+    return lowStockItems
   }
 
-  static async getById(id: string): Promise<InventoryItem | null> {
-    const tenantId = await getCurrentUserTenantId()
+  static async getById(tenantId: string, id: string): Promise<InventoryItem | null> {
     if (!tenantId) throw new Error('No tenant found')
 
     const { data, error } = await supabase
@@ -46,12 +51,14 @@ export class InventoryService {
       .eq('tenant_id', tenantId)
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Error fetching product by id:', error)
+      return null
+    }
     return data
   }
 
-  static async create(item: Omit<InventoryItemInsert, 'tenant_id'>): Promise<InventoryItem> {
-    const tenantId = await getCurrentUserTenantId()
+  static async create(tenantId: string, item: Omit<InventoryItemInsert, 'tenant_id'>): Promise<InventoryItem> {
     if (!tenantId) throw new Error('No tenant found')
 
     const { data, error } = await supabase
@@ -64,8 +71,7 @@ export class InventoryService {
     return data
   }
 
-  static async update(id: string, updates: Omit<InventoryItemUpdate, 'tenant_id'>): Promise<InventoryItem> {
-    const tenantId = await getCurrentUserTenantId()
+  static async update(tenantId: string, id: string, updates: InventoryItemUpdate): Promise<InventoryItem> {
     if (!tenantId) throw new Error('No tenant found')
 
     const { data, error } = await supabase
@@ -80,43 +86,51 @@ export class InventoryService {
     return data
   }
 
-  static async adjustStock(id: string, adjustment: number, reason: string): Promise<InventoryItem> {
-    const tenantId = await getCurrentUserTenantId()
+  static async adjustStock(tenantId: string, id: string, adjustment: number, reason: string): Promise<InventoryItem> {
     if (!tenantId) throw new Error('No tenant found')
 
-    // Get current stock
-    const item = await this.getById(id)
-    if (!item) throw new Error('Item not found')
+    const { data, error } = await supabase.rpc('adjust_inventory_and_log', {
+      p_product_id: id,
+      p_adjustment: adjustment,
+      p_reason: reason,
+      p_tenant_id: tenantId,
+    })
 
-    const newStock = Math.max(0, item.current_stock + adjustment)
+    if (error) {
+      console.error('Error adjusting stock:', error)
+      throw new Error(error.message)
+    }
 
-    const { data, error } = await supabase
-      .from('inventory_items')
-      .update({ current_stock: newStock })
-      .eq('id', id)
-      .eq('tenant_id', tenantId)
-      .select()
-      .single()
+    // RPC returns a list, even if it's just one item.
+    const updatedItem = data?.[0]
+    if (!updatedItem) {
+      throw new Error('No item returned after stock adjustment.')
+    }
 
-    if (error) throw error
-
-    // TODO: Log the stock adjustment in a separate audit table
-    // This would include: item_id, old_stock, new_stock, adjustment, reason, user_id, timestamp
-
-    return data
+    // The structure needs to be mapped to the InventoryItem type.
+    return updatedItem as InventoryItem
   }
 
-  static async delete(id: string): Promise<void> {
-    const tenantId = await getCurrentUserTenantId()
+  static async delete(tenantId: string, id: string): Promise<void> {
     if (!tenantId) throw new Error('No tenant found')
 
-    const { error } = await supabase
-      .from('inventory_items')
-      .delete()
-      .eq('id', id)
-      .eq('tenant_id', tenantId)
+    const { error } = await supabase.from('inventory_items').delete().eq('id', id).eq('tenant_id', tenantId)
 
     if (error) throw error
+  }
+
+  static async getHistoryByProductId(tenantId: string, productId: string): Promise<ProductHistory[]> {
+    if (!tenantId) throw new Error('No tenant found')
+
+    const { data, error } = await supabase
+      .from('product_history')
+      .select('*')
+      .eq('product_id', productId)
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
   }
 
   static getStockStatus(item: InventoryItem): 'in-stock' | 'low-stock' | 'out-of-stock' | 'critical' {
@@ -128,5 +142,45 @@ export class InventoryService {
 
   static calculateStockValue(items: InventoryItem[]): number {
     return items.reduce((total, item) => total + (item.current_stock * item.cost_per_unit), 0)
+  }
+
+  static async createInventoryItem(tenantId: string, item: Omit<InventoryItem, 'id' | 'created_at' | 'tenant_id' | 'updated_at'>): Promise<InventoryItem> {
+    if (!tenantId) throw new Error('No tenant found')
+
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .insert({ ...item, tenant_id: tenantId })
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  static async updateInventoryItem(tenantId: string, id: string, item: Partial<InventoryItem>): Promise<InventoryItem> {
+    if (!tenantId) throw new Error('No tenant found')
+
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .update(item)
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  static async deleteInventoryItem(tenantId: string, id: string) {
+    if (!tenantId) throw new Error('No tenant found')
+
+    const { error } = await supabase
+      .from('inventory_items')
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+
+    if (error) throw error
   }
 }

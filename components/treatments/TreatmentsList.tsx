@@ -1,124 +1,74 @@
 'use client'
 
-import { Clock, Euro, Edit, Star, MoreVertical, Eye, Calendar } from 'lucide-react'
-
-interface Treatment {
-  id: string
-  name: string
-  category: string
-  description: string
-  duration: number
-  price: number
-  materialCost: number
-  margin: number
-  popularity: number
-  bookingsThisMonth: number
-  rating: number
-  active: boolean
-}
+import { useState, useRef, useEffect } from 'react'
+import { Clock, Euro, Edit, MoreVertical, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { useServices, useUpdateService, useDeleteService } from '@/lib/hooks/useServices'
+import { Service } from '@/lib/hooks/useServices'
+import { ServiceService } from '@/lib/services/serviceService'
 
 interface TreatmentsListProps {
   onTreatmentEdit: (treatmentId: string) => void
+  searchTerm: string
 }
 
-const treatments: Treatment[] = [
-  {
-    id: '1',
-    name: 'Klassieke Pedicure',
-    category: 'Nagelverzorging',
-    description: 'Complete voetbehandeling inclusief nagelverzorging en eeltverwijdering',
-    duration: 45,
-    price: 65,
-    materialCost: 12,
-    margin: 81.5,
-    popularity: 92,
-    bookingsThisMonth: 28,
-    rating: 4.8,
-    active: true
-  },
-  {
-    id: '2',
-    name: 'Luxe Manicure',
-    category: 'Nagelverzorging',
-    description: 'Professionele handverzorging met nagelbehandeling en handmassage',
-    duration: 60,
-    price: 55,
-    materialCost: 8,
-    margin: 85.5,
-    popularity: 88,
-    bookingsThisMonth: 24,
-    rating: 4.9,
-    active: true
-  },
-  {
-    id: '3',
-    name: 'Anti-Aging Gezichtsbehandeling',
-    category: 'Gezichtsbehandelingen',
-    description: 'Intensieve behandeling tegen veroudering met peptiden en hyaluronzuur',
-    duration: 90,
-    price: 125,
-    materialCost: 25,
-    margin: 80,
-    popularity: 76,
-    bookingsThisMonth: 18,
-    rating: 4.7,
-    active: true
-  },
-  {
-    id: '4',
-    name: 'Ontspanningsmassage',
-    category: 'Massage',
-    description: 'Volledige lichaamsmassage voor diepe ontspanning met aromatherapie',
-    duration: 75,
-    price: 95,
-    materialCost: 15,
-    margin: 84.2,
-    popularity: 84,
-    bookingsThisMonth: 22,
-    rating: 4.8,
-    active: true
-  },
-  {
-    id: '5',
-    name: 'Brazilian Wax',
-    category: 'Ontharing',
-    description: 'Professionele ontharing van het intieme gebied met hoogwaardige wax',
-    duration: 30,
-    price: 45,
-    materialCost: 6,
-    margin: 86.7,
-    popularity: 71,
-    bookingsThisMonth: 16,
-    rating: 4.6,
-    active: true
-  },
-  {
-    id: '6',
-    name: 'Hydraterende Gezichtsbehandeling',
-    category: 'Gezichtsbehandelingen',
-    description: 'Intensieve hydratatie voor droge huid met hyaluronzuur masker',
-    duration: 60,
-    price: 75,
-    materialCost: 18,
-    margin: 76,
-    popularity: 79,
-    bookingsThisMonth: 20,
-    rating: 4.7,
-    active: false
-  }
-]
+export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListProps) {
+  const { data: treatments = [], isLoading } = useServices()
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
-export function TreatmentsList({ onTreatmentEdit }: TreatmentsListProps) {
+  const updateMutation = useUpdateService()
+  const deleteMutation = useDeleteService()
+
+  const handleToggleVisibility = (treatment: Service) => {
+    updateMutation.mutate({ id: treatment.id, updates: { active: !treatment.active } })
+  }
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Weet je zeker dat je deze behandeling wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+      deleteMutation.mutate(id)
+    }
+  }
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredTreatments = treatments.filter(treatment =>
+    treatment.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  if (isLoading) {
+    return <div className="card p-6 text-center">Bezig met laden...</div>
+  }
+
+  if (filteredTreatments.length === 0) {
+    if (searchTerm) {
+      return (
+        <div className="card p-6 text-center">
+          <p className="text-gray-600">
+            Geen behandelingen gevonden voor zoekterm '{searchTerm}'.
+          </p>
+        </div>
+      )
+    }
+    return (
+      <div className="card p-6 text-center">
+        <p className="text-gray-600">Geen behandelingen gevonden. Voeg er eentje toe om te beginnen.</p>
+      </div>
+    )
+  }
+
   const getMarginColor = (margin: number) => {
     if (margin >= 80) return 'text-green-600'
     if (margin >= 70) return 'text-yellow-600'
     return 'text-red-600'
-  }
-
-  const getPopularityColor = (popularity: number) => {
-    if (popularity >= 85) return 'bg-green-100 text-green-800'
-    if (popularity >= 70) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-red-100 text-red-800'
   }
 
   return (
@@ -126,7 +76,7 @@ export function TreatmentsList({ onTreatmentEdit }: TreatmentsListProps) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-heading">Alle behandelingen</h2>
         <div className="text-sm text-gray-600">
-          {treatments.length} behandelingen gevonden
+          {filteredTreatments.length} behandelingen gevonden
         </div>
       </div>
 
@@ -135,69 +85,26 @@ export function TreatmentsList({ onTreatmentEdit }: TreatmentsListProps) {
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4 font-medium text-gray-600">Behandeling</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Categorie</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Duur</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Prijs</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Materiaalkosten</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600">Sessies</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Marge</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Populariteit</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Deze maand</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Rating</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Acties</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600 text-right">Acties</th>
             </tr>
           </thead>
           <tbody>
-            {treatments.map((treatment) => (
-              <tr key={treatment.id} className="border-b border-gray-100 hover:bg-gray-50">
+            {filteredTreatments.map((treatment: Service) => (
+              <tr 
+                key={treatment.id} 
+                className={`border-b border-gray-100 transition-colors ${!treatment.active ? 'bg-gray-50 text-gray-500' : 'hover:bg-gray-50'}`}
+              >
                 <td className="py-4 px-4">
                   <div>
-                    <div className="font-medium text-gray-900">{treatment.name}</div>
-                    <div className="text-sm text-gray-600 truncate max-w-[200px]">
+                    <div className={`font-medium ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>{treatment.name}</div>
+                    <div className="text-sm truncate max-w-[200px]">
                       {treatment.description}
                     </div>
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <span className="text-sm bg-primary-100 text-primary-800 px-2 py-1 rounded-full">
-                    {treatment.category}
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-1 text-sm text-gray-900">
-                    <Clock className="w-4 h-4" />
-                    {treatment.duration}min
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-1 text-sm font-medium text-gray-900">
-                    <Euro className="w-4 h-4" />
-                    {treatment.price}
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <span className="text-sm text-gray-600">€{treatment.materialCost}</span>
-                </td>
-                <td className="py-4 px-4">
-                  <span className={`text-sm font-medium ${getMarginColor(treatment.margin)}`}>
-                    {treatment.margin}%
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <span className={`status-chip ${getPopularityColor(treatment.popularity)}`}>
-                    {treatment.popularity}%
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-1 text-sm text-gray-900">
-                    <Calendar className="w-4 h-4" />
-                    {treatment.bookingsThisMonth}
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-1 text-sm">
-                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                    {treatment.rating}
                   </div>
                 </td>
                 <td className="py-4 px-4">
@@ -208,19 +115,68 @@ export function TreatmentsList({ onTreatmentEdit }: TreatmentsListProps) {
                   </span>
                 </td>
                 <td className="py-4 px-4">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 text-sm">
+                    <Clock className="w-4 h-4" />
+                    {treatment.duration_minutes}min
+                  </div>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-1 text-sm font-medium">
+                    <Euro className="w-4 h-4" />
+                    {treatment.price}
+                  </div>
+                </td>
+                <td className="py-4 px-4">
+                  <span className="inline-block px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full">
+                    {treatment.aantal_sessies ?? 1}x
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <span className={`text-sm font-medium ${getMarginColor(ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0))}`}>
+                    {ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0).toFixed(1)}%
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center justify-end gap-1 relative">
+                    <button 
+                      onClick={() => handleToggleVisibility(treatment)}
+                      className="p-2 hover:bg-gray-200 rounded-full"
+                      title={treatment.active ? 'Verbergen' : 'Zichtbaar maken'}
+                    >
+                      {treatment.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
                     <button 
                       onClick={() => onTreatmentEdit(treatment.id)}
-                      className="p-1 hover:bg-gray-200 rounded"
+                      className="p-2 hover:bg-gray-200 rounded-full"
+                      title="Bewerken"
                     >
-                      <Edit className="w-4 h-4 text-gray-500" />
+                      <Edit className="w-4 h-4" />
                     </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <Eye className="w-4 h-4 text-gray-500" />
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === treatment.id ? null : treatment.id)}
+                      className="p-2 hover:bg-gray-200 rounded-full"
+                    >
+                      <MoreVertical className="w-4 h-4" />
                     </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <MoreVertical className="w-4 h-4 text-gray-500" />
-                    </button>
+
+                    {openMenuId === treatment.id && (
+                      <div
+                        ref={menuRef}
+                        className="absolute top-full right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-10"
+                      >
+                        <ul>
+                          <li>
+                            <button
+                              onClick={() => { handleDelete(treatment.id); setOpenMenuId(null); }}
+                              className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Verwijderen
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </td>
               </tr>

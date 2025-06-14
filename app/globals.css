@@ -2,17 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+/* Aeonik Font Faces */
+@font-face {
+  font-family: 'Aeonik';
+  src: url('/fonts/aeonik-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aeonik';
+  src: url('/fonts/aeonik-medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Fallback to Inter (Google Fonts) if Aeonik is not available */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @layer base {
   html {
-    font-family: Poppins, sans-serif;
+    font-family: 'Aeonik', 'Inter', sans-serif;
     letter-spacing: -0.03em;
   }
   
   body {
     @apply bg-background text-gray-900 antialiased;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 400;
     letter-spacing: -0.03em;
+  }
+
+  /* Typography hierarchy with Aeonik */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500; /* Aeonik Medium */
+  }
+
+  /* Ensure buttons, labels, and emphasis use appropriate weights */
+  button, .btn, label, .font-medium, .font-semibold {
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500; /* Aeonik Medium */
+  }
+
+  .font-bold {
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500; /* Map bold to Aeonik Medium since we don't have bold */
   }
 }
 
@@ -27,22 +64,31 @@
   
   .btn-primary {
     @apply bg-[#02011F] text-white rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:opacity-90 transition-opacity duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
   }
   
   .btn-secondary {
     @apply bg-white border border-primary-500 text-primary-500 rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-primary-50 transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
   }
   
   .btn-outlined {
     @apply bg-transparent border border-[#02011F] text-[#02011F] rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-[#02011F] hover:text-white transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
   }
   
   .sidebar-item {
     @apply flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl lg:rounded-lg text-[#010009] hover:bg-sidebar-hover hover:text-primary-700 transition-colors duration-200 min-h-[44px];
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 400;
   }
   
   .sidebar-item.active {
     @apply bg-sidebar-hover text-primary-700 font-semibold;
+    font-weight: 500;
   }
   
   .sidebar-item svg {
@@ -65,14 +111,20 @@
   
   .metric-title {
     @apply text-xs lg:text-sm text-metric-title mb-1;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 400;
   }
   
   .metric-value {
     @apply text-xl lg:text-2xl font-bold text-metric-value;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
   }
   
   .status-chip {
     @apply inline-flex items-center px-2 py-1 rounded-xl lg:rounded-full text-xs font-medium;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
   }
   
   .status-chip.confirmed {
@@ -93,6 +145,8 @@
 
   .text-heading {
     @apply text-lg lg:text-xl font-semibold text-gray-900;
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
   }
 
   /* Mobile-specific utilities */
@@ -119,6 +173,15 @@
   /* Touch-friendly form elements */
   input, select, textarea, button {
     @apply min-h-[44px];
+    font-family: 'Aeonik', 'Inter', sans-serif;
+  }
+
+  input, select, textarea {
+    font-weight: 400;
+  }
+
+  button {
+    font-weight: 500;
   }
 
   /* Enhanced rounded form elements for mobile */
@@ -127,12 +190,36 @@
   }
 
   /* Responsive text sizes */
-  .responsive-text-xs { @apply text-xs lg:text-sm; }
-  .responsive-text-sm { @apply text-sm lg:text-base; }
-  .responsive-text-base { @apply text-base lg:text-lg; }
-  .responsive-text-lg { @apply text-lg lg:text-xl; }
-  .responsive-text-xl { @apply text-xl lg:text-2xl; }
-  .responsive-text-2xl { @apply text-2xl lg:text-3xl; }
+  .responsive-text-xs { 
+    @apply text-xs lg:text-sm; 
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 400;
+  }
+  .responsive-text-sm { 
+    @apply text-sm lg:text-base; 
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 400;
+  }
+  .responsive-text-base { 
+    @apply text-base lg:text-lg; 
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 400;
+  }
+  .responsive-text-lg { 
+    @apply text-lg lg:text-xl; 
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
+  }
+  .responsive-text-xl { 
+    @apply text-xl lg:text-2xl; 
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
+  }
+  .responsive-text-2xl { 
+    @apply text-2xl lg:text-3xl; 
+    font-family: 'Aeonik', 'Inter', sans-serif;
+    font-weight: 500;
+  }
 }
 
 @layer utilities {

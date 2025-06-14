@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, Save, X, Upload, Package } from 'lucide-react'
+import { useCreateInventoryItem, useUpdateInventoryItem, useInventoryItems } from '@/lib/hooks/useInventoryItems'
+import { InventoryService } from '@/lib/services/inventoryService'
 
 interface ProductFormProps {
   productId: string | null
@@ -14,24 +16,58 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
     sku: '',
     category: '',
     description: '',
-    currentStock: 0,
-    minStock: 0,
-    maxStock: 0,
+    current_stock: 0,
+    min_stock: 0,
+    max_stock: 0,
     unit: 'stuks',
-    costPerUnit: 0,
+    cost_per_unit: 0,
     supplier: '',
     location: '',
     barcode: '',
-    image: ''
   })
-
+  
   const isEditing = productId !== null
+  const createMutation = useCreateInventoryItem()
+  const updateMutation = useUpdateInventoryItem()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { data: products } = useInventoryItems()
+
+  useEffect(() => {
+    if (isEditing && products) {
+      const productToEdit = products.find(p => p.id === productId)
+      if (productToEdit) {
+        setFormData({
+          name: productToEdit.name,
+          sku: productToEdit.sku ?? '',
+          category: productToEdit.category,
+          description: productToEdit.description ?? '',
+          current_stock: productToEdit.current_stock,
+          min_stock: productToEdit.min_stock,
+          max_stock: productToEdit.max_stock,
+          unit: productToEdit.unit,
+          cost_per_unit: productToEdit.cost_per_unit,
+          supplier: productToEdit.supplier ?? '',
+          location: productToEdit.location ?? '',
+          barcode: productToEdit.barcode ?? ''
+        })
+      }
+    }
+  }, [isEditing, productId, products])
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Product form submitted:', formData)
-    onBack()
+    try {
+      if (isEditing && productId) {
+        await updateMutation.mutateAsync({ id: productId, updates: formData })
+      } else {
+        await createMutation.mutateAsync(formData)
+      }
+      onBack()
+    } catch (error) {
+      console.error('Failed to save product', error)
+      // Optionally: show an error message to the user
+    }
   }
 
   return (
@@ -60,6 +96,7 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
           </button>
           <button
             onClick={handleSubmit}
+            disabled={createMutation.isPending || updateMutation.isPending}
             className="btn-primary flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
@@ -91,7 +128,7 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  SKU *
+                  SKU
                 </label>
                 <input
                   type="text"
@@ -99,7 +136,6 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
                   onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Bijv. OPI-BC-001"
-                  required
                 />
               </div>
             </div>
@@ -171,8 +207,8 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.currentStock}
-                  onChange={(e) => setFormData(prev => ({ ...prev, currentStock: parseInt(e.target.value) || 0 }))}
+                  value={formData.current_stock}
+                  onChange={(e) => setFormData(prev => ({ ...prev, current_stock: parseInt(e.target.value) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   min="0"
                   required
@@ -181,41 +217,28 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Minimale voorraad *
+                  Minimale voorraad
                 </label>
                 <input
                   type="number"
-                  value={formData.minStock}
-                  onChange={(e) => setFormData(prev => ({ ...prev, minStock: parseInt(e.target.value) || 0 }))}
+                  value={formData.min_stock}
+                  onChange={(e) => setFormData(prev => ({ ...prev, min_stock: parseInt(e.target.value) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   min="0"
-                  required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maximale voorraad *
+                  Maximale voorraad
                 </label>
                 <input
                   type="number"
-                  value={formData.maxStock}
-                  onChange={(e) => setFormData(prev => ({ ...prev, maxStock: parseInt(e.target.value) || 0 }))}
+                  value={formData.max_stock}
+                  onChange={(e) => setFormData(prev => ({ ...prev, max_stock: parseInt(e.target.value) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   min="0"
-                  required
                 />
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-600">
-                <strong>Voorraadniveau indicatie:</strong>
-                <ul className="mt-2 space-y-1">
-                  <li>• Groen: Voorraad boven minimaal niveau</li>
-                  <li>• Geel: Voorraad op of onder minimaal niveau</li>
-                  <li>• Rood: Voorraad uitgeput</li>
-                </ul>
               </div>
             </div>
           </div>
@@ -227,7 +250,7 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Leverancier *
+                  Leverancier
                 </label>
                 <input
                   type="text"
@@ -235,7 +258,6 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
                   onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Bijv. OPI Professional"
-                  required
                 />
               </div>
 
@@ -245,8 +267,8 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.costPerUnit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, costPerUnit: parseFloat(e.target.value) || 0 }))}
+                  value={formData.cost_per_unit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: parseFloat(e.target.value) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   min="0"
                   step="0.01"
@@ -254,98 +276,39 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
                 />
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-4">
+          </div>
+        </div>
+        
+        {/* Sidebar */}
+        <div className="col-span-4 space-y-6">
+          <div className="card">
+            <h3 className="text-lg font-semibold mb-4">Identificatie</h3>
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Opslaglocatie
+                  Locatie in salon
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Bijv. Rek A1"
+                  placeholder="Bijv. Kast 3, plank 2"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Barcode
+                  Barcode (EAN, UPC)
                 </label>
                 <input
                   type="text"
                   value={formData.barcode}
                   onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Optioneel"
+                  placeholder="Scan of voer barcode in"
                 />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="col-span-4 space-y-6">
-          {/* Product Image */}
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Productafbeelding</h3>
-            
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Package className="w-8 h-8 text-gray-400" />
-              </div>
-              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 mb-2">
-                Sleep een afbeelding hierheen of klik om te uploaden
-              </p>
-              <button
-                type="button"
-                className="btn-outlined text-sm"
-              >
-                Bestand kiezen
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Voorraadwaarde</h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Huidige waarde:</span>
-                <span className="font-medium">
-                  €{(formData.currentStock * formData.costPerUnit).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Maximale waarde:</span>
-                <span className="font-medium">
-                  €{(formData.maxStock * formData.costPerUnit).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                <span className="text-gray-600">Voorraadniveau:</span>
-                <span className={`font-medium ${
-                  formData.currentStock <= formData.minStock ? 'text-red-600' :
-                  formData.currentStock <= formData.minStock * 1.5 ? 'text-yellow-600' : 'text-green-600'
-                }`}>
-                  {formData.maxStock > 0 ? Math.round((formData.currentStock / formData.maxStock) * 100) : 0}%
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tips */}
-          <div className="card bg-blue-50 border-blue-200">
-            <h3 className="text-lg font-semibold mb-3 text-blue-900">Tips</h3>
-            <ul className="text-sm text-blue-800 space-y-2">
-              <li>• Stel minimale voorraad in op basis van gemiddeld verbruik</li>
-              <li>• Gebruik duidelijke SKU codes voor eenvoudige identificatie</li>
-              <li>• Controleer regelmatig of de voorraadniveaus kloppen</li>
-              <li>• Houd rekening met levertijden bij het instellen van minimale voorraad</li>
-            </ul>
           </div>
         </div>
       </form>

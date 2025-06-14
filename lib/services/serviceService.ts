@@ -8,6 +8,7 @@ type ServiceUpdate = Database['public']['Tables']['services']['Update']
 export class ServiceService {
   static async getAll(): Promise<Service[]> {
     const tenantId = await getCurrentUserTenantId()
+
     if (!tenantId) throw new Error('No tenant found')
 
     const { data, error } = await supabase

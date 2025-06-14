@@ -120,4 +120,29 @@ export class ClientService {
     if (error) throw error
     return data || []
   }
+
+  static async getTreatmentProgress(clientId: string) {
+    const tenantId = await getCurrentUserTenantId();
+    if (!tenantId) throw new Error('No tenant found');
+
+    const { data, error } = await supabase
+      .from('klant_behandeling_trajecten')
+      .select(`
+        id,
+        totaal_sessies,
+        voltooide_sessies,
+        start_datum,
+        laatste_update,
+        service:services (
+          id,
+          name,
+          image_url
+        )
+      `)
+      .eq('klant_id', clientId)
+      .eq('tenant_id', tenantId);
+
+    if (error) throw error;
+    return data || [];
+  }
 }

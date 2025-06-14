@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, MessageSquare, FileText, CreditCard, Tag } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, MessageSquare, FileText, CreditCard, Tag, Activity } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ClientService } from '@/lib/services/clientService';
+import { useClientById, useTreatmentProgress } from '@/lib/hooks/useClients';
 
 interface ClientProfileProps {
   clientId: string
@@ -96,9 +99,28 @@ const mockCommunications: Communication[] = [
   }
 ]
 
+const ProgressBar = ({ value, max }: { value: number; max: number }) => {
+  const percentage = max > 0 ? (value / max) * 100 : 0;
+  return (
+    <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div
+        className="bg-primary-600 h-2.5 rounded-full"
+        style={{ width: `${percentage}%` }}
+      ></div>
+    </div>
+  );
+};
+
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents' | 'trajecten'>('overview')
   const [isEditing, setIsEditing] = useState(false)
+
+  const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
+  const { data: treatmentProgress, isLoading: progressLoading, error: progressError } = useTreatmentProgress(clientId);
+
+  if (clientLoading) return <div>Laden...</div>
+  if (clientError) return <div>Fout bij het laden van de klant.</div>
+  if (!client) return <div>Klant niet gevonden.</div>
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -157,11 +179,11 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         <div className="flex flex-col lg:flex-row lg:items-start gap-6">
           <div className="relative self-center lg:self-start">
             <img 
-              src={mockClient.avatar} 
-              alt={`${mockClient.firstName} ${mockClient.lastName}`}
+              src={client.avatar_url || `https://ui-avatars.com/api/?name=${client.first_name}+${client.last_name}`}
+              alt={`${client.first_name} ${client.last_name}`}
               className="w-20 h-20 lg:w-24 lg:h-24 rounded-full object-cover"
             />
-            {mockClient.status === 'vip' && (
+            {client.tags?.includes('VIP') && (
               <div className="absolute -top-2 -right-2 w-6 h-6 lg:w-8 lg:h-8 bg-purple-500 rounded-full flex items-center justify-center">
                 <Star className="w-3 h-3 lg:w-4 lg:h-4 text-white fill-current" />
               </div>
@@ -172,15 +194,15 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
               <div className="text-center lg:text-left">
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {mockClient.firstName} {mockClient.lastName}
+                  {client.first_name} {client.last_name}
                 </h2>
-                <p className="text-gray-600">{mockClient.email}</p>
-                <p className="text-gray-600">{mockClient.phone}</p>
+                <p className="text-gray-600">{client.email}</p>
+                <p className="text-gray-600">{client.phone}</p>
               </div>
 
               <div className="flex items-center justify-center lg:justify-start gap-2 mt-4 lg:mt-0">
-                <span className={`status-chip ${getStatusColor(mockClient.status)}`}>
-                  {mockClient.status.toUpperCase()}
+                <span className={`status-chip ${getStatusColor(client.status || 'active')}`}>
+                  {client.status?.toUpperCase() || 'ACTIEF'}
                 </span>
                 <button className="p-1 hover:bg-gray-100 rounded min-h-[44px] min-w-[44px] flex items-center justify-center">
                   <Trash2 className="w-4 h-4 text-red-500" />
@@ -190,29 +212,29 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-4">
               <div className="text-center lg:text-left">
-                <div className="text-xl lg:text-2xl font-bold text-gray-900">{mockClient.appointmentsCount}</div>
+                <div className="text-xl lg:text-2xl font-bold text-gray-900">{client.appointments_count || 0}</div>
                 <div className="text-sm text-gray-600">Afspraken</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-xl lg:text-2xl font-bold text-gray-900">€{mockClient.totalSpent}</div>
+                <div className="text-xl lg:text-2xl font-bold text-gray-900">€{client.total_spent || 0}</div>
                 <div className="text-sm text-gray-600">Uitgegeven</div>
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {format(mockClient.lastVisit, 'd MMM', { locale: nl })}
+                  {client.last_visit_date ? format(new Date(client.last_visit_date), 'd MMM', { locale: nl }) : 'N.v.t.'}
                 </div>
                 <div className="text-sm text-gray-600">Laatste bezoek</div>
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {Math.floor((new Date().getTime() - mockClient.joinDate.getTime()) / (1000 * 60 * 60 * 24 * 30))}m
+                  {client.created_at ? `${Math.floor((new Date().getTime() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30))}m` : 'N.v.t.'}
                 </div>
                 <div className="text-sm text-gray-600">Klant sinds</div>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-4">
-              {mockClient.tags.map((tag, index) => (
+              {client.tags?.map((tag, index) => (
                 <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm flex items-center gap-1">
                   <Tag className="w-3 h-3" />
                   {tag}
@@ -240,6 +262,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           {[
             { id: 'overview', label: 'Overzicht', icon: FileText },
             { id: 'appointments', label: 'Afspraken', icon: Calendar },
+            { id: 'trajecten', label: 'Trajecten', icon: Activity },
             { id: 'communications', label: 'Communicatie', icon: MessageSquare },
             { id: 'documents', label: 'Documenten', icon: FileText }
           ].map((tab) => {
@@ -273,19 +296,19 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Geboortedatum</label>
-                    <p className="text-gray-900">{format(mockClient.dateOfBirth, 'd MMMM yyyy', { locale: nl })}</p>
+                    <p className="text-gray-900">{format(client.date_of_birth, 'd MMMM yyyy', { locale: nl })}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
-                    <p className="text-gray-900">{mockClient.address}</p>
+                    <p className="text-gray-900">{client.address}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Klant sinds</label>
-                    <p className="text-gray-900">{format(mockClient.joinDate, 'd MMMM yyyy', { locale: nl })}</p>
+                    <p className="text-gray-900">{client.created_at ? format(new Date(client.created_at), 'd MMMM yyyy', { locale: nl }) : 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Segment</label>
-                    <p className="text-gray-900 capitalize">{mockClient.segment}</p>
+                    <p className="text-gray-900 capitalize">{client.segment || 'Standaard'}</p>
                   </div>
                 </div>
               </div>
@@ -297,20 +320,20 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Favoriete behandelingen</label>
                     <div className="flex flex-wrap gap-2">
-                      {mockClient.preferences.preferredServices.map((service, index) => (
+                      {client.preferences?.preferred_services?.map((service: string, index: number) => (
                         <span key={index} className="px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm">
                           {service}
                         </span>
-                      ))}
+                      )) || <p className="text-gray-500">Geen</p>}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Voorkeur medewerker</label>
-                    <p className="text-gray-900">{mockClient.preferences.preferredStaff}</p>
+                    <p className="text-gray-900">{client.preferences?.preferred_staff || 'Geen'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Communicatie voorkeur</label>
-                    <p className="text-gray-900 capitalize">{mockClient.preferences.communicationPreference}</p>
+                    <p className="text-gray-900 capitalize">{client.preferences?.communication_preference || 'Geen'}</p>
                   </div>
                 </div>
               </div>
@@ -321,10 +344,10 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               <div className="card">
                 <h3 className="text-lg font-semibold mb-4">Notities</h3>
                 <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800">{mockClient.notes}</p>
+                  <p className="text-sm text-yellow-800">{client.notes || 'Geen notities.'}</p>
                 </div>
                 <button className="w-full mt-3 btn-outlined text-sm">
-                  Notitie toevoegen
+                  Notitie bewerken
                 </button>
               </div>
             </div>
@@ -426,6 +449,31 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <p className="text-gray-600">Nog geen documenten geüpload</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'trajecten' && (
+          <div className="card">
+            <h3 className="text-lg font-semibold mb-4">Behandelingstrajecten</h3>
+            {progressLoading && <p>Trajecten laden...</p>}
+            {progressError && <p>Fout bij het laden van trajecten.</p>}
+            {treatmentProgress && treatmentProgress.length > 0 ? (
+              <div className="space-y-4">
+                {treatmentProgress.map((traject: any) => (
+                  <div key={traject.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{traject.service.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {traject.voltooide_sessies} / {traject.totaal_sessies} sessies
+                      </p>
+                    </div>
+                    <ProgressBar value={traject.voltooide_sessies} max={traject.totaal_sessies} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>Deze klant heeft geen actieve behandeltrajecten.</p>
+            )}
           </div>
         )}
       </div>

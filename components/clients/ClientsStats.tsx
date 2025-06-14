@@ -1,39 +1,79 @@
+'use client'
+
 import { Users, UserPlus, Calendar, TrendingUp } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { useTenant } from '@/lib/hooks/useTenant'
+import { supabase } from '@/lib/supabase'
+import { startOfWeek as sow, endOfWeek as eow } from 'date-fns'
+
+interface Stats {
+  total: number
+  newClients: number
+  activeClients: number
+  appointmentsWeek: number
+}
 
 export function ClientsStats() {
+  const { tenantId } = useTenant()
+
+  const { data, isLoading } = useQuery<Stats | null>({
+    queryKey: ['clients_stats', tenantId],
+    enabled: !!tenantId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      if (!tenantId) return null
+
+      const now = new Date()
+      const from30 = new Date(now)
+      from30.setDate(from30.getDate() - 30)
+
+      const from90 = new Date(now)
+      from90.setDate(from90.getDate() - 90)
+
+      const weekStart = sow(now, { weekStartsOn: 1 })
+      const weekEnd = eow(now, { weekStartsOn: 1 })
+
+      const countExact = async (table: any, builder: (q:any)=>any = (q)=>q) => {
+        const { count } = await builder(
+          supabase.from(table as any).select('*', { count: 'exact', head: true })
+        )
+        return count || 0
+      }
+
+      const total = await countExact('clients', q=> q.eq('tenant_id', tenantId))
+      const newClients = await countExact('clients', q=> q.eq('tenant_id', tenantId).gte('created_at', from30.toISOString()))
+      const activeClients = await countExact('clients', q=> q.eq('tenant_id', tenantId).gte('last_visit_date', from90.toISOString()))
+      const appointmentsWeek = await countExact('bookings', q=> q.eq('tenant_id', tenantId).gte('scheduled_at', weekStart.toISOString()).lte('scheduled_at', weekEnd.toISOString()))
+
+      return { total, newClients, activeClients, appointmentsWeek }
+    },
+  })
+
   const stats = [
     {
       title: 'Totaal klanten',
-      value: '247',
-      change: '+12',
-      changeType: 'increase' as const,
+      value: isLoading || !data ? '–' : String(data.total),
       icon: <Users className="w-5 h-5" />,
       iconColor: 'text-icon-blue',
       iconBgColor: 'bg-icon-blue-bg'
     },
     {
-      title: 'Nieuwe klanten',
-      value: '8',
-      change: '+3',
-      changeType: 'increase' as const,
+      title: 'Nieuwe klanten (30d)',
+      value: isLoading || !data ? '–' : String(data.newClients),
       icon: <UserPlus className="w-5 h-5" />,
       iconColor: 'text-icon-green',
       iconBgColor: 'bg-icon-green-bg'
     },
     {
-      title: 'Actieve klanten',
-      value: '189',
-      change: '+5',
-      changeType: 'increase' as const,
+      title: 'Actieve klanten (90d)',
+      value: isLoading || !data ? '–' : String(data.activeClients),
       icon: <TrendingUp className="w-5 h-5" />,
       iconColor: 'text-icon-purple',
       iconBgColor: 'bg-icon-purple-bg'
     },
     {
       title: 'Afspraken deze week',
-      value: '42',
-      change: '-2',
-      changeType: 'decrease' as const,
+      value: isLoading || !data ? '–' : String(data.appointmentsWeek),
       icon: <Calendar className="w-5 h-5" />,
       iconColor: 'text-icon-orange',
       iconBgColor: 'bg-icon-orange-bg'
@@ -41,25 +81,14 @@ export function ClientsStats() {
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {stats.map((stat, index) => (
         <div key={index} className="metric-card">
           <div className="flex items-start justify-between">
             <div className={`metric-icon ${stat.iconBgColor}`}>
-              <div className={stat.iconColor}>
-                {stat.icon}
-              </div>
-            </div>
-            
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              stat.changeType === 'increase' 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {stat.change}
+              <div className={stat.iconColor}>{stat.icon}</div>
             </div>
           </div>
-          
           <div className="mt-4">
             <p className="metric-title">{stat.title}</p>
             <p className="metric-value">{stat.value}</p>

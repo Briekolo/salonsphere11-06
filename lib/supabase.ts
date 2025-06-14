@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
+import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
 
 // Check if environment variables are properly configured
 if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here' || !supabaseUrl.startsWith('https://')) {
@@ -17,7 +18,10 @@ if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
   )
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase =
+  typeof window === 'undefined'
+    ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+    : createPagesBrowserClient<Database>()
 
 // Helper function to get current user's tenant_id
 export async function getCurrentUserTenantId(): Promise<string | null> {
@@ -25,13 +29,44 @@ export async function getCurrentUserTenantId(): Promise<string | null> {
   
   if (!user) return null
   
-  const { data: userData } = await supabase
-    .from('users')
-    .select('tenant_id')
-    .eq('id', user.id)
-    .single()
-  
-  return userData?.tenant_id || null
+  // 1. Probeer eerst tenant_id uit JWT metadata (meest up-to-date)
+  // @ts-ignore raw_user_meta_data type van Supabase
+  const metaTenantId: string | undefined = user.user_metadata?.tenant_id
+
+  if (metaTenantId) {
+    try {
+      // Probeer row in users-tabel te syncen maar negeer RLS-fouten (500)
+      const { data: existingRow } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single()
+
+      if (existingRow && existingRow.tenant_id !== metaTenantId) {
+        await supabase
+          .from('users')
+          .update({ tenant_id: metaTenantId })
+          .eq('id', user.id)
+      }
+    } catch (err) {
+      // Geen rechten op users-tabel -> negeer voor dashboard-flow
+    }
+
+    return metaTenantId
+  }
+
+  // Fallback uit users-tabel maar sla over bij RLS-errors
+  try {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single()
+
+    return userData?.tenant_id || null
+  } catch {
+    return null
+  }
 }
 
 // Helper function to check if user has admin role

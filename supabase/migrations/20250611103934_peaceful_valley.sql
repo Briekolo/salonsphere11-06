@@ -213,77 +213,105 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pricing_presets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_reminders ENABLE ROW LEVEL SECURITY;
 
+-- Helper function to get tenant_id from the user's claims
+CREATE OR REPLACE FUNCTION public.tenant_id()
+RETURNS UUID AS $$
+  SELECT nullif(current_setting('request.jwt.claims', true)::jsonb ->> 'tenant_id', '')::uuid;
+$$ LANGUAGE SQL STABLE;
+
 -- Create policies for tenant-based data isolation
 
 -- Tenants policies
+DROP POLICY IF EXISTS "Users can read their own tenant" ON tenants;
 CREATE POLICY "Users can read their own tenant"
   ON tenants FOR SELECT
   TO authenticated
-  USING (id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (id = public.tenant_id());
 
 -- Users policies
+DROP POLICY IF EXISTS "Users can read users in their tenant" ON users;
 CREATE POLICY "Users can read users in their tenant"
   ON users FOR SELECT
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id());
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON users;
 CREATE POLICY "Users can update their own profile"
   ON users FOR UPDATE
   TO authenticated
-  USING (id = auth.uid());
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
 
 -- Clients policies
+DROP POLICY IF EXISTS "Users can manage clients in their tenant" ON clients;
 CREATE POLICY "Users can manage clients in their tenant"
   ON clients FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Services policies
+DROP POLICY IF EXISTS "Users can manage services in their tenant" ON services;
 CREATE POLICY "Users can manage services in their tenant"
   ON services FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Inventory items policies
+DROP POLICY IF EXISTS "Users can manage inventory in their tenant" ON inventory_items;
 CREATE POLICY "Users can manage inventory in their tenant"
   ON inventory_items FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Supplier POs policies
-CREATE POLICY "Users can manage supplier POs in their tenant"
+DROP POLICY IF EXISTS "Users can manage purchase orders in their tenant" ON supplier_pos;
+CREATE POLICY "Users can manage purchase orders in their tenant"
   ON supplier_pos FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
-CREATE POLICY "Users can manage supplier PO items in their tenant"
+-- Supplier PO items policies
+DROP POLICY IF EXISTS "Users can manage PO items in their tenant" ON supplier_po_items;
+CREATE POLICY "Users can manage PO items in their tenant"
   ON supplier_po_items FOR ALL
   TO authenticated
-  USING (po_id IN (SELECT id FROM supplier_pos WHERE tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid())));
+  USING (po_id IN (SELECT id FROM supplier_pos WHERE tenant_id = public.tenant_id()));
 
 -- Bookings policies
+DROP POLICY IF EXISTS "Users can manage bookings in their tenant" ON bookings;
 CREATE POLICY "Users can manage bookings in their tenant"
   ON bookings FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Payments policies
+DROP POLICY IF EXISTS "Users can manage payments in their tenant" ON payments;
 CREATE POLICY "Users can manage payments in their tenant"
   ON payments FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Pricing presets policies
+DROP POLICY IF EXISTS "Users can manage pricing presets in their tenant" ON pricing_presets;
 CREATE POLICY "Users can manage pricing presets in their tenant"
   ON pricing_presets FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Email reminders policies
+DROP POLICY IF EXISTS "Users can manage email reminders in their tenant" ON email_reminders;
 CREATE POLICY "Users can manage email reminders in their tenant"
   ON email_reminders FOR ALL
   TO authenticated
-  USING (tenant_id = (SELECT tenant_id FROM users WHERE users.id = auth.uid()));
+  USING (tenant_id = public.tenant_id())
+  WITH CHECK (tenant_id = public.tenant_id());
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);

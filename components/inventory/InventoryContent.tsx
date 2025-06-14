@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { InventoryOverview } from './InventoryOverview'
 import { InventoryList } from './InventoryList'
 import { ProductForm } from './ProductForm'
@@ -9,6 +9,9 @@ import { InventoryFilters } from './InventoryFilters'
 import { InventoryReports } from './InventoryReports'
 import { StockAdjustmentModal } from './StockAdjustmentModal'
 import { ProductHistoryModal } from './ProductHistoryModal'
+import { LowStockBanner } from './LowStockBanner'
+import { PlusCircle, FileText, Upload } from 'lucide-react'
+import { useInventoryItems, useCreateInventoryItem } from '@/lib/hooks/useInventoryItems'
 
 export function InventoryContent() {
   const [view, setView] = useState<'overview' | 'list' | 'form' | 'reports'>('overview')
@@ -17,6 +20,12 @@ export function InventoryContent() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [stockModalProduct, setStockModalProduct] = useState<string | null>(null)
   const [historyModalProduct, setHistoryModalProduct] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { data: allProducts = [] } = useInventoryItems()
+  const createMutation = useCreateInventoryItem()
 
   const handleProductEdit = (productId: string) => {
     setSelectedProduct(productId)
@@ -33,6 +42,59 @@ export function InventoryContent() {
     setShowHistoryModal(true)
   }
 
+  const handleExport = () => {
+    if (!allProducts || allProducts.length === 0) return
+    const header = [
+      'name','sku','category','current_stock','min_stock','max_stock','unit','cost_per_unit','supplier','location'
+    ]
+    const rows = allProducts.map(p => [
+      p.name,
+      p.sku,
+      p.category,
+      p.current_stock,
+      p.min_stock,
+      p.max_stock,
+      p.unit,
+      p.cost_per_unit,
+      p.supplier,
+      p.location
+    ])
+    const csv = [header.join(','), ...rows.map(r=>r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'voorraad_export.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImportButton = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean)
+    const headers = headerLine.split(',')
+    lines.forEach(line => {
+      const values = line.split(',')
+      if (values.length !== headers.length) return
+      const item: any = {}
+      headers.forEach((h, idx) => item[h] = values[idx])
+      // Convert numeric fields
+      item.current_stock = parseInt(item.current_stock)
+      item.min_stock = parseInt(item.min_stock)
+      item.max_stock = parseInt(item.max_stock)
+      item.cost_per_unit = parseFloat(item.cost_per_unit)
+      createMutation.mutate(item)
+    })
+    e.target.value = '' // reset input
+  }
+
   const handleBackToOverview = () => {
     setView('overview')
     setSelectedProduct(null)
@@ -40,6 +102,9 @@ export function InventoryContent() {
 
   return (
     <div className="mobile-p space-y-4 lg:space-y-6">
+      {/* Low-stock banner */}
+      <LowStockBanner onNewOrder={() => console.log('open PO builder')} />
+
       {view === 'form' ? (
         <ProductForm productId={selectedProduct} onBack={handleBackToOverview} />
       ) : view === 'reports' ? (
@@ -52,27 +117,33 @@ export function InventoryContent() {
           {/* Filters and Actions */}
           <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
             <div className="overflow-x-auto">
-              <InventoryFilters />
+              <InventoryFilters searchTerm={searchTerm} onSearch={setSearchTerm} />
             </div>
             
-            <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3">
-              <button 
-                onClick={() => setView('reports')}
-                className="btn-outlined"
-              >
-                Rapportages
+            <div className="flex flex-wrap gap-2">
+              {/* Exporteren */}
+              <button onClick={handleExport} className="btn-outlined flex items-center gap-2 text-sm">
+                <FileText className="w-4 h-4" />
+                <span>Exporteren</span>
               </button>
-              <button className="btn-outlined">
-                Exporteren
+
+              {/* Importeren */}
+              <button onClick={handleImportButton} className="btn-outlined flex items-center gap-2 text-sm">
+                <Upload className="w-4 h-4" />
+                <span>Importeren</span>
               </button>
-              <button className="btn-outlined">
-                Importeren
-              </button>
-              <button 
-                onClick={() => setView('form')}
-                className="btn-primary"
-              >
-                Nieuw product
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                ref={fileInputRef}
+                onChange={handleImportFile}
+                className="hidden"
+              />
+
+              {/* Nieuw product */}
+              <button onClick={() => setView('form')} className="btn-primary flex items-center gap-2 text-sm">
+                <PlusCircle className="w-4 h-4" />
+                <span>Nieuw product</span>
               </button>
             </div>
           </div>
@@ -109,12 +180,14 @@ export function InventoryContent() {
               onProductEdit={handleProductEdit}
               onStockAdjustment={handleStockAdjustment}
               onViewHistory={handleViewHistory}
+              searchTerm={searchTerm}
             />
           ) : (
             <InventoryList 
               onProductEdit={handleProductEdit}
               onStockAdjustment={handleStockAdjustment}
               onViewHistory={handleViewHistory}
+              searchTerm={searchTerm}
             />
           )}
         </>

@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Logo } from '@/components/layout/Logo'
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
@@ -72,12 +73,7 @@ export function Sidebar() {
       )}>
         {/* Logo */}
         <div className="p-4 lg:p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-primary-500 rounded-lg flex items-center justify-center">
-              <Scissors className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg lg:text-xl font-bold text-gradient">SalonSphere</span>
-          </div>
+          <Logo size="sm" />
         </div>
 
         {/* Navigation */}
