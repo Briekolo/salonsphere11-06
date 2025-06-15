@@ -73,7 +73,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
@@ -86,7 +86,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="stack-on-mobile sm:gap-3 w-full sm:w-auto">
           <button
             onClick={onBack}
             className="btn-outlined flex items-center gap-2"
@@ -96,21 +96,21 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
           </button>
           <button
             type="submit"
-             disabled={submitting || createMutation.isPending || updateMutation.isPending}
-             className="btn-primary flex items-center gap-2"
-           >
+            disabled={submitting || createMutation.isPending || updateMutation.isPending}
+            className="btn-primary flex items-center gap-2 w-full sm:w-auto"
+          >
             <Save className="w-4 h-4" />
             {isEditing ? 'Wijzigingen opslaan' : 'Klant opslaan'}
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-6">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Basisinformatie */}
-        <div className="col-span-8 space-y-6">
+        <div className="lg:col-span-8 space-y-6">
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Persoonlijke gegevens</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Voornaam *</label>
                 <input
@@ -202,7 +202,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
         </div>
 
         {/* Sidebar */}
-        <div className="col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-6">
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Overzicht</h2>
             <p className="text-sm text-gray-600">Vul de velden in en klik op Opslaan om de klant toe te voegen.</p>

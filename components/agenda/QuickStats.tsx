@@ -20,22 +20,22 @@ export function QuickStats() {
 
   const stats = [
     {
+      title: 'Vandaag',
       value: countToday,
-
       icon: <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-blue',
       iconBgColor: 'bg-icon-blue-bg'
     },
     {
+      title: 'Totale duur',
       value: formatDuration(totalMinutes),
-
       icon: <Clock className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-green',
       iconBgColor: 'bg-icon-green-bg'
     },
     {
+      title: 'Unieke klanten',
       value: uniqueClients,
-
       icon: <Users className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-purple',
       iconBgColor: 'bg-icon-purple-bg'

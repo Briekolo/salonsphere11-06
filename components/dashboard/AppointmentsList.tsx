@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react'
 import { CalendarPlus } from 'lucide-react'
-import { useBookings } from '@/lib/hooks/useBookings'
+import { useTodayBookings } from '@/lib/hooks/useTodayBookings'
+import { Booking } from '@/lib/hooks/useBookings'
 
 function formatTimeRange(startISO: string, endISO: string) {
   if (!startISO || !endISO) return ''
@@ -19,9 +20,9 @@ function formatTimeRange(startISO: string, endISO: string) {
 }
 
 export function AppointmentsList() {
-  const { data: bookingData, isLoading } = useBookings()
+  const { data: bookingData, isLoading } = useTodayBookings()
 
-  const bookings = bookingData ?? []
+  const bookings = (bookingData as Booking[]) ?? []
 
   const sortedBookings = useMemo(() => {
     return [...bookings].sort((a, b) =>
@@ -30,7 +31,7 @@ export function AppointmentsList() {
   }, [bookings])
 
   return (
-    <div className="card h-fit">
+    <div className="card h-fit w-full">
       <div className="flex items-center justify-between mb-4 lg:mb-6">
         <h2 className="text-heading">Afspraken vandaag</h2>
         <button className="text-xs lg:text-sm text-primary-500 hover:text-primary-700 min-h-[44px] flex items-center">
@@ -85,13 +86,13 @@ export function AppointmentsList() {
                 key={booking.id}
                 className="flex items-center gap-3 lg:gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors min-h-[60px]"
               >
-                <div className="text-xs lg:text-sm font-medium text-gray-600 w-16 lg:w-20 flex-shrink-0">
+                <div className="text-xs lg:text-sm font-medium text-gray-600 w-16 lg:w-20 flex-shrink-0 text-center">
                   {timeRange}
                 </div>
 
                 <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200" />
 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 text-left">
                   <p className="font-medium text-gray-900 truncate text-sm lg:text-base">
                     {clientName}
                   </p>

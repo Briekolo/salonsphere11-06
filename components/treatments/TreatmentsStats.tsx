@@ -4,10 +4,6 @@ import { useTreatmentStats } from '@/lib/hooks/useTreatmentStats'
 export function TreatmentsStats() {
  const { total = 0, avgDuration = 0, avgPrice = 0, popularName, isLoading } = useTreatmentStats()
 
- if (isLoading) {
-   return <SkeletonCards />   // keep existing skeleton block
- }
-
  const stats = [
     {
       title: 'Totaal behandelingen',

@@ -60,7 +60,7 @@ from tenants t;
 create or replace function public.tenant_metrics(_tenant uuid)
 returns jsonb
 language sql
-security invoker                -- respect caller’s RLS
+security definer                -- bypass RLS, run as owner
 set search_path = public, pg_temp
 as $$
   select row_to_json(tm.*)::jsonb

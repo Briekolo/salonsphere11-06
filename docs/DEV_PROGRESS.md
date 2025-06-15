@@ -70,7 +70,7 @@
 - [x] Quick Stats (totaal, nieuwe 30d, actief 90d, afspraken week) – Supabase queries
 - [ ] Zoek- en filtercomponent verbinden met `useClients` (status, segment, periode)
 - [ ] Segmenten aanmaken & opslaan per gebruiker
-- [ ] ClientForm modal – create / update + validatie
+- [x] ClientForm modal – create / update + validatie
 - [x] ClientProfile – Supabase data i.p.v. mock
 - [ ] ClientProfile - "Trajecten" tab met voortgangsbalken (UI-bugs)
 - [ ] ClientProfile – details bewerken & tags beheren
@@ -96,6 +96,48 @@
 - [ ] Unit & integration tests (Jest, Supabase CLI)
 - [ ] GitHub Actions pipeline (lint, test, deploy)
 
+## 12. Responsive Design
+*Algemeen doel: elke pagina en component moet er perfect uitzien op mobiel (≤640 px), tablet (≥641 px) en desktop (≥1024 px).*
+
+- **Basis / Fundering**
+  - [x] Globale Tailwind helpers (`flex-col sm:flex-row`, `overflow-x-auto` wrappers)
+  - [x] Storybook viewport‐addon & Chromatic screenshots
+
+- **Auth‐flows** (`/auth/*`)
+  - [x] Form velden en validatie‐errors correct stacken op xs
+  - [x] CTA‐knoppen onder elkaar op mobiel, naast elkaar op desktop
+
+- **Dashboard**
+  - [ ] Metrics cards grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`)
+  - [ ] Charts container `min-w-0` zodat hij niet uit de viewport schuift
+
+- **Bookings / Agenda**
+  - [ ] Dag/Week/Maand‐kalender horizontaal scrollbaar op xs
+  - [ ] Booking‐popovers adaptief (width 100 % op mobiel)
+  - [ ] Action buttons (opslaan/annuleren) stacken op xs
+
+- **Treatments Module**
+  - [ ] TreatmentForm velden in één kolom op mobiel
+  - [ ] Margin Calculator responsive (flex‐wrap)
+
+- **Inventory Module**
+  - [ ] Tabel → card‐layout op xs met collapsible details
+  - [ ] Import/Export knoppen stacken
+
+- **CRM Clients**
+  - [ ] Clients list: kolommen verbergen/inline card stack op xs
+  - [ ] ClientProfile tabs scrollbaar op xs
+  - [x] Stats-kaarten grid 2×2
+  - [x] Modale footers `flex-col-reverse sm:flex-row`
+
+- **Marketing & Payments**
+  - [ ] Connect‐kaarten (Mailchimp, Stripe) grid‐to‐stack
+
+- **Globale componenten**
+  - [ ] Dialog & Drawer responsive max-widths
+  - [ ] Tooltip / Dropdown positionering via `@floating-ui`
+  - [ ] Afbeeldingen `<Image>` met `sizes` attribuut voor fluid‐images
+
 ---
 
-### Laatst bijgewerkt: 14-06-2025
+### Laatst bijgewerkt: 15-06-2025 (ClientForm popup responsive)

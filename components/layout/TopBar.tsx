@@ -4,11 +4,44 @@ import { Search, Bell, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { supabase } from '@/lib/supabase'
 
 export function TopBar() {
   const pathname = usePathname()
   const today = new Date()
-  const greeting = getGreeting()
+  const [greeting, setGreeting] = useState('')
+  const { user } = useAuth()
+  const [firstName, setFirstName] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchFirstName() {
+      if (!user) return
+      const { data, error } = await supabase
+        .from('users')
+        .select('first_name')
+        .eq('id', user.id)
+        .single()
+      if (!error) {
+        setFirstName(data?.first_name ?? null)
+      }
+    }
+    fetchFirstName()
+  }, [user])
+
+  const name = firstName ?? (user?.email?.split('@')[0] ?? 'Gebruiker')
+
+  const initials = name
+    .split(' ')
+    .map((n: string) => n.charAt(0))
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
+  useEffect(() => {
+    setGreeting(getGreeting())
+  }, [])
   const isDashboard = pathname === '/'
   
   return (
@@ -17,7 +50,7 @@ export function TopBar() {
         {/* Left side - Greeting */}
         <div className="flex-1 min-w-0 ml-12 lg:ml-0">
           <h1 className="text-lg lg:text-xl font-semibold text-gray-900 truncate">
-            {greeting}, Julia
+            {greeting}, {name}
           </h1>
           <p className="text-xs lg:text-sm text-muted hidden sm:block">
             {format(today, 'EEEE d MMMM yyyy', { locale: nl })}
@@ -39,7 +72,7 @@ export function TopBar() {
 
           {/* Profile */}
           <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#02011F] rounded-full flex items-center justify-center text-white text-sm font-medium">
-            JS
+            {initials}
           </div>
           
           {/* New Appointment Button - Only on dashboard and larger screens */}

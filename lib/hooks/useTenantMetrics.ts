@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
 
 export interface TenantMetrics {
-  tenant_id: string
   revenue_last30: number
   appointments_last30: number
   new_clients_last30: number
@@ -19,12 +18,38 @@ export function useTenantMetrics() {
   return useQuery<TenantMetrics | null>({
     queryKey: ['tenant_metrics', tenantId],
     enabled: !!tenantId,
+    staleTime: 60_000,
     queryFn: async () => {
       if (!tenantId) return null
-      const { data, error } = await supabase.rpc('tenant_metrics', { _tenant: tenantId })
-      if (error) throw error
-      return data as TenantMetrics
+      console.log('[useTenantMetrics] Fetching tenant metrics for tenantId:', tenantId)
+
+      // Probeer eerst de RPC; als dit 404 geeft (melding 'Failed to load resource'), val terug op de VIEW.
+      let { data, error } = await supabase
+        .rpc('tenant_metrics', { _tenant: tenantId })
+        .maybeSingle()
+
+      if (error && (error.message?.includes('404') || error.code === '404')) {
+        console.warn('[useTenantMetrics] RPC niet gevonden, probeer view tenant_metrics_view')
+        const viewRes = await (supabase as any)
+          .from('tenant_metrics_view')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .maybeSingle()
+        data = viewRes.data as any
+        error = viewRes.error
+      }
+
+      if (error) {
+        console.error('Supabase RPC tenant_metrics error:', {
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code,
+        })
+        return null
+      }
+
+      return data as TenantMetrics | null
     },
-    staleTime: 1000 * 60, // 1 min
   })
 } 

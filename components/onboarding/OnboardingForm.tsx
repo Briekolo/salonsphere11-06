@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 export default function OnboardingForm() {
   const { user } = useAuth()
   const router = useRouter()
-  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro' | 'enterprise'>('basic')
+  const [selectedPlan, setSelectedPlan] = useState<'starter' | 'pro' | 'growth'>('starter')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [salonName, setSalonName] = useState('')
@@ -146,5 +146,4 @@ export default function OnboardingForm() {
       </div>
     </div>
   )
-}   )
-} 
+}  

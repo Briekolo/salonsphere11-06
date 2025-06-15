@@ -2,6 +2,7 @@
 
 import { TrendingUp, TrendingDown, Users, Calendar, Euro, Target, Clock, Star } from 'lucide-react'
 import { useState } from 'react'
+import { useTenantMetrics } from '@/lib/hooks/useTenantMetrics'
 
 interface KeyMetricsProps {
   dateRange: string
@@ -11,11 +12,18 @@ interface KeyMetricsProps {
 export function KeyMetrics({ dateRange, selectedMetrics }: KeyMetricsProps) {
   const [hoveredMetric, setHoveredMetric] = useState<string | null>(null)
 
+  const { data: metricsData, isLoading: loadingMetrics } = useTenantMetrics()
+
+  const revenue = metricsData?.revenue_last30 ?? 0
+  const appointments = metricsData?.appointments_last30 ?? 0
+  const newClients = metricsData?.new_clients_last30 ?? 0
+  const conversionRate = appointments ? `${((newClients / appointments) * 100).toFixed(1)}%` : '—'
+
   const metrics = [
     {
       id: 'users',
-      title: 'Totaal Gebruikers',
-      value: '2,847',
+      title: 'Nieuwe klanten (30d)',
+      value: loadingMetrics ? '…' : newClients.toString(),
       change: '+12.5%',
       changeType: 'increase' as const,
       icon: <Users className="w-6 h-6" />,
@@ -30,8 +38,8 @@ export function KeyMetrics({ dateRange, selectedMetrics }: KeyMetricsProps) {
     },
     {
       id: 'revenue',
-      title: 'Totale Omzet',
-      value: '€48,392',
+      title: 'Omzet (30d)',
+      value: loadingMetrics ? '…' : `€${revenue.toLocaleString('nl-NL')}`,
       change: '+18.2%',
       changeType: 'increase' as const,
       icon: <Euro className="w-6 h-6" />,
@@ -46,8 +54,8 @@ export function KeyMetrics({ dateRange, selectedMetrics }: KeyMetricsProps) {
     },
     {
       id: 'appointments',
-      title: 'Afspraken',
-      value: '1,234',
+      title: 'Afspraken (30d)',
+      value: loadingMetrics ? '…' : appointments.toString(),
       change: '+8.7%',
       changeType: 'increase' as const,
       icon: <Calendar className="w-6 h-6" />,
@@ -62,8 +70,8 @@ export function KeyMetrics({ dateRange, selectedMetrics }: KeyMetricsProps) {
     },
     {
       id: 'conversion',
-      title: 'Conversie Rate',
-      value: '24.8%',
+      title: 'Conversie',
+      value: loadingMetrics ? '…' : conversionRate,
       change: '+3.1%',
       changeType: 'increase' as const,
       icon: <Target className="w-6 h-6" />,

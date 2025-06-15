@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
+import { useMemo } from 'react'
 
 export interface RevenuePoint {
   day: string // ISO date string
@@ -12,10 +13,11 @@ export interface RevenuePoint {
 export function useRevenueSeries(from: Date, to: Date) {
   const { tenantId } = useTenant()
 
+  const fromIso = useMemo(() => from.toISOString().slice(0, 10), [from])
+  const toIso = useMemo(() => to.toISOString().slice(0, 10), [to])
+
   return useQuery<RevenuePoint[]>({
-    const fromIso = useMemo(() => from.toISOString().slice(0,10), [from])
- const toIso   = useMemo(() => to.toISOString().slice(0,10), [to])
- queryKey: ['revenue_series', tenantId, fromIso, toIso],
+    queryKey: ['revenue_series', tenantId, fromIso, toIso],
     enabled: !!tenantId,
     queryFn: async () => {
       if (!tenantId) return []

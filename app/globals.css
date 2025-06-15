@@ -254,6 +254,10 @@
   .mobile-rounded { @apply rounded-2xl lg:rounded-xl; }
   .mobile-rounded-lg { @apply rounded-3xl lg:rounded-2xl; }
   .mobile-rounded-full { @apply rounded-2xl lg:rounded-full; }
+
+  /* Responsive flex & overflow helpers */
+  .stack-on-mobile { @apply flex flex-col sm:flex-row gap-2; }
+  .scroll-x-mobile { @apply overflow-x-auto sm:overflow-visible; }
 }
 
 /* Custom scrollbar for mobile */
