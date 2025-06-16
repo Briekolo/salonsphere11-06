@@ -3,13 +3,14 @@
 import { Search, Bell, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 
 export function TopBar() {
   const pathname = usePathname()
+  const router = useRouter()
   const today = new Date()
   const [greeting, setGreeting] = useState('')
   const { user } = useAuth()
@@ -77,7 +78,10 @@ export function TopBar() {
           
           {/* New Appointment Button - Only on dashboard and larger screens */}
           {isDashboard && (
-            <button className="hidden lg:flex btn-primary items-center gap-2 min-h-[44px]">
+            <button 
+              onClick={() => router.push('/appointments')}
+              className="hidden lg:flex btn-primary items-center gap-2 min-h-[44px]"
+            >
               <Plus className="w-4 h-4" />
               <span className="hidden xl:inline">Nieuwe afspraak</span>
             </button>

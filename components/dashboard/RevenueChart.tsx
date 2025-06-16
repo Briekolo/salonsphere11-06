@@ -8,8 +8,11 @@ import clsx from 'clsx'
 function getStartOfWeek(date: Date) {
   const d = new Date(date)
   const day = d.getDay() // 0 (Sun) - 6 (Sat)
-  const diff = (day === 0 ? -6 : 1) - day // shift so that Monday is first day
-  d.setDate(d.getDate() + diff)
+  // Convert Sunday (0) to 7 for easier calculation
+  const adjustedDay = day === 0 ? 7 : day
+  // Calculate days to subtract to get to Monday (1)
+  const diff = adjustedDay - 1
+  d.setDate(d.getDate() - diff)
   d.setHours(0, 0, 0, 0)
   return d
 }
@@ -38,7 +41,17 @@ export function RevenueChart() {
   const from = range === 'week' ? getStartOfWeek(today) : getStartOfMonth(today)
   const to = range === 'week' ? getEndOfWeek(from) : getEndOfMonth(today)
 
+  console.log('Revenue Chart Debug:', {
+    range,
+    today: today.toISOString(),
+    from: from.toISOString(),
+    to: to.toISOString(),
+    dayOfWeek: today.getDay()
+  })
+
   const { data: series = [], isLoading } = useRevenueSeries(from, to)
+  
+  console.log('Revenue series data:', series)
 
   const MIN_BAR = 0.1 // €0,10 zodat er altijd iets is om te hoveren
 
@@ -57,17 +70,25 @@ export function RevenueChart() {
 
   const chartData = useMemo(() => {
     if (range === 'week') {
-      return dayLabels.map((label, idx) => {
+      const weekData = dayLabels.map((label, idx) => {
         const date = new Date(from)
         date.setDate(from.getDate() + idx)
         const iso = date.toISOString().slice(0, 10)
         const match = series.find((p) => p.day === iso)
+        console.log(`Day ${idx} (${label}):`, {
+          date: date.toISOString(),
+          iso,
+          match,
+          hasMatch: !!match
+        })
         return {
           label,
           omzet: match ? Number(match.revenue) : 0,
           barOmzet: match ? Number(match.revenue) : MIN_BAR,
         }
       })
+      console.log('Week chartData:', weekData)
+      return weekData
     }
 
     // month: build array for each day of current month

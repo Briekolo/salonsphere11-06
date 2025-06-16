@@ -25,22 +25,24 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
+    "supabase": "^2.24.3",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@storybook/addon-viewport": "^8.1.0",
+    "@storybook/nextjs": "^8.1.0",
+    "@supabase/mcp-server-supabase": "^0.4.3",
     "@tailwindcss/forms": "^0.5.7",
     "@types/node": "^20.12.7",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
+    "chromatic": "^12.2.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "postcss": "^8.4.38",
     "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.5",
-    "@storybook/nextjs": "^8.1.0",
-    "@storybook/addon-viewport": "^8.1.0",
-    "chromatic": "^12.2.0"
+    "typescript": "^5.4.5"
   }
 }

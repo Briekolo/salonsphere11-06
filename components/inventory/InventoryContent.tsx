@@ -102,9 +102,6 @@ export function InventoryContent() {
 
   return (
     <div className="mobile-p space-y-4 lg:space-y-6">
-      {/* Low-stock banner */}
-      <LowStockBanner onNewOrder={() => console.log('open PO builder')} />
-
       {view === 'form' ? (
         <ProductForm productId={selectedProduct} onBack={handleBackToOverview} />
       ) : view === 'reports' ? (

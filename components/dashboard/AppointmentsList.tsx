@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { CalendarPlus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useTodayBookings } from '@/lib/hooks/useTodayBookings'
 import { Booking } from '@/lib/hooks/useBookings'
 
@@ -20,6 +21,7 @@ function formatTimeRange(startISO: string, endISO: string) {
 }
 
 export function AppointmentsList() {
+  const router = useRouter()
   const { data: bookingData, isLoading } = useTodayBookings()
 
   const bookings = (bookingData as Booking[]) ?? []
@@ -34,7 +36,10 @@ export function AppointmentsList() {
     <div className="card h-fit w-full">
       <div className="flex items-center justify-between mb-4 lg:mb-6">
         <h2 className="text-heading">Afspraken vandaag</h2>
-        <button className="text-xs lg:text-sm text-primary-500 hover:text-primary-700 min-h-[44px] flex items-center">
+        <button 
+          onClick={() => router.push('/appointments')}
+          className="text-xs lg:text-sm text-primary-500 hover:text-primary-700 min-h-[44px] flex items-center"
+        >
           Bekijk alle
         </button>
       </div>
@@ -60,7 +65,12 @@ export function AppointmentsList() {
         <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500 space-y-3">
           <CalendarPlus className="w-8 h-8" />
           <p className="text-sm">Er zijn nog geen afspraken voor vandaag</p>
-          <button className="btn-primary text-xs">Afspraak toevoegen</button>
+          <button 
+            onClick={() => router.push('/appointments')}
+            className="btn-primary text-xs"
+          >
+            Afspraak toevoegen
+          </button>
         </div>
       ) : (
         <div className="space-y-3 lg:space-y-4">
@@ -102,7 +112,7 @@ export function AppointmentsList() {
                 </div>
 
                 <span
-                  className={`status-chip ${status} flex-shrink-0`}
+                  className={`status-chip ${status} flex-shrink-0 ml-2`}
                 >
                   {status === 'confirmed' ? 'Bevestigd' : 'Nieuw'}
                 </span>

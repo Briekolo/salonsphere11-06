@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
-import { Building2, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Building2, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, User } from 'lucide-react'
 
 export default function SignUpForm() {
   const { signUp } = useAuth()
@@ -11,6 +11,8 @@ export default function SignUpForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [salonName, setSalonName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -25,6 +27,8 @@ export default function SignUpForm() {
       await signUp(email, password, {
         role: 'admin',
         pending_tenant_name: salonName,
+        first_name: firstName,
+        last_name: lastName,
         emailRedirectTo: `${window.location.origin}/auth/callback`
       })
       setSuccess(true)
@@ -94,6 +98,51 @@ export default function SignUpForm() {
             value={salonName}
             onChange={(e) => setSalonName(e.target.value)}
           />
+        </div>
+      </div>
+
+      {/* Name Fields */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+            Voornaam
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <User className="h-5 w-5 text-muted" />
+            </div>
+            <input
+              id="firstName"
+              type="text"
+              required
+              autoComplete="given-name"
+              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-[#02011F] transition-colors min-h-[44px]"
+              placeholder="Jan"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+            Achternaam
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <User className="h-5 w-5 text-muted" />
+            </div>
+            <input
+              id="lastName"
+              type="text"
+              required
+              autoComplete="family-name"
+              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-[#02011F] transition-colors min-h-[44px]"
+              placeholder="Jansen"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
