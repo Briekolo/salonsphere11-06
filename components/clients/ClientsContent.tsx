@@ -120,6 +120,7 @@ export function ClientsContent() {
           ) : (
             <ClientsList
               onClientSelect={handleClientSelect}
+              onViewChange={setView}
               searchTerm={searchTerm}
             />
           )}

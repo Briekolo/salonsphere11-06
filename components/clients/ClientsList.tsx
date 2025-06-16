@@ -8,10 +8,11 @@ import { useClients, Client } from '@/lib/hooks/useClients'
 
 interface ClientsListProps {
   onClientSelect: (clientId: string) => void
+  onViewChange: (view: 'overview' | 'list') => void
   searchTerm: string
 }
 
-export function ClientsList({ onClientSelect, searchTerm }: ClientsListProps) {
+export function ClientsList({ onClientSelect, onViewChange, searchTerm }: ClientsListProps) {
   const { data: clients = [], isLoading } = useClients(searchTerm)
 
   if (isLoading) {
@@ -19,10 +20,26 @@ export function ClientsList({ onClientSelect, searchTerm }: ClientsListProps) {
   }
 
   return (
-    <div className="card">
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-        <h2 className="text-heading">Alle klanten</h2>
+    <div className="space-y-6">
+      {/* View Toggle and Info */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex bg-gray-100 rounded-full p-1">
+            <button onClick={() => onViewChange('overview')} className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900">
+              Overzicht
+            </button>
+            <button onClick={() => onViewChange('list')} className="px-4 py-2 rounded-full text-sm font-medium bg-[#02011F] text-white">
+              Lijst
+            </button>
+          </div>
+        </div>
+        <div className="text-sm text-gray-600">{clients.length} klanten gevonden</div>
       </div>
+
+      <div className="card">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
+          <h2 className="text-heading">Alle klanten</h2>
+        </div>
 
       {/* Mobile Card View */}
       <div className="block lg:hidden space-y-4">
@@ -138,6 +155,7 @@ export function ClientsList({ onClientSelect, searchTerm }: ClientsListProps) {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   )
