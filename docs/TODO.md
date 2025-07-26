@@ -1,133 +1,303 @@
-# Salonsphere – Takenlijst (v1.0)
+# SalonSphere TODO List
 
-> Laatst bijgewerkt: <!-- CURSOR_WILL_FILL_DATE -->
+## 🚨 Critical Issues
 
-Deze lijst bevat **alle** openstaande punten om versie 1.0 conform het PRD, beveiligings- en prestatie-eisen live te krijgen. Taken zijn gegroepeerd per domein en chronologisch geordend (grofweg 'must-have' → 'nice-to-have'). Alles is reeds in het Nederlands geformuleerd.
+### Database/Backend Issues
+- [ ] Invoice tables not created in Supabase - migration needs to be applied
+- [ ] Fix invoice loading issue - currently shows "Facturen laden..." indefinitely
+- [ ] Missing RPC functions in Supabase (tenant_metrics, revenue_timeseries)
 
----
+## 📄 Missing Pages
 
-## 1. Core Setup & Auth
+### Help Page
+- [ ] Create `/app/help/page.tsx` - currently returns 404
+- [ ] Add help content and documentation
+- [ ] Include FAQs and support contact information
 
-- [ ] **Auth-pagina's bouwen**  
-  ‣ `/auth/sign-in`, `/auth/sign-up`, `/auth/reset` (magic-link + wachtwoord)  
-  ‣ Formvalidatie met Zod, foutmeldingen in NL.
-- [ ] **Onboarding-wizard voor nieuwe tenant**  
-  ‣ Salon-gegevens, abonnementstier, uitnodigen personeel.  
-  ‣ Na voltooien → `tenant_id` opslaan, redirect naar `/dashboard`.
-- [ ] **AuthProvider integreren in _root_ layout**  
-  ‣ Context al aanwezig (`components/auth/AuthProvider.tsx`), maar nog niet gebruikt.  
-  ‣ Routebescherming + redirects op basis van `user` en `role`.
-- [ ] **Role-based UI-gating**  
-  ‣ `admin`, `staff`, `client` shields in middleware / component wrappers.  
-  ‣ 403-pagina tonen bij ongeoorloofde toegang.
+### Analytics Page
+- [ ] `/app/dashboard` referenced in sidebar but shows placeholder content
+- [ ] Implement comprehensive analytics dashboard
 
-## 2. Dashboard (Home + Analytics)
+### Reports Page
+- [ ] `/app/reports` exists but needs implementation
+- [ ] Add revenue reports, staff performance, client analytics
 
-- [ ] **Realtime key-metrics koppelen**  
-  ‣ Vervang statische dummy-data in `MetricsCards`, `RevenueChart`, `AppointmentsList`, `PopularServices`, `InventoryStatus`.  
-  ‣ Queries via Supabase-SDK / service-laag.
-- [ ] **Charts implementeren (Recharts of Visx)**  
-  ‣ Gebruikers-activiteit, omzet, conversie-trechter.  
-  ‣ Resizable & themable.
-- [ ] **Auto-refresh toggle in `AnalyticsDashboard` aansluiten**  
-  ‣ Momenteel alleen timer; laad écht nieuwe data.
+## 🔧 Non-Functional Features
 
-## 3. Behandelingen (Treatments)
+### Marketing Module (/marketing)
+- [ ] Implement MarketingContent component
+- [ ] Add email campaign management
+- [ ] Create customer segmentation features
+- [ ] Add promotional campaign tracking
+- [ ] Implement SMS marketing capabilities
+- [ ] Add loyalty program management
 
-- [ ] **Data ophalen & CRUD**  
-  ‣ `lib/services/serviceService.ts` is klaar, maar UI -componenten (`TreatmentsList`, `TreatmentForm`, etc.) gebruiken nog hard-coded arrays.  
-  ‣ Voeg SWR/React-Query of eigen hook toe voor cache & invalidatie.
-- [ ] **Margin-calculator koppelen**  
-  ‣ Waardes real-time bijwerken met invoer van materiaal- & arbeidskosten.
+### Treatments Module (/treatments)
+- [x] Implement TreatmentsContent component
+- [x] Add treatment categories management
+- [ ] Create service pricing tiers
+- [ ] Add treatment duration settings
+- [ ] Implement treatment packages/bundles
+- [x] Add staff-treatment assignments
+- [x] Add overhead cost calculation per treatment
+- [x] Integrate overhead percentage in pricing calculator
+- [x] Create overhead analytics dashboard widget
 
-## 4. Inventaris
+### Settings Page (/settings)
+- [ ] Implement SettingsContent component
+- [ ] Add business information management
+- [ ] Create opening hours configuration
+- [ ] Add notification preferences
+- [ ] Implement booking rules settings
+- [ ] Add payment method configuration
+- [ ] Create tax settings management
 
-- [ ] **Voorraad-UI koppelen aan `inventoryService`**  
-  ‣ Live stock, lage-voorraad alerts, voorraad-aanpassingen.
-- [ ] **CSV import/export functionaliteit**  
-  ‣ File upload + parsing (PapaParse)  
-  ‣ Supabase bulk insert met `onConflict`.
-- [ ] **Purchase Order flow**  
-  ‣ `supplier_pos` & `supplier_po_items` screens + statussen (pending → delivered).
+### Appointments Page (/appointments)
+- [ ] Full appointment management interface
+- [ ] Implement recurring appointments
+- [ ] Add group bookings functionality
 
-## 5. Afspraken (Agenda)
+### Inventory Page (/inventory)
+- [ ] Purchase order workflow
+- [ ] Supplier management
+- [ ] Automated reordering
+- [ ] Barcode scanning
+- [ ] Expiry date management
 
-- [ ] **Kalender-component syncen**  
-  ‣ Check conflicts, staff-availability, RLS-filters.  
-  ‣ Google Calendar / iCal ICS export.
-- [ ] **Realtime updates** bij nieuwe/gewijzigde afspraken (Supabase Realtime).
+## 🔘 Non-Functional Buttons/Features
 
-## 6. Klanten (CRM)
+### Dashboard
+- [ ] "Opslaan" button for revenue goal - needs backend persistence
+- [ ] Revenue goal settings don't save across sessions
+- [ ] Recent activity shows hardcoded fallback data instead of real data
+- [ ] Quick action buttons lead to incomplete pages
 
-- [ ] **Clients-overzicht & detail**  
-  ‣ Vervang dummy-gegevens door queries via `clientService`.  
-  ‣ Tijdlijn (boekingen, betalingen, notities) renderen.
-- [ ] **Segmentatie & zoekfunctie**  
-  ‣ Gebruik `clientService.search()` & segment filters.
+### Invoice System
+- [ ] Email sending via Edge Functions not configured
+- [ ] PDF generation may fail due to missing fonts
+- [ ] Batch invoice sending needs testing
+- [ ] Payment reminder automation not implemented
+- [ ] Invoice creation from bookings not working (createInvoice: true flag ignored)
 
-## 7. Marketing
+### Client Booking Flow
+- [ ] Step 4: Client details form - not implemented
+- [ ] Step 5: Booking confirmation - not implemented
+- [ ] Email confirmation after booking not sent
+- [ ] SMS notifications not implemented
+- [ ] Cancellation/rescheduling from client side missing
+- [ ] Client authentication system (Module 4) not implemented
+- [ ] Client account dashboard (Module 4) not created
+- [ ] Appointment management pages (Module 5) not created
+- [ ] Guest booking support not implemented
 
-- [ ] **Mailchimp OAuth-connectie** + token opslag.  
-- [ ] **CampaignBuilder** afmaken → daadwerkelijk calls sturen naar Mailchimp API.
-- [ ] **EmailTemplates & AutomationWorkflows** koppelen aan Supabase `email_reminders` table & Resend Edge Function.
+### Calendar/Agenda
+- [ ] Week view drag & drop not implemented
+- [ ] Staff column view missing
+- [ ] Touch/mobile support for drag & drop
+- [ ] Resource view (rooms/equipment) not available
+- [ ] Buffer time management not implemented
+- [ ] Holiday/exception handling missing
 
-## 8. Betalingen
+## 🎨 UI/UX Improvements Needed
 
-- [ ] **Stripe card-betalingen**  
-  ‣ Stripe SDK integreren (PaymentElement).  
-  ‣ Success/webhook flow → `payments` tabel.
-- [ ] **SEPA direct-debit**  
-  ‣ Mandate form (IBAN + SEPA consent).  
-  ‣ Edge Function `handle_stripe_webhook` schrijven.
+### Mobile Responsiveness
+- [ ] Test and fix mobile layouts for all pages
+- [ ] Improve touch targets on mobile devices
+- [ ] Fix sidebar behavior on mobile screens
+- [ ] Calendar mobile experience needs work
 
-## 9. Booking Portal (Public flow)
+### Admin Panel
+- [ ] Some admin subpages show placeholder content
+- [ ] Admin user management page needs implementation
+- [ ] Admin billing/subscription page incomplete
+- [ ] Security settings page needs content
+- [ ] Integrations page needs implementation
+- [x] Overhead settings page implemented
+- [x] Monthly overhead configuration added
 
-- [ ] **Publieke widget bouwen** (Next.js route zonder sidebar).  
-  ‣ Behandeling kiezen, tijdslot, gegevens invullen, betalen, bevestiging.
-- [ ] **Responsive embed** voor salonsites (iframe / script-tag).
+### General UI Issues
+- [ ] Loading states missing in some components
+- [ ] Error boundaries not implemented everywhere
+- [ ] Inconsistent spacing in some areas
+- [ ] Some forms lack proper validation feedback
 
-## 10. Settings & Subscription
+## 🔌 Integration Tasks
 
-- [ ] **Instellingen-pagina**  
-  ‣ Salonprofiel, abonnements-tier switch, Stripe billing history.  
-  ‣ Staff-beheer (invites, rollen wijzigen, deactiveren).
+### Payment Integration
+- [ ] Integrate Stripe for credit card payments
+- [ ] Integrate Mollie for Dutch payment methods (iDEAL)
+- [ ] Add payment method management
+- [ ] Implement automatic payment processing
+- [ ] Add refund functionality
+- [ ] Handle failed payments
+- [ ] Payment reconciliation dashboard
 
-## 11. Beveiliging & Prestatie
+### Communication
+- [ ] Configure email service (Resend/SendGrid)
+- [ ] Set up SMS provider integration
+- [ ] Implement WhatsApp Business API
+- [ ] Add push notifications
+- [ ] Email template editor
+- [ ] Automated email campaigns
 
-- [ ] **Database-linter warnings oplossen**  
-  ‣ Indexen op foreign keys (`unindexed_foreign_keys`).  
-  ‣ `auth_rls_initplan` optimaliseren door `select auth.*()` wrapper.  
-  ‣ `function_search_path_mutable` voor `update_updated_at_column`.
-- [ ] **CSP + overige security headers** in `next.config.js` productiebuild.  
-- [ ] **MFA voor admin-accounts** (optioneel in v1.0, zie `security.md`).
+### External Services
+- [ ] Google Calendar sync
+- [ ] iCal feed generation
+- [ ] Accounting software integration (Exact Online, QuickBooks)
+- [ ] Social media posting integration
+- [ ] Review platform integrations (Google, Facebook)
 
-## 12. Edge Functions
+## 🛡️ Security & Compliance
 
-- [ ] **Resend email-sender** (`send_email_reminder`).  
-- [ ] **Stripe webhook handler** (`process_stripe_webhook`).  
-- [ ] **Cron-based stock alert** (lage voorraad → mail).
+### Security
+- [ ] Implement rate limiting
+- [ ] Add 2FA for admin accounts
+- [ ] Create audit logs for sensitive actions
+- [ ] Add IP whitelisting for admin access
+- [ ] Implement session timeout management
 
-## 13. Testen & CI/CD
+### GDPR/AVG Compliance
+- [ ] Add privacy policy page
+- [ ] Implement cookie consent banner
+- [ ] Create data export functionality
+- [ ] Add data deletion (right to be forgotten)
+- [ ] Implement consent management
+- [ ] Add data processing agreements
 
-- [ ] **Jest + React Testing Library** voor componenten.  
-- [ ] **RLS-integration tests** via Supabase CLI (`supabase test`).  
-- [ ] **GitHub Actions**: lint, test, `supabase db push`, Vercel deploy.
+## 📊 Analytics & Reporting
 
-## 14. Documentatie
+### Missing Analytics Features
+- [ ] Staff performance metrics
+- [ ] Client retention analytics
+- [ ] Revenue forecasting
+- [ ] Booking conversion funnel
+- [ ] Service popularity trends
+- [ ] Inventory usage reports
+- [ ] No-show analysis
+- [ ] Peak hours analysis
+- [x] Overhead cost analysis and tracking
+- [x] Treatment profitability calculation
 
-- [ ] **README updaten** met lokale setup, env vars, Supabase CLI scripts.  
-- [ ] API-docs (OpenAPI) voor publieke booking endpoints.
+### Data Export
+- [ ] Add CSV export for all data types
+- [ ] Implement PDF report generation
+- [ ] Create automated report scheduling
+- [ ] Add custom report builder
 
----
+## 🧪 Testing & Documentation
 
-### ✅ Reeds afgerond (basis)
+### Testing
+- [ ] Add unit tests for critical functions
+- [ ] Implement E2E tests with Playwright
+- [ ] Add integration tests for API endpoints
+- [ ] Create test data seeders
+- [ ] Performance testing for calendar with many appointments
 
-1. **Visual design & layout**  
-   ‣ Sidebar, TopBar, theming, NL-locale.
-2. **Frontend skeleton voor alle modules**  
-   ‣ Pagina-routes in `app/` + inhoudscomponenten.
-3. **Supabase-client & type-generatie** (`lib/supabase.ts`, `types/database.ts`).
-4. **Service-laag voor kern­tabellen** (`clientService`, `serviceService`, `inventoryService`, `bookingService`).
-5. **Demo-data & migrations** (zie `DATABASE_SETUP.md`).
+### Documentation
+- [ ] Create API documentation
+- [ ] Add inline code documentation
+- [ ] Create user manual
+- [ ] Add deployment guide
+- [ ] Create onboarding tutorials
+- [ ] Add video guides
 
-> Zodra bovenstaande openstaande items geprioriteerd en toegewezen zijn, kan het developmentteam in sprints starten. 
+## 🚀 Future Features
+
+### Advanced Booking
+- [ ] Group bookings functionality
+- [ ] Package deals (multiple services)
+- [ ] Membership/subscription services
+- [ ] Waiting list management
+- [ ] Resource scheduling (rooms, equipment)
+- [ ] Multi-location booking
+
+### Client Features
+- [ ] Client self-service portal completion
+- [ ] Online consultation forms
+- [ ] Photo gallery for before/after
+- [ ] Review and rating system
+- [ ] Referral program
+- [ ] Client preferences and notes
+- [ ] Treatment history tracking
+
+### Business Intelligence
+- [ ] Predictive analytics
+- [ ] Demand forecasting
+- [ ] Automated pricing suggestions
+- [ ] Competitor analysis tools
+- [ ] Market trends analysis
+- [ ] Customer lifetime value calculation
+
+### Staff Features
+- [ ] Commission tracking
+- [ ] Performance bonuses
+- [ ] Shift swapping
+- [ ] Time-off requests
+- [ ] Training management
+- [ ] Goal setting and tracking
+
+## 🐛 Known Bugs
+
+### Critical Bugs
+- [ ] Invoice system not loading - tables missing in database
+- [ ] Tenant context sometimes undefined in hooks
+- [ ] Recent activities showing fallback data
+- [ ] Some API calls return 404 due to missing routes
+
+### Minor Bugs
+- [ ] Calendar performance issues with many appointments
+- [ ] Drag and drop sometimes doesn't update UI immediately
+- [ ] Form validation messages inconsistent
+- [ ] Some tooltips cut off on mobile
+- [ ] Image uploads may fail for large files
+
+## 🔧 Technical Debt
+
+### Code Quality
+- [ ] Remove console.log statements from production
+- [ ] Standardize error handling across the app
+- [ ] Reduce component complexity in some areas
+- [ ] Add proper TypeScript types for all API responses
+- [ ] Remove any 'any' types
+
+### Performance
+- [ ] Implement virtual scrolling for long lists
+- [ ] Add lazy loading for heavy components
+- [ ] Optimize bundle size
+- [ ] Implement proper caching strategies
+- [ ] Add service workers for offline support
+
+### Database
+- [ ] Add missing indexes for performance
+- [ ] Optimize complex queries
+- [ ] Implement database connection pooling
+- [ ] Add data archiving for old records
+- [ ] Create database backup automation
+- [x] Add overhead_monthly field to tenants table
+- [x] Create overhead calculation RPC functions
+
+## 📝 Configuration & Setup
+
+### Environment Variables
+- [ ] Document all required environment variables
+- [ ] Add environment variable validation
+- [ ] Create .env.example file
+- [ ] Add secrets management
+
+### Deployment
+- [ ] Create production deployment guide
+- [ ] Add CI/CD pipeline
+- [ ] Implement staging environment
+- [ ] Add rollback procedures
+- [ ] Create monitoring and alerting
+
+## Priority Order for Implementation
+
+1. **Fix Critical Issues** (Invoice system, missing pages)
+2. **Complete Client Booking Flow** (Steps 4-5)
+3. **Payment Integration** (Stripe/Mollie)
+4. **Email/SMS Integration**
+5. **Complete Missing Modules** (Marketing, Treatments, Settings)
+6. **GDPR Compliance**
+7. **Mobile Optimization**
+8. **Advanced Features**

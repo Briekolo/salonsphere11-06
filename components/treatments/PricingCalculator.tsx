@@ -1,13 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { ArrowLeft, Calculator, TrendingUp, TrendingDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowLeft, Calculator, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
+import { useOverheadMetrics } from '@/lib/hooks/useOverheadCalculations'
 
 interface PricingCalculatorProps {
   onBack: () => void
 }
 
 export function PricingCalculator({ onBack }: PricingCalculatorProps) {
+  const { data: overheadMetrics } = useOverheadMetrics()
+  const [useRealOverhead, setUseRealOverhead] = useState(true)
+  
   const [calculatorData, setCalculatorData] = useState({
     treatmentName: '',
     duration: 60,
@@ -17,6 +21,18 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
     desiredMargin: 75,
     competitorPrice: 0
   })
+
+  // Update overhead percentage when real data is available
+  useEffect(() => {
+    if (overheadMetrics && useRealOverhead) {
+      // Calculate overhead percentage based on current metrics
+      const newOverheadPercentage = overheadMetrics.overhead_percentage || 25
+      setCalculatorData(prev => ({
+        ...prev,
+        overheadPercentage: newOverheadPercentage
+      }))
+    }
+  }, [overheadMetrics, useRealOverhead])
 
   // Calculations
   const laborCost = (calculatorData.duration / 60) * calculatorData.laborCostPerHour
@@ -116,19 +132,42 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Overhead percentage (%)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Overhead percentage (%)
+                  </label>
+                  {overheadMetrics && (
+                    <button
+                      onClick={() => setUseRealOverhead(!useRealOverhead)}
+                      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-colors ${
+                        useRealOverhead 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={useRealOverhead ? 'Gebruikt actuele overhead data' : 'Klik om actuele data te gebruiken'}
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      {useRealOverhead ? 'Live data' : 'Handmatig'}
+                    </button>
+                  )}
+                </div>
                 <input
                   type="number"
                   value={calculatorData.overheadPercentage}
-                  onChange={(e) => setCalculatorData(prev => ({ ...prev, overheadPercentage: parseFloat(e.target.value) }))}
+                  onChange={(e) => {
+                    setUseRealOverhead(false)
+                    setCalculatorData(prev => ({ ...prev, overheadPercentage: parseFloat(e.target.value) }))
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   min="0"
                   step="0.1"
+                  disabled={useRealOverhead}
                 />
                 <p className="text-xs text-gray-600 mt-1">
-                  Huur, utilities, verzekeringen, etc.
+                  {useRealOverhead && overheadMetrics 
+                    ? `Gebaseerd op €${overheadMetrics.overhead_per_treatment.toFixed(2)} per behandeling deze maand`
+                    : 'Huur, utilities, verzekeringen, etc.'
+                  }
                 </p>
               </div>
 

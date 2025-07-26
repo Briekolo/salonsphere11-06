@@ -17,10 +17,13 @@ import {
   Sparkles,
   PieChart,
   Menu,
-  X
+  X,
+  Shield,
+  FileText
 } from 'lucide-react'
 import clsx from 'clsx'
 import { Logo } from '@/components/layout/Logo'
+import { useIsAdmin } from '@/lib/hooks/use-admin'
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
@@ -28,6 +31,7 @@ const navigationItems = [
   { name: 'Agenda', href: '/appointments', icon: Calendar },
   { name: 'Klantbeheer', href: '/clients', icon: Users },
   { name: 'Behandelingen', href: '/treatments', icon: Sparkles },
+  { name: 'Facturen', href: '/invoices', icon: FileText },
   { name: 'Voorraadbeheer', href: '/inventory', icon: Package },
   { name: 'Marketing', href: '/marketing', icon: Mail },
 ]
@@ -35,6 +39,7 @@ const navigationItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { isAdmin } = useIsAdmin()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -101,8 +106,21 @@ export function Sidebar() {
 
         {/* Bottom Section */}
         <div className="p-3 lg:p-4 border-t border-sidebar-border space-y-1 lg:space-y-2">
+          {isAdmin && (
+            <Link 
+              href="/admin" 
+              className={clsx(
+                'sidebar-item min-h-[44px]',
+                pathname.startsWith('/admin') && 'active'
+              )}
+              onClick={closeMobileMenu}
+            >
+              <Shield className="w-5 h-5 flex-shrink-0" />
+              <span className="truncate">Admin Panel</span>
+            </Link>
+          )}
           <Link 
-            href="/settings" 
+            href={isAdmin ? "/admin/settings" : "/settings"} 
             className="sidebar-item min-h-[44px]"
             onClick={closeMobileMenu}
           >

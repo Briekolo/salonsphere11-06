@@ -26,7 +26,11 @@ export function useRevenueSeries(from: Date, to: Date) {
         _from: from.toISOString().slice(0, 10),
         _to: to.toISOString().slice(0, 10),
       })
-      if (error) throw error
+      if (error) {
+        console.error('Revenue timeseries RPC error:', error)
+        // Return empty array as fallback
+        return []
+      }
       return data as RevenuePoint[]
     },
     staleTime: 1000 * 60, // 1 min

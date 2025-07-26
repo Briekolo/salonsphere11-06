@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Clock, Euro, Edit, Star, Calendar, Users } from 'lucide-react'
 import { useServices, Service } from '@/lib/hooks/useServices'
 import { ServiceService } from '@/lib/services/serviceService'
+import { getCategoryBadgeClasses } from '@/lib/utils/categoryColors'
+import { useOverheadMetrics } from '@/lib/hooks/useOverheadCalculations'
 import Image from 'next/image'
 
 interface TreatmentsOverviewProps {
@@ -14,6 +16,7 @@ interface TreatmentsOverviewProps {
 export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOverviewProps) {
   const [selectedCategory, setSelectedCategory] = useState('Alle')
   const { data: treatments = [], isLoading } = useServices()
+  const { data: overheadMetrics } = useOverheadMetrics()
 
   const searchedTreatments = treatments.filter(treatment =>
     (treatment.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -27,7 +30,8 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
     { name: 'Alle', count: treatments.length },
     ...Object.entries(
       treatments.reduce((acc, t) => {
-        acc[t.category] = (acc[t.category] || 0) + 1
+        const categoryName = t.treatment_categories?.name || t.category
+        acc[categoryName] = (acc[categoryName] || 0) + 1
         return acc
       }, {} as Record<string, number>)
     ).map(([name, count]) => ({ name, count })),
@@ -36,14 +40,14 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
   const filteredTreatments =
     selectedCategory === 'Alle'
       ? searchedTreatments
-      : searchedTreatments.filter(t => t.category === selectedCategory)
+      : searchedTreatments.filter(t => (t.treatment_categories?.name || t.category) === selectedCategory)
 
   if (filteredTreatments.length === 0 && !isLoading) {
     if (searchTerm) {
       return (
         <div className="card p-6 text-center">
           <p className="text-gray-600">
-            Geen behandelingen gevonden voor zoekterm '{searchTerm}'.
+            Geen behandelingen gevonden voor zoekterm &apos;{searchTerm}&apos;.
           </p>
         </div>
       )
@@ -51,7 +55,7 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
     return (
       <div className="card p-6 text-center">
         <p className="text-gray-600">
-          Geen behandelingen gevonden in de categorie '{selectedCategory}'.
+          Geen behandelingen gevonden in de categorie &apos;{selectedCategory}&apos;.
         </p>
       </div>
     )
@@ -119,8 +123,8 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">{treatment.name}</h3>
-                  <span className="text-xs text-primary-600 bg-primary-50 px-2 py-1 rounded-full">
-                    {treatment.category}
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${getCategoryBadgeClasses(treatment.treatment_categories?.color)}`}>
+                    {treatment.treatment_categories?.name || treatment.category}
                   </span>
                 </div>
                 <button
@@ -162,9 +166,9 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-sm font-medium text-gray-900">
                     <Calendar className="w-3 h-3" />
-                    --
+                    {overheadMetrics ? `€${(overheadMetrics.overhead_per_treatment).toFixed(2)}` : '--'}
                   </div>
-                  <div className="text-xs text-gray-600">Deze maand</div>
+                  <div className="text-xs text-gray-600">Overhead</div>
                 </div>
               </div>
 
@@ -177,8 +181,18 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
                 <div className="text-sm">
                   <span className="text-gray-600">Marge: </span>
                   <span className="font-medium text-green-600">
-                    {ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0).toFixed(1)}%
+                    {overheadMetrics 
+                      ? ServiceService.calculateMarginWithOverhead(
+                          treatment.price, 
+                          treatment.material_cost ?? 0, 
+                          overheadMetrics.overhead_per_treatment
+                        ).toFixed(1)
+                      : ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0).toFixed(1)
+                    }%
                   </span>
+                  {overheadMetrics && (
+                    <span className="text-xs text-gray-500 ml-1">(incl. overhead)</span>
+                  )}
                 </div>
               </div>
 

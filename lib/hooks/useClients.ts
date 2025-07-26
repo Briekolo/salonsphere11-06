@@ -25,7 +25,7 @@ export function useClients(searchTerm: string = '') {
     queryKey,
     queryFn: () =>
       searchTerm.trim()
-        ? ClientService.search(tenantId, searchTerm)
+        ? ClientService.search(searchTerm)
         : ClientService.getAll(),
     enabled: !!tenantId,
     staleTime: 1000 * 60, // 1 min

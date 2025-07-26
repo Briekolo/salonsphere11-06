@@ -5,6 +5,7 @@ import { Clock, Euro, Edit, MoreVertical, Eye, EyeOff, Trash2 } from 'lucide-rea
 import { useServices, useUpdateService, useDeleteService } from '@/lib/hooks/useServices'
 import { Service } from '@/lib/hooks/useServices'
 import { ServiceService } from '@/lib/services/serviceService'
+import { useOverheadMetrics } from '@/lib/hooks/useOverheadCalculations'
 
 interface TreatmentsListProps {
   onTreatmentEdit: (treatmentId: string) => void
@@ -13,6 +14,7 @@ interface TreatmentsListProps {
 
 export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListProps) {
   const { data: treatments = [], isLoading } = useServices()
+  const { data: overheadMetrics } = useOverheadMetrics()
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -53,7 +55,7 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
       return (
         <div className="card p-6 text-center">
           <p className="text-gray-600">
-            Geen behandelingen gevonden voor zoekterm '{searchTerm}'.
+            Geen behandelingen gevonden voor zoekterm &apos;{searchTerm}&apos;.
           </p>
         </div>
       )
@@ -89,6 +91,7 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
               <th className="text-left py-3 px-4 font-medium text-gray-600">Duur</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Prijs</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Sessies</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600">Overhead</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Marge</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600 text-right">Acties</th>
             </tr>
@@ -132,9 +135,24 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
                   </span>
                 </td>
                 <td className="py-4 px-4">
-                  <span className={`text-sm font-medium ${getMarginColor(ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0))}`}>
-                    {ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0).toFixed(1)}%
+                  <span className="text-sm text-gray-600">
+                    {overheadMetrics ? `€${overheadMetrics.overhead_per_treatment.toFixed(2)}` : '--'}
                   </span>
+                </td>
+                <td className="py-4 px-4">
+                  <span className={`text-sm font-medium ${
+                    overheadMetrics 
+                      ? getMarginColor(ServiceService.calculateMarginWithOverhead(treatment.price, treatment.material_cost ?? 0, overheadMetrics.overhead_per_treatment))
+                      : getMarginColor(ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0))
+                  }`}>
+                    {overheadMetrics 
+                      ? ServiceService.calculateMarginWithOverhead(treatment.price, treatment.material_cost ?? 0, overheadMetrics.overhead_per_treatment).toFixed(1)
+                      : ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0).toFixed(1)
+                    }%
+                  </span>
+                  {overheadMetrics && (
+                    <div className="text-xs text-gray-500">incl. overhead</div>
+                  )}
                 </td>
                 <td className="py-4 px-4">
                   <div className="flex items-center justify-end gap-1 relative">

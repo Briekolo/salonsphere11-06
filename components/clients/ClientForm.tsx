@@ -96,6 +96,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
           </button>
           <button
             type="submit"
+            form="client-form"
             disabled={submitting || createMutation.isPending || updateMutation.isPending}
             className="btn-primary flex items-center gap-2 w-full sm:w-auto"
           >
@@ -105,7 +106,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <form id="client-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Basisinformatie */}
         <div className="lg:col-span-8 space-y-6">
           <div className="card">

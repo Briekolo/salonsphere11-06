@@ -73,16 +73,26 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
             {/* Action Buttons */}
             <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
 <button
-  className="btn-outlined …"
+  className="btn-outlined flex items-center gap-1 text-xs"
   onClick={(e) => {
     e.stopPropagation()
-    // call logic…
+    if (client.phone) {
+      window.location.href = `tel:${client.phone}`
+    }
   }}
 >
                 <Phone className="w-3 h-3" />
                 Bellen
-                </button>
-              <button className="btn-outlined flex items-center gap-1 text-xs">
+              </button>
+              <button 
+                className="btn-outlined flex items-center gap-1 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (client.email) {
+                    window.location.href = `mailto:${client.email}`
+                  }
+                }}
+              >
                 <Mail className="w-3 h-3" />
                 Mailen
               </button>

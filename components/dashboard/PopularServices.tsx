@@ -12,14 +12,14 @@ export function PopularServices() {
   const { data: services = [], isLoading } = usePopularServices(from, today)
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-heading">Populaire diensten</h2>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xl font-light text-gray-900">Populaire diensten</h2>
         
         <div className="relative">
           <button
             onClick={() => setPeriod((p) => (p === 'month' ? 'week' : 'month'))}
-            className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-900 min-h-[36px]"
+            className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
             {period === 'month' ? 'Deze maand' : 'Deze week'}
             <ChevronDown className="w-4 h-4" />
@@ -30,7 +30,7 @@ export function PopularServices() {
       {isLoading ? (
         <div className="space-y-6 animate-pulse">
           {Array.from({ length: 5 }).map((_, idx) => (
-            <div key={idx} className="space-y-2">
+            <div key={idx} className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="h-4 w-24 bg-gray-200 rounded" />
                 <span className="h-4 w-8 bg-gray-200 rounded" />
@@ -44,7 +44,7 @@ export function PopularServices() {
       ) : (
         <div className="space-y-6">
           {services.map((service, index) => (
-            <div key={index} className="space-y-2">
+            <div key={index} className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
                   {service.service_name}
@@ -54,9 +54,9 @@ export function PopularServices() {
                 </span>
               </div>
               
-              <div className="w-full bg-gray-200 rounded-full h-1">
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div 
-                  className="bg-primary-500 h-1 rounded-full transition-all duration-300"
+                  className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
                   style={{ width: `${service.percentage}%` }}
                 />
               </div>

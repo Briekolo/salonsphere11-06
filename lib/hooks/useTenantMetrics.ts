@@ -46,7 +46,14 @@ export function useTenantMetrics() {
           hint: error?.hint,
           code: error?.code,
         })
-        return null
+        // Return fallback data when RPC is not available
+        return {
+          revenue_last30: 0,
+          appointments_last30: 0,
+          new_clients_last30: 0,
+          low_stock_items: 0,
+          avg_spend_per_client: 0
+        }
       }
 
       return data as TenantMetrics | null

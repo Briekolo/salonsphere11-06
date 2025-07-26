@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ArrowLeft, Save, X, Plus, Trash2, Upload } from 'lucide-react'
 import { useCreateService, useUpdateService } from '@/lib/hooks/useServices'
+import { useActiveTreatmentCategories } from '@/lib/hooks/useTreatmentCategories'
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 import { ServiceService } from '@/lib/services/serviceService'
@@ -15,7 +16,7 @@ interface TreatmentFormProps {
 export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    category: '',
+    category_id: '',
     description: '',
     duration: 60,
     price: 0,
@@ -26,6 +27,8 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
     active: true,
     image: ''
   })
+
+  const { data: categories = [], isLoading: categoriesLoading } = useActiveTreatmentCategories()
 
   const isEditing = treatmentId !== null
   const margin = formData.price > 0 ? ((formData.price - formData.materialCost) / formData.price * 100) : 0
@@ -45,7 +48,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
         if (existing) {
           setFormData({
             name: existing.name,
-            category: existing.category,
+            category_id: existing.category_id ?? '',
             description: existing.description ?? '',
             duration: existing.duration_minutes ?? 60,
             price: existing.price,
@@ -71,12 +74,17 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
     setSubmitting(true)
 
     try {
+      // Find the category name based on category_id for backward compatibility
+      const selectedCategory = categories.find(cat => cat.id === formData.category_id)
+      const categoryName = selectedCategory?.name || ''
+
       if (isEditing && treatmentId) {
         await updateMutation.mutateAsync({
           id: treatmentId,
           updates: {
             name: formData.name,
-            category: formData.category,
+            category_id: formData.category_id,
+            category: categoryName, // Also update legacy category field
             description: formData.description,
             duration_minutes: formData.duration,
             price: formData.price,
@@ -91,7 +99,8 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
       } else {
         await createMutation.mutateAsync({
           name: formData.name,
-          category: formData.category,
+          category_id: formData.category_id,
+          category: categoryName, // Also set legacy category field
           description: formData.description,
           duration_minutes: formData.duration,
           price: formData.price,
@@ -202,18 +211,24 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                   Categorie *
                 </label>
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  value={formData.category_id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   required
+                  disabled={categoriesLoading}
                 >
                   <option value="">Selecteer categorie</option>
-                  <option value="Nagelverzorging">Nagelverzorging</option>
-                  <option value="Gezichtsbehandelingen">Gezichtsbehandelingen</option>
-                  <option value="Massage">Massage</option>
-                  <option value="Ontharing">Ontharing</option>
-                  <option value="Lichaamsbehandelingen">Lichaamsbehandelingen</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
+                {categories.length === 0 && !categoriesLoading && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Geen actieve categorieën gevonden. Maak eerst een categorie aan.
+                  </p>
+                )}
               </div>
             </div>
 

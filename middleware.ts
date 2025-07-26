@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { Database } from '@/types/database'
 
+const authCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_DURATION = 60000
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -11,7 +14,13 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    /\.[a-zA-Z0-9]+$/.test(pathname) // eindigt op bestandsextensie
+    /\.[a-zA-Z0-9]+$/.test(pathname) || // eindigt op bestandsextensie
+    // Client module routes are public
+    /^\/[^\/]+\/book/.test(pathname) || // Booking flow
+    /^\/[^\/]+\/services/.test(pathname) || // Services page
+    /^\/[^\/]+\/staff/.test(pathname) || // Staff page
+    /^\/[^\/]+\/contact/.test(pathname) || // Contact page
+    /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
   ) {
     return NextResponse.next()
   }
@@ -40,10 +49,37 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(onboardingUrl)
   }
 
+  // Admin route protection
+  if (pathname.startsWith('/admin')) {
+    const cacheKey = `admin_${user.id}_${tenantId}`
+    const cached = authCache.get(cacheKey)
+    
+    let isAdmin = false
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      isAdmin = cached.data.isAdmin
+    } else {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .eq('tenant_id', tenantId)
+        .single()
+      
+      isAdmin = userData?.role === 'admin'
+      authCache.set(cacheKey, { data: { isAdmin }, timestamp: Date.now() })
+    }
+
+    if (!isAdmin) {
+      const dashboardUrl = req.nextUrl.clone()
+      dashboardUrl.pathname = '/dashboard'
+      return NextResponse.redirect(dashboardUrl)
+    }
+  }
+
   // Sessieset‐cookie meegeven
   return res
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|favicon).*)']
+  matcher: ['/((?!api|_next|favicon|.*\\..*).*)']
 } 

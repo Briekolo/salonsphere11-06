@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Bell, Plus } from 'lucide-react'
+import { Search, Bell, Plus, HelpCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { usePathname, useRouter } from 'next/navigation'

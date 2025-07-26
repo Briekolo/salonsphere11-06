@@ -26,13 +26,22 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config) => {
-    // Forceer in-memory cache en tragere "polling" voor file-watching
-    // om file-locking-errors op Windows te voorkomen.
-    config.cache = { type: 'memory' }
-    config.watchOptions = {
-      poll: 1000,
-      aggregateTimeout: 300,
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = { type: 'memory' }
+      config.watchOptions = {
+        poll: 2000,
+        aggregateTimeout: 600,
+        ignored: [
+          '**/node_modules/**',
+          '**/.next/**',
+          '**/out/**',
+          '**/.git/**',
+          '**/dist/**',
+          '**/*.md',
+          '**/*.json'
+        ]
+      }
     }
     return config
   },
