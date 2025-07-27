@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users } from 'lucide-react'
+import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { useCreateBooking, useUpdateBooking, useDeleteBooking, useBooking } from '@/lib/hooks/useBookings'
 import { useClients } from '@/lib/hooks/useClients'
 import { useServices } from '@/lib/hooks/useServices'
 import { useUsers } from '@/lib/hooks/useUsers'
+import { useStaffWithServices } from '@/lib/hooks/useStaffServices'
 
 interface BookingFormModalProps {
   bookingId?: string | null
@@ -14,19 +16,22 @@ interface BookingFormModalProps {
 }
 
 export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFormModalProps) {
-  // Helper: converteer ISO (UTC) naar value compatibel met <input type="datetime-local">
-  const toInputValue = (iso: string) => {
-    const date = new Date(iso)
-    // Corrigeer naar lokale tijd zonder offset in string
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
-    return date.toISOString().slice(0, 16)
+  // Helper: rond tijd af op 15 minuten
+  const roundToQuarterHour = (date: Date) => {
+    const rounded = new Date(date)
+    const minutes = rounded.getMinutes()
+    const roundedMinutes = Math.round(minutes / 15) * 15
+    rounded.setMinutes(roundedMinutes)
+    rounded.setSeconds(0)
+    rounded.setMilliseconds(0)
+    return rounded
   }
 
   const [formData, setFormData] = useState({
     client_id: '',
     service_id: '',
     user_id: '', // staff member
-    scheduled_at: initialDate ? initialDate.toISOString() : new Date().toISOString(),
+    scheduled_at: initialDate ? roundToQuarterHour(initialDate).toISOString() : roundToQuarterHour(new Date()).toISOString(),
     status: 'confirmed',
     notes: '',
     duration_minutes: 60, // Default duration
@@ -45,24 +50,60 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   const { data: clients = [], isLoading: isLoadingClients } = useClients()
   const { data: services = [], isLoading: isLoadingServices } = useServices()
   const { data: staff = [], isLoading: isLoadingStaff } = useUsers({ role: 'staff' })
+  const { data: staffWithServices = [], isLoading: isLoadingStaffServices } = useStaffWithServices()
   const { data: existingBooking, isLoading: isLoadingBooking } = useBooking(bookingId || null)
 
-  // Update duration when service changes
+  // Filter staff based on selected service - only show staff that can perform the service
+  const availableStaff = formData.service_id 
+    ? staffWithServices.filter(staffMember => 
+        staffMember.services.some(service => service.service_id === formData.service_id && service.active)
+      )
+    : staffWithServices
+
+  // Update duration when service changes (only for new bookings)
   useEffect(() => {
-    const selectedService = services.find(s => s.id === formData.service_id)
-    if (selectedService && selectedService.duration_minutes) {
-      setFormData(p => ({ ...p, duration_minutes: selectedService.duration_minutes as number }))
+    if (!bookingId) {
+      const selectedService = services.find(s => s.id === formData.service_id)
+      if (selectedService && selectedService.duration_minutes) {
+        setFormData(p => ({ ...p, duration_minutes: selectedService.duration_minutes as number }))
+      }
     }
-  }, [formData.service_id, services])
+  }, [formData.service_id, services, bookingId])
+
+  // Update duration and price when staff member changes
+  useEffect(() => {
+    if (formData.service_id && formData.user_id) {
+      const staffMember = staffWithServices.find(s => s.id === formData.user_id)
+      const serviceAssignment = staffMember?.services.find(s => s.service_id === formData.service_id)
+      const selectedService = services.find(s => s.id === formData.service_id)
+      
+      if (serviceAssignment && selectedService) {
+        const updates: any = {}
+        
+        // Use custom duration if set, otherwise use service default
+        if (serviceAssignment.custom_duration_minutes) {
+          updates.duration_minutes = serviceAssignment.custom_duration_minutes
+        } else if (selectedService.duration_minutes) {
+          updates.duration_minutes = selectedService.duration_minutes
+        }
+        
+        // Update form if there are changes
+        if (Object.keys(updates).length > 0) {
+          setFormData(p => ({ ...p, ...updates }))
+        }
+      }
+    }
+  }, [formData.service_id, formData.user_id, staffWithServices, services])
 
   // Populate form when editing an existing booking
   useEffect(() => {
     if (isEditing && existingBooking) {
+      const scheduledDate = existingBooking.scheduled_at ? roundToQuarterHour(new Date(existingBooking.scheduled_at)) : ''
       setFormData({
         client_id: existingBooking.client_id || '',
         service_id: existingBooking.service_id || '',
         user_id: existingBooking.user_id || '',
-        scheduled_at: existingBooking.scheduled_at || '',
+        scheduled_at: scheduledDate ? scheduledDate.toISOString() : '',
         status: existingBooking.status || 'confirmed',
         notes: existingBooking.notes || '',
         duration_minutes: existingBooking.duration_minutes || 60,
@@ -78,8 +119,15 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      // Maak een kopie zonder het (tijdelijk verborgen) user_id veld
-      const { user_id, ...payload } = formData as any
+      // Prepare payload - include all fields for update
+      const payload = {
+        client_id: formData.client_id,
+        service_id: formData.service_id,
+        scheduled_at: formData.scheduled_at,
+        status: formData.status,
+        notes: formData.notes,
+        duration_minutes: formData.duration_minutes
+      }
 
       if (isEditing) {
         if (!bookingId) return
@@ -108,6 +156,49 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   
   const isLoading = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending || isLoadingBooking;
 
+  // Dynamic color theming based on appointment status
+  const getStatusTheme = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return {
+          headerBg: 'bg-gradient-to-r from-emerald-50 to-emerald-100',
+          headerBorder: 'border-emerald-200',
+          accent: 'text-emerald-700',
+          modalBorder: 'ring-2 ring-emerald-100'
+        }
+      case 'scheduled':
+        return {
+          headerBg: 'bg-gradient-to-r from-amber-50 to-amber-100',
+          headerBorder: 'border-amber-200',
+          accent: 'text-amber-700',
+          modalBorder: 'ring-2 ring-amber-100'
+        }
+      case 'completed':
+        return {
+          headerBg: 'bg-gradient-to-r from-blue-50 to-blue-100',
+          headerBorder: 'border-blue-200',
+          accent: 'text-blue-700',
+          modalBorder: 'ring-2 ring-blue-100'
+        }
+      case 'cancelled':
+        return {
+          headerBg: 'bg-gradient-to-r from-red-50 to-red-100',
+          headerBorder: 'border-red-200',
+          accent: 'text-red-700',
+          modalBorder: 'ring-2 ring-red-100'
+        }
+      default:
+        return {
+          headerBg: 'bg-gradient-to-r from-white to-gray-50',
+          headerBorder: 'border-gray-100',
+          accent: 'text-gray-700',
+          modalBorder: 'ring-2 ring-gray-100'
+        }
+    }
+  }
+
+  const statusTheme = getStatusTheme(formData.status)
+
   if (isLoadingBooking) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -118,12 +209,12 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] overflow-hidden">
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] overflow-hidden ${statusTheme.modalBorder}`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 flex-shrink-0 bg-gradient-to-r from-white to-gray-50">
+        <div className={`flex items-center justify-between px-8 py-6 border-b ${statusTheme.headerBorder} flex-shrink-0 ${statusTheme.headerBg}`}>
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">{isEditing ? 'Afspraak bewerken' : 'Nieuwe afspraak'}</h2>
-            <p className="text-sm text-gray-500 mt-1">{isEditing ? 'Pas de details van de afspraak aan' : 'Plan een nieuwe afspraak in'}</p>
+            <h2 className={`text-2xl font-semibold ${statusTheme.accent}`}>{isEditing ? 'Afspraak bewerken' : 'Nieuwe afspraak'}</h2>
+            <p className="text-sm text-gray-600 mt-1">{isEditing ? 'Pas de details van de afspraak aan' : 'Plan een nieuwe afspraak in'}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
             <X className="w-6 h-6 text-gray-400" />
@@ -176,43 +267,144 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
               </div>
             </div>
             {/* Staff Member */}
-            {false && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Medewerker</label>
-                <select
-                  name="user_id"
-                  value={formData.user_id}
-                  onChange={(e) => setFormData(p => ({...p, user_id: e.target.value}))}
-                  className="input-field"
-                  required
-                  disabled={isLoadingStaff || isLoading}
-                >
-                  <option value="">{isLoadingStaff ? 'Laden...' : 'Selecteer een medewerker'}</option>
-                  {staff.map(member => {
-                    const label = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() || member.email || 'Onbekende medewerker'
-                    return (
-                      <option key={member.id} value={member.id}>{label}</option>
-                    )
-                  })}
-                </select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <User className="w-4 h-4 text-gray-400" />
+                Medewerker
+              </label>
+              <select
+                name="user_id"
+                value={formData.user_id}
+                onChange={(e) => setFormData(p => ({...p, user_id: e.target.value}))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
+                required
+                disabled={isLoadingStaffServices || isLoading}
+              >
+                <option value="">{isLoadingStaffServices ? 'Laden...' : 'Selecteer een medewerker'}</option>
+                {availableStaff.map(member => {
+                  const label = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() || member.email || 'Onbekende medewerker'
+                  const serviceAssignment = member.services.find(s => s.service_id === formData.service_id)
+                  const proficiencyLabel = serviceAssignment?.proficiency_level || 'standaard'
+                  return (
+                    <option key={member.id} value={member.id}>
+                      {label} ({proficiencyLabel})
+                    </option>
+                  )
+                })}
+              </select>
+              {formData.service_id && availableStaff.length === 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800 mb-2">
+                    <strong>Geen medewerkers beschikbaar</strong> voor deze behandeling.
+                  </p>
+                  <p className="text-xs text-amber-700 mb-3">
+                    U moet eerst medewerkers toewijzen aan deze behandeling voordat u afspraken kunt inplannen.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Link 
+                      href="/treatments" 
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200 transition-colors"
+                    >
+                      Ga naar Behandelingen
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                    <span className="text-xs text-amber-600">→ Medewerker toewijzingen tabblad</span>
+                  </div>
+                </div>
+              )}
+            </div>
             {/* Date and Time */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 Datum & Tijd
               </label>
-              <div className="relative">
-                <input 
-                  type="datetime-local"
-                  value={formData.scheduled_at ? toInputValue(formData.scheduled_at) : ''}
-                  onChange={(e) => setFormData(p => ({...p, scheduled_at: new Date(e.target.value).toISOString()}))}
-                  className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
-                  required
-                  disabled={isLoading}
-                />
-                <Clock className="absolute left-4 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+              <div className="grid grid-cols-2 gap-3">
+                {/* Date input */}
+                <div className="relative">
+                  <input 
+                    type="date"
+                    value={formData.scheduled_at ? new Date(formData.scheduled_at).toISOString().split('T')[0] : ''}
+                    onChange={(e) => {
+                      const currentTime = new Date(formData.scheduled_at)
+                      const newDate = new Date(e.target.value)
+                      newDate.setHours(currentTime.getHours(), currentTime.getMinutes(), 0, 0)
+                      setFormData(p => ({...p, scheduled_at: newDate.toISOString()}))
+                    }}
+                    className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
+                    required
+                    disabled={isLoading}
+                  />
+                  <Calendar className="absolute left-4 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+                
+                {/* Time dropdown */}
+                <div className="relative">
+                  <select
+                    value={(() => {
+                      const date = new Date(formData.scheduled_at)
+                      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+                    })()}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(':').map(Number)
+                      const newDate = new Date(formData.scheduled_at)
+                      newDate.setHours(hours, minutes, 0, 0)
+                      setFormData(p => ({...p, scheduled_at: newDate.toISOString()}))
+                    }}
+                    className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
+                    required
+                    disabled={isLoading}
+                  >
+                    {/* Generate time options from 7:00 to 22:00 in 15-minute intervals */}
+                    {Array.from({ length: 61 }, (_, i) => {
+                      const totalMinutes = 420 + (i * 15) // Start at 7:00 (420 minutes)
+                      const hours = Math.floor(totalMinutes / 60)
+                      const minutes = totalMinutes % 60
+                      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                      return (
+                        <option key={timeString} value={timeString}>
+                          {timeString}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <Clock className="absolute left-4 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+            
+            {/* Duration */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Clock className="w-4 h-4 text-gray-400" />
+                Duur
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <input 
+                    type="number"
+                    min="15"
+                    max="480"
+                    step="15"
+                    value={formData.duration_minutes}
+                    onChange={(e) => setFormData(p => ({...p, duration_minutes: parseInt(e.target.value) || 60}))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
+                    disabled={isLoading}
+                  />
+                  <span className="absolute right-4 top-3.5 text-sm text-gray-500 pointer-events-none">min</span>
+                </div>
+                <div className="flex items-center px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <span className="text-sm text-gray-600">
+                    Eindtijd: {formData.scheduled_at && formData.duration_minutes ? 
+                      new Date(new Date(formData.scheduled_at).getTime() + formData.duration_minutes * 60000)
+                        .toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) 
+                      : '--:--'
+                    }
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                Standaard duur: {services.find(s => s.id === formData.service_id)?.duration_minutes || '--'} minuten
               </div>
             </div>
             

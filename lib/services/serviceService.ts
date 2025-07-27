@@ -125,22 +125,39 @@ export class ServiceService {
 
   // Overhead calculation methods
   static async getOverheadMetrics(monthYear?: Date): Promise<OverheadMetrics | null> {
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
+    try {
+      const tenantId = await getCurrentUserTenantId()
+      if (!tenantId) throw new Error('No tenant found')
 
-    const { data, error } = await supabase
-      .rpc('get_overhead_metrics', {
-        tenant_id_param: tenantId,
-        month_year: monthYear || new Date()
-      })
-      .single()
+      const { data, error } = await supabase
+        .rpc('get_overhead_metrics', {
+          tenant_id_param: tenantId,
+          month_year: monthYear || new Date()
+        })
+        .single()
 
-    if (error) {
-      console.error('Error fetching overhead metrics:', error)
+      if (error) {
+        console.error('Error fetching overhead metrics:', error)
+        // Check if it's a function not found error
+        if (error.code === '42883' || error.message?.includes('function') || error.message?.includes('does not exist')) {
+          console.warn('get_overhead_metrics function not found - returning default values')
+          return {
+            overhead_monthly: 0,
+            total_treatments: 0,
+            overhead_per_treatment: 0,
+            average_treatment_price: 0,
+            overhead_percentage: 0,
+            month_analyzed: (monthYear || new Date()).toISOString()
+          }
+        }
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in getOverheadMetrics:', error)
       return null
     }
-
-    return data
   }
 
   static async getMonthlyTreatmentCount(monthYear?: Date): Promise<number> {

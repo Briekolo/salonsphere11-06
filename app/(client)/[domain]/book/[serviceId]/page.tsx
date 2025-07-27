@@ -26,6 +26,9 @@ interface Staff {
   specializations?: string[];
   rating?: number;
   review_count?: number;
+  proficiency_level?: string;
+  custom_duration_minutes?: number;
+  custom_price?: number;
 }
 
 interface Service {
@@ -70,17 +73,41 @@ export default function BookStaffPage({
       setService(serviceData);
 
       // Fetch staff members who can perform this service
-      // For now, we'll get all active staff
-      const { data: staffData, error: staffError } = await supabase
-        .from('users')
-        .select('*')
+      const { data: staffServices, error: staffError } = await supabase
+        .from('staff_services')
+        .select(`
+          staff_id,
+          proficiency_level,
+          custom_duration_minutes,
+          custom_price,
+          users!staff_services_staff_id_fkey(
+            id,
+            first_name,
+            last_name,
+            email,
+            image_url,
+            bio,
+            specializations
+          )
+        `)
+        .eq('service_id', resolvedParams.serviceId)
         .eq('tenant_id', tenant.id)
-        .in('role', ['admin', 'staff'])
-        .eq('active', true)
-        .order('first_name', { ascending: true });
+        .eq('active', true);
 
       if (staffError) throw staffError;
-      setStaff(staffData || []);
+      
+      // Transform the data to include staff with their service assignments
+      const staffWithServiceInfo = (staffServices || [])
+        .filter(ss => ss.users)
+        .map(ss => ({
+          ...ss.users,
+          proficiency_level: ss.proficiency_level,
+          custom_duration_minutes: ss.custom_duration_minutes,
+          custom_price: ss.custom_price
+        }))
+        .sort((a, b) => a.first_name.localeCompare(b.first_name));
+
+      setStaff(staffWithServiceInfo);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -223,6 +250,23 @@ export default function BookStaffPage({
                       <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
                         {member.first_name} {member.last_name}
                       </h3>
+                      
+                      {/* Proficiency Level */}
+                      {member.proficiency_level && (
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${
+                            member.proficiency_level === 'expert' ? 'bg-green-100 text-green-800' :
+                            member.proficiency_level === 'senior' ? 'bg-purple-100 text-purple-800' :
+                            member.proficiency_level === 'junior' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {member.proficiency_level === 'expert' ? 'Expert' :
+                             member.proficiency_level === 'senior' ? 'Senior' :
+                             member.proficiency_level === 'junior' ? 'Junior' :
+                             'Standaard'}
+                          </span>
+                        </div>
+                      )}
                       
                       {/* Rating */}
                       {member.rating && (

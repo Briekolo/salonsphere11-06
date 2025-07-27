@@ -12,10 +12,18 @@ export function useOverheadMetrics(monthYear?: Date) {
 
   return useQuery<OverheadMetrics | null>({
     queryKey: ['overhead-metrics', tenantId, monthYear],
-    queryFn: () => ServiceService.getOverheadMetrics(monthYear),
+    queryFn: async () => {
+      try {
+        return await ServiceService.getOverheadMetrics(monthYear)
+      } catch (error) {
+        console.error('Error in useOverheadMetrics:', error)
+        return null
+      }
+    },
     enabled: !!tenantId,
     staleTime: 60_000, // Cache voor 1 minuut
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    retry: 1 // Only retry once on failure
   })
 }
 
@@ -124,7 +132,8 @@ export function useOverheadTrends(monthsBack: number = 6) {
       return trends
     },
     enabled: !!tenantId,
-    staleTime: 300_000 // Cache voor 5 minuten
+    staleTime: 300_000, // Cache voor 5 minuten
+    retry: 1 // Only retry once on failure
   })
 }
 
@@ -136,7 +145,8 @@ export function useMonthlyTreatmentCount(monthYear?: Date) {
     queryKey: ['monthly-treatment-count', tenantId, monthYear],
     queryFn: () => ServiceService.getMonthlyTreatmentCount(monthYear),
     enabled: !!tenantId,
-    staleTime: 60_000
+    staleTime: 60_000,
+    retry: 1
   })
 }
 

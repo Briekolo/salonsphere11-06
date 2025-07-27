@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Clock, User, Phone, Mail, MoreVertical } from 'lucide-react'
+import { Clock, User, Phone, Mail, MoreVertical, CheckSquare, Square } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useBookings, Booking } from '@/lib/hooks/useBookings'
@@ -13,6 +13,9 @@ interface AppointmentsListProps {
 }
 
 export function AppointmentsList({ selectedDate, listView = false }: AppointmentsListProps) {
+  const [selectedBookings, setSelectedBookings] = useState<string[]>([])
+  const [showBulkActions, setShowBulkActions] = useState(false)
+
   const { startOfDay, endOfDay } = useMemo(() => {
     const start = new Date(selectedDate)
     start.setHours(0, 0, 0, 0)
@@ -20,6 +23,29 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
     end.setHours(23, 59, 59, 999)
     return { startOfDay: start, endOfDay: end }
   }, [selectedDate])
+
+  const toggleBookingSelection = (bookingId: string) => {
+    setSelectedBookings(prev => 
+      prev.includes(bookingId) 
+        ? prev.filter(id => id !== bookingId)
+        : [...prev, bookingId]
+    )
+  }
+
+  const selectAllBookings = () => {
+    setSelectedBookings(sorted.map(booking => booking.id))
+  }
+
+  const deselectAllBookings = () => {
+    setSelectedBookings([])
+  }
+
+  const handleBulkAction = (action: string) => {
+    console.log(`Bulk action: ${action} on bookings:`, selectedBookings)
+    // Here you would implement the actual bulk operations
+    setSelectedBookings([])
+    setShowBulkActions(false)
+  }
 
   /**
    * We houden `bookingData` apart zodat we kunnen detecteren of er al een vorige
@@ -98,14 +124,87 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
       <div className="card">
         <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
           <h2 className="text-heading">Alle afspraken</h2>
-          <button onClick={() => setIsModalOpen(true)} className="btn-primary self-start sm:self-auto">Nieuwe afspraak</button>
+          <div className="flex gap-2">
+            {selectedBookings.length > 0 && (
+              <button 
+                onClick={() => setShowBulkActions(!showBulkActions)}
+                className="btn-secondary"
+              >
+                Bulk acties ({selectedBookings.length})
+              </button>
+            )}
+            <button onClick={() => setIsModalOpen(true)} className="btn-primary self-start sm:self-auto">Nieuwe afspraak</button>
+          </div>
         </div>
+
+        {/* Bulk Actions Panel */}
+        {showBulkActions && selectedBookings.length > 0 && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-sm font-medium text-gray-700">
+                {selectedBookings.length} afspraken geselecteerd:
+              </span>
+              <button 
+                onClick={() => handleBulkAction('confirm')}
+                className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              >
+                Bevestig alle
+              </button>
+              <button 
+                onClick={() => handleBulkAction('reschedule')}
+                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+              >
+                Verplaats alle
+              </button>
+              <button 
+                onClick={() => handleBulkAction('cancel')}
+                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+              >
+                Annuleer alle
+              </button>
+              <button 
+                onClick={deselectAllBookings}
+                className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+              >
+                Deselecteer alle
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Selection Controls */}
+        {sorted.length > 0 && (
+          <div className="mb-4 flex items-center gap-4">
+            <button 
+              onClick={selectAllBookings}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Selecteer alle
+            </button>
+            <button 
+              onClick={deselectAllBookings}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              Deselecteer alle
+            </button>
+          </div>
+        )}
         {/* Mobile Card View */}
         <div className="block lg:hidden space-y-4">
           {sorted.map((booking) => (
             <div key={booking.id} className="p-4 border border-gray-200 rounded-lg">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleBookingSelection(booking.id)}
+                    className="flex-shrink-0 p-1"
+                  >
+                    {selectedBookings.includes(booking.id) ? (
+                      <CheckSquare className="w-5 h-5 text-blue-600" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
                   {renderAvatar(booking)}
                   <div>
                     <div className="font-medium text-gray-900">{booking.clients?.first_name} {booking.clients?.last_name}</div>
@@ -143,6 +242,18 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 font-medium text-gray-600 w-12">
+                  <button
+                    onClick={selectedBookings.length === sorted.length ? deselectAllBookings : selectAllBookings}
+                    className="p-1"
+                  >
+                    {selectedBookings.length === sorted.length && sorted.length > 0 ? (
+                      <CheckSquare className="w-5 h-5 text-blue-600" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
+                </th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Tijd</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Klant</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Behandeling</th>
@@ -155,6 +266,18 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
             <tbody>
               {sorted.map((booking) => (
                 <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-4 px-4">
+                    <button
+                      onClick={() => toggleBookingSelection(booking.id)}
+                      className="p-1"
+                    >
+                      {selectedBookings.includes(booking.id) ? (
+                        <CheckSquare className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                  </td>
                   <td className="py-4 px-4">
                     <div className="font-medium whitespace-nowrap">{format(new Date(booking.scheduled_at), 'd MMM, HH:mm', { locale: nl })}</div>
                   </td>

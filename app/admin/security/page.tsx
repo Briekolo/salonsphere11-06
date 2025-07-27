@@ -126,7 +126,6 @@ export default function SecurityPage() {
                   ...prev,
                   requireUppercase: e.target.checked
                 }))}
-                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               />
             </div>
             
@@ -139,7 +138,6 @@ export default function SecurityPage() {
                   ...prev,
                   requireNumbers: e.target.checked
                 }))}
-                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               />
             </div>
             
@@ -152,7 +150,6 @@ export default function SecurityPage() {
                   ...prev,
                   requireSymbols: e.target.checked
                 }))}
-                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               />
             </div>
           </div>

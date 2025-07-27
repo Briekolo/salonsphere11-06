@@ -212,7 +212,7 @@ function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) {
         </button>
         <button
           type="submit"
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary"
         >
           <Save className="w-4 h-4" />
           Opslaan
@@ -322,7 +322,7 @@ export function CategoryManagement() {
               setEditingCategory(null)
               setShowForm(true)
             }}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" />
             Nieuwe categorie

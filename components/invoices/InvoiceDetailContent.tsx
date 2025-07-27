@@ -4,6 +4,7 @@ import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useInvoice } from '@/lib/hooks/useInvoices';
 import { useTenant } from '@/lib/hooks/useTenant';
+import { usePaymentSettings } from '@/lib/hooks/usePaymentSettings';
 import { PDFService } from '@/lib/services/pdfService';
 import { EmailService } from '@/lib/services/emailService';
 import { PaymentMethod, InvoiceStatus } from '@/types/invoice';
@@ -39,6 +40,7 @@ interface InvoiceDetailContentProps {
 export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const router = useRouter();
   const { tenant } = useTenant();
+  const { getEnabledPaymentMethods, getDefaultPaymentMethod } = usePaymentSettings();
   const { invoice, loading, error, addPayment, deletePayment, updateInvoice } = useInvoice(invoiceId);
   
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -49,7 +51,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   // Payment form state
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
-    payment_method: 'bank_transfer' as PaymentMethod,
+    payment_method: (getDefaultPaymentMethod()?.id as PaymentMethod) || 'bank_transfer' as PaymentMethod,
     payment_date: new Date().toISOString().split('T')[0],
     reference: '',
     notes: ''
@@ -594,12 +596,17 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, payment_method: e.target.value as PaymentMethod }))}
                   className="px-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent"
                 >
-                  <option value="cash">Contant</option>
-                  <option value="card">Kaart</option>
-                  <option value="bank_transfer">Bankoverschrijving</option>
-                  <option value="ideal">iDEAL</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="other">Overig</option>
+                  {getEnabledPaymentMethods().map((method) => (
+                    <option key={method.id} value={method.id}>
+                      {method.name}
+                    </option>
+                  ))}
+                  {getEnabledPaymentMethods().length === 0 && (
+                    <>
+                      <option value="cash">Contant</option>
+                      <option value="bank_transfer">Bankoverschrijving</option>
+                    </>
+                  )}
                 </select>
               </div>
 

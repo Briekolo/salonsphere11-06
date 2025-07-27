@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
+import { useNotificationSettings } from '@/lib/hooks/useNotificationSettings';
 import { 
   Mail, 
   MessageSquare, 
@@ -18,28 +19,16 @@ import {
 
 export default function NotificationsPage() {
   const { isAdmin, isLoading } = useRequireAdmin();
-  const [emailSettings, setEmailSettings] = useState({
-    appointmentConfirmation: true,
-    appointmentReminder: true,
-    appointmentCancellation: true,
-    paymentConfirmation: true,
-    promotionalEmails: false,
-    newsletterEnabled: true
-  });
-  const [notificationSettings, setNotificationSettings] = useState({
-    smsReminders: true,
-    emailReminders: true,
-    reminderTiming: 24, // hours before appointment
-    marketingConsent: false
-  });
+  const { notificationSettings, isLoading: notificationLoading, invalidateNotificationSettings } = useNotificationSettings();
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save
+    // This would need to be implemented to save notification settings
+    // For now it's a placeholder that redirects to the settings page
     setTimeout(() => {
       setSaving(false);
-      alert('Notificatie instellingen opgeslagen!');
+      alert('Ga naar Instellingen > Meldingen om notificatie-instellingen te beheren');
     }, 1000);
   };
 

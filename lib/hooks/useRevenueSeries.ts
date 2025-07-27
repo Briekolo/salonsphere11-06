@@ -26,11 +26,40 @@ export function useRevenueSeries(from: Date, to: Date) {
         _from: from.toISOString().slice(0, 10),
         _to: to.toISOString().slice(0, 10),
       })
+      
       if (error) {
         console.error('Revenue timeseries RPC error:', error)
-        // Return empty array as fallback
-        return []
+        // Try direct query as fallback
+        const { data: invoiceData, error: invoiceError } = await supabase
+          .from('invoices')
+          .select('paid_at, total_amount')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'paid')
+          .not('paid_at', 'is', null)
+          .gte('paid_at', fromIso)
+          .lte('paid_at', toIso)
+          .order('paid_at', { ascending: true })
+        
+        if (invoiceError) {
+          console.error('Invoice query error:', invoiceError)
+          return []
+        }
+        
+        // Group by day
+        const revenueByDay = new Map<string, number>()
+        invoiceData?.forEach(invoice => {
+          const day = invoice.paid_at.split('T')[0]
+          const current = revenueByDay.get(day) || 0
+          revenueByDay.set(day, current + (invoice.total_amount || 0))
+        })
+        
+        // Convert to RevenuePoint array
+        return Array.from(revenueByDay.entries()).map(([day, revenue]) => ({
+          day,
+          revenue
+        }))
       }
+      
       return data as RevenuePoint[]
     },
     staleTime: 1000 * 60, // 1 min

@@ -18,7 +18,7 @@ import {
 import { useTenantMetrics } from '@/lib/hooks/useTenantMetrics'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { supabase } from '@/lib/supabase'
-import { InvoiceWidget } from '@/components/dashboard/InvoiceWidget'
+import { RevenueChart } from '@/components/dashboard/RevenueChart'
 import { OverheadAnalytics } from '@/components/dashboard/OverheadAnalytics'
 
 interface RecentActivity {
@@ -343,8 +343,10 @@ export function DashboardContent() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Invoice Widget */}
-        <InvoiceWidget />
+        {/* Revenue Chart */}
+        <div className="lg:col-span-2">
+          <RevenueChart />
+        </div>
         
         {/* Overhead Analytics Widget */}
         <OverheadAnalytics />

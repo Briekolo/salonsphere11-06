@@ -97,7 +97,7 @@ export function ProductForm({ productId, onBack }: ProductFormProps) {
           <button
             onClick={handleSubmit}
             disabled={createMutation.isPending || updateMutation.isPending}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary"
           >
             <Save className="w-4 h-4" />
             {isEditing ? 'Opslaan' : 'Aanmaken'}

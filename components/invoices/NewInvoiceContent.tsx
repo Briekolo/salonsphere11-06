@@ -51,7 +51,7 @@ export function NewInvoiceContent() {
   const [clientSearch, setClientSearch] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   
-  const filteredClients = clients.filter(client => 
+  const filteredClients = (clients || []).filter(client => 
     `${client.first_name} ${client.last_name} ${client.email}`.toLowerCase()
       .includes(clientSearch.toLowerCase())
   );

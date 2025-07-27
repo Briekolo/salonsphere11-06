@@ -1520,6 +1520,8 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          notification_preferences: Json | null
+          payment_methods: Json | null
           phone: string | null
           postal_code: string | null
           subdomain: string | null
@@ -1547,6 +1549,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          notification_preferences?: Json | null
+          payment_methods?: Json | null
           phone?: string | null
           postal_code?: string | null
           subdomain?: string | null
@@ -1574,6 +1578,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          notification_preferences?: Json | null
+          payment_methods?: Json | null
           phone?: string | null
           postal_code?: string | null
           subdomain?: string | null

@@ -63,19 +63,19 @@
   }
   
   .btn-primary {
-    @apply bg-[#02011F] text-white rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:opacity-90 transition-opacity duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+    @apply bg-[#02011F] text-white rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:opacity-90 transition-opacity duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center gap-2;
     font-family: 'Aeonik', 'Inter', sans-serif;
     font-weight: 500;
   }
   
   .btn-secondary {
-    @apply bg-white border border-primary-500 text-primary-500 rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-primary-50 transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+    @apply bg-white border border-primary-500 text-primary-500 rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-primary-50 transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center gap-2;
     font-family: 'Aeonik', 'Inter', sans-serif;
     font-weight: 500;
   }
   
   .btn-outlined {
-    @apply bg-transparent border border-[#02011F] text-[#02011F] rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-[#02011F] hover:text-white transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center;
+    @apply bg-transparent border border-[#02011F] text-[#02011F] rounded-2xl lg:rounded-full px-4 lg:px-6 py-2 lg:py-3 font-medium hover:bg-[#02011F] hover:text-white transition-colors duration-200 text-sm lg:text-base min-h-[44px] flex items-center justify-center gap-2;
     font-family: 'Aeonik', 'Inter', sans-serif;
     font-weight: 500;
   }
@@ -200,6 +200,28 @@
 
   button {
     font-weight: 500;
+  }
+
+  /* Perfect square checkboxes */
+  input[type="checkbox"] {
+    @apply w-4 h-4 min-h-[16px] appearance-none border border-gray-300 rounded bg-white cursor-pointer;
+    aspect-ratio: 1;
+  }
+
+  input[type="checkbox"]:checked {
+    @apply bg-primary-600 border-primary-600;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6 10.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  input[type="checkbox"]:focus {
+    @apply ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  input[type="checkbox"]:disabled {
+    @apply bg-gray-100 border-gray-300 cursor-not-allowed;
   }
 
   /* Enhanced rounded form elements for mobile */
@@ -564,4 +586,126 @@
 
 .calendar-grid-assembly::-webkit-scrollbar-thumb:hover {
   background: #9CA3AF;
+}
+
+/* Kibo Calendar Styles - Match SalonSphere Design */
+@layer components {
+  /* Calendar Grid */
+  .kibo-calendar-grid {
+    @apply bg-white rounded-xl shadow-sm overflow-hidden;
+  }
+
+  /* Calendar Cell */
+  .kibo-calendar-cell {
+    @apply relative min-h-[120px] p-2 border-r border-b border-gray-200 bg-white hover:bg-gray-50 transition-all;
+  }
+
+  .kibo-calendar-cell-today {
+    @apply bg-blue-50/30;
+  }
+
+  .kibo-calendar-cell-dragover {
+    @apply ring-2 ring-primary-500 ring-inset;
+  }
+
+  /* Calendar Events */
+  .kibo-event {
+    @apply group relative flex items-start gap-2 p-2 rounded-lg border transition-all cursor-pointer;
+  }
+
+  .kibo-event-confirmed {
+    @apply bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700;
+  }
+
+  .kibo-event-scheduled {
+    @apply bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700;
+  }
+
+  .kibo-event-cancelled {
+    @apply bg-red-50 hover:bg-red-100 border-red-200 text-red-700;
+  }
+
+  .kibo-event-completed {
+    @apply bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700;
+  }
+
+  /* Event Dot Indicator */
+  .kibo-event-dot {
+    @apply w-2 h-2 rounded-full mt-1.5 flex-shrink-0;
+  }
+
+  .kibo-event-dot-confirmed {
+    @apply bg-emerald-500;
+  }
+
+  .kibo-event-dot-scheduled {
+    @apply bg-amber-500;
+  }
+
+  .kibo-event-dot-cancelled {
+    @apply bg-red-500;
+  }
+
+  .kibo-event-dot-completed {
+    @apply bg-blue-500;
+  }
+
+  /* Calendar Header */
+  .kibo-calendar-header {
+    @apply bg-white rounded-xl shadow-sm p-4 mb-4;
+  }
+
+  /* View Mode Toggle */
+  .kibo-view-toggle {
+    @apply flex bg-gray-100 rounded-lg p-1;
+  }
+
+  .kibo-view-toggle-button {
+    @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all;
+  }
+
+  .kibo-view-toggle-active {
+    @apply bg-white text-gray-900 shadow-sm;
+  }
+
+  .kibo-view-toggle-inactive {
+    @apply text-gray-600 hover:text-gray-900;
+  }
+
+  /* Navigation Buttons */
+  .kibo-nav-button {
+    @apply p-2 hover:bg-gray-100 rounded-lg transition-colors;
+  }
+
+  .kibo-nav-icon {
+    @apply w-4 h-4 text-gray-600;
+  }
+
+  /* Add Button */
+  .kibo-add-button {
+    @apply fixed bottom-6 right-6 w-14 h-14 bg-[#02011F] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-opacity-90 transition-all;
+  }
+
+  /* Drag Overlay */
+  .kibo-drag-overlay {
+    @apply shadow-lg rounded-lg opacity-80;
+  }
+
+  /* More Items Button */
+  .kibo-more-items {
+    @apply w-full text-left text-xs text-gray-500 hover:text-gray-700 py-1 px-2 hover:bg-gray-100 rounded transition-colors;
+  }
+
+  /* Day Header */
+  .kibo-day-header {
+    @apply px-2 py-3 text-sm font-medium text-center;
+  }
+
+  .kibo-day-header-weekend {
+    @apply text-gray-500;
+  }
+
+  .kibo-day-header-weekday {
+    @apply text-gray-700;
+  }
 }

@@ -196,7 +196,7 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
               </button>
             </div>
             
-            <button onClick={() => openModalForNew(new Date())} className="btn-primary flex items-center gap-2 self-start lg:self-auto">
+            <button onClick={() => openModalForNew(new Date())} className="btn-primary self-start lg:self-auto">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Nieuwe afspraak</span>
             </button>

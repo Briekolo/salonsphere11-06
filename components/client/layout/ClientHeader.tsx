@@ -16,6 +16,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useTenant } from '@/lib/client/tenant-context';
+import { useBusinessInfo } from '@/lib/hooks/useBusinessInfo';
+import { useBusinessHours } from '@/lib/hooks/useBusinessHours';
 import Image from 'next/image';
 
 interface ClientHeaderProps {
@@ -26,6 +28,8 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { tenant } = useTenant();
+  const { data: businessInfo } = useBusinessInfo();
+  const { isCurrentlyOpen, getNextOpeningTime } = useBusinessHours();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -37,29 +41,9 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Calculate if salon is open
+  // Use business hours hook for more accurate open/closed status
   const isOpen = () => {
-    const now = new Date();
-    const day = now.getDay();
-    const hour = now.getHours();
-    const minutes = now.getMinutes();
-    const currentTime = hour * 60 + minutes;
-    
-    // Check business hours from tenant settings
-    if (tenant?.business_hours) {
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const todayHours = tenant.business_hours[days[day]];
-      if (todayHours && todayHours.open && todayHours.close) {
-        const [openHour, openMin] = todayHours.open.split(':').map(Number);
-        const [closeHour, closeMin] = todayHours.close.split(':').map(Number);
-        const openTime = openHour * 60 + openMin;
-        const closeTime = closeHour * 60 + closeMin;
-        return currentTime >= openTime && currentTime < closeTime;
-      }
-    }
-    
-    // Fallback: Mon-Sat 9-18
-    return day !== 0 && hour >= 9 && hour < 18;
+    return isCurrentlyOpen();
   };
 
   const navigation = [

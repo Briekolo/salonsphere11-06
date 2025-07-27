@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
+import { UserService } from '@/lib/services/userService';
 import { 
   User, 
   Mail, 
@@ -13,7 +14,6 @@ import {
   Save,
   ArrowLeft,
   Loader2,
-  Briefcase,
   Clock
 } from 'lucide-react';
 
@@ -23,7 +23,6 @@ interface StaffFormData {
   email: string;
   phone: string;
   role: 'admin' | 'staff';
-  specializations: string[];
   working_hours: {
     [key: string]: { start: string; end: string; enabled: boolean };
   };
@@ -31,11 +30,6 @@ interface StaffFormData {
 }
 
 const DAYS = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag'];
-const SPECIALIZATIONS = [
-  'Knippen', 'Kleuren', 'Föhnen', 'Styling', 
-  'Extensions', 'Balayage', 'Highlights', 'Permanent',
-  'Keratine behandeling', 'Hoofdhuid behandeling'
-];
 
 export default function NewStaffPage() {
   const { isAdmin, isLoading } = useRequireAdmin();
@@ -47,7 +41,6 @@ export default function NewStaffPage() {
     email: '',
     phone: '',
     role: 'staff',
-    specializations: [],
     working_hours: DAYS.reduce((acc, day) => ({
       ...acc,
       [day]: { start: '09:00', end: '17:00', enabled: day !== 'zondag' }
@@ -65,14 +58,6 @@ export default function NewStaffPage() {
     }));
   };
 
-  const handleSpecializationToggle = (spec: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specializations: prev.specializations.includes(spec)
-        ? prev.specializations.filter(s => s !== spec)
-        : [...prev.specializations, spec]
-    }));
-  };
 
   const handleWorkingHoursChange = (day: string, field: 'start' | 'end' | 'enabled', value: any) => {
     setFormData(prev => ({
@@ -93,16 +78,24 @@ export default function NewStaffPage() {
     setSaving(true);
 
     try {
-      // TODO: Implement actual save logic
-      console.log('Saving staff member:', formData);
+      const result = await UserService.create({
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        role: formData.role,
+        active: formData.active,
+        specializations: [], // Empty for pedicure salon
+        working_hours: formData.working_hours
+      });
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Staff member created:', result);
       
       // Redirect to staff list
       router.push('/admin/staff');
-    } catch (err) {
-      setError('Er is een fout opgetreden bij het aanmaken van de medewerker');
+    } catch (err: any) {
+      console.error('Error creating staff member:', err);
+      setError(err.message || 'Er is een fout opgetreden bij het aanmaken van de medewerker');
     } finally {
       setSaving(false);
     }
@@ -264,7 +257,6 @@ export default function NewStaffPage() {
                 id="active"
                 checked={formData.active}
                 onChange={(e) => handleInputChange('active', e.target.checked)}
-                className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
               />
               <label htmlFor="active" className="text-sm font-medium text-gray-700">
                 Account is actief
@@ -273,27 +265,6 @@ export default function NewStaffPage() {
           </div>
         </div>
 
-        {/* Specializations */}
-        <div className="card">
-          <div className="flex items-center gap-2 mb-4">
-            <Briefcase className="h-5 w-5" />
-            <h2 className="text-heading">Specialisaties</h2>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {SPECIALIZATIONS.map((spec) => (
-              <label key={spec} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.specializations.includes(spec)}
-                  onChange={() => handleSpecializationToggle(spec)}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
-                <span className="text-sm">{spec}</span>
-              </label>
-            ))}
-          </div>
-        </div>
 
         {/* Working Hours */}
         <div className="card">
@@ -310,8 +281,7 @@ export default function NewStaffPage() {
                   id={`day-${day}`}
                   checked={formData.working_hours[day].enabled}
                   onChange={(e) => handleWorkingHoursChange(day, 'enabled', e.target.checked)}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
+                  />
                 <label htmlFor={`day-${day}`} className="w-24 text-sm font-medium capitalize">
                   {day}
                 </label>

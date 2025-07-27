@@ -346,7 +346,6 @@ export default function EditStaffPage({ params }: { params: { id: string } }) {
                 id="active"
                 checked={formData.active}
                 onChange={(e) => handleInputChange('active', e.target.checked)}
-                className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
               />
               <label htmlFor="active" className="text-sm font-medium text-gray-700">
                 Account is actief
@@ -375,8 +374,7 @@ export default function EditStaffPage({ params }: { params: { id: string } }) {
                   type="checkbox"
                   checked={formData.specializations.includes(spec)}
                   onChange={() => handleSpecializationToggle(spec)}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
+                  />
                 <span className="text-sm">{spec}</span>
               </label>
             ))}
@@ -398,8 +396,7 @@ export default function EditStaffPage({ params }: { params: { id: string } }) {
                   id={`day-${day}`}
                   checked={formData.working_hours[day].enabled}
                   onChange={(e) => handleWorkingHoursChange(day, 'enabled', e.target.checked)}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
+                  />
                 <label htmlFor={`day-${day}`} className="w-24 text-sm font-medium capitalize">
                   {day}
                 </label>

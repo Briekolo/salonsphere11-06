@@ -169,7 +169,7 @@ export function TreatmentsContent() {
                 </button>
                 <button 
                   onClick={() => setView('form')}
-                  className="btn-primary flex items-center gap-2"
+                  className="btn-primary"
                 >
                   <Plus className="w-4 h-4" />
                   Nieuwe behandeling

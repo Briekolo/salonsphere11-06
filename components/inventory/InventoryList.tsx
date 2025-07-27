@@ -109,7 +109,7 @@ export function InventoryList({ onProductEdit, onStockAdjustment, onViewHistory,
               onClick={() => onProductEdit('')} // Assuming empty string opens a "new product" modal
               className="btn-primary"
             >
-              <Plus className="-ml-1 mr-2 h-5 w-5" />
+              <Plus className="h-5 w-5" />
               Nieuw product
             </button>
           </div>

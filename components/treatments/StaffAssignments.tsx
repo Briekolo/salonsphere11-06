@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X, User, Award, Clock, Euro, Search, Filter, ChevronDown } from 'lucide-react'
+import { Check, X, User, Award, Clock, Euro, Search, Filter, ChevronDown, UserPlus, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { useServices } from '@/lib/hooks/useServices'
 import { useTreatmentCategories } from '@/lib/hooks/useTreatmentCategories'
 import { 
@@ -140,13 +141,17 @@ export function StaffAssignments() {
   }, {} as Record<string, typeof services>)
 
   const handleToggleAssignment = async (staffId: string, serviceId: string) => {
-    const staff = staffWithServices.find(s => s.id === staffId)
-    const existingAssignment = staff?.services.find(s => s.service_id === serviceId)
+    try {
+      const staff = staffWithServices.find(s => s.id === staffId)
+      const existingAssignment = staff?.services.find(s => s.service_id === serviceId)
 
-    if (existingAssignment) {
-      await removeMutation.mutateAsync({ staff_id: staffId, service_id: serviceId })
-    } else {
-      await assignMutation.mutateAsync({ staff_id: staffId, service_id: serviceId })
+      if (existingAssignment) {
+        await removeMutation.mutateAsync({ staff_id: staffId, service_id: serviceId })
+      } else {
+        await assignMutation.mutateAsync({ staff_id: staffId, service_id: serviceId })
+      }
+    } catch (error) {
+      console.error('Error toggling assignment:', error)
     }
   }
 
@@ -165,11 +170,20 @@ export function StaffAssignments() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Behandeling toewijzingen</h2>
-        <p className="text-sm text-gray-600">
-          Wijs behandelingen toe aan medewerkers en stel hun vaardigheidsniveau in
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Behandeling toewijzingen</h2>
+          <p className="text-sm text-gray-600">
+            Wijs behandelingen toe aan medewerkers en stel hun vaardigheidsniveau in
+          </p>
+        </div>
+        <Link 
+          href="/admin/staff" 
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          <UserPlus className="w-4 h-4" />
+          Medewerkers Beheren
+        </Link>
       </div>
 
       {/* Filters */}
@@ -278,8 +292,25 @@ export function StaffAssignments() {
           </div>
 
           {staffWithServices.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              Geen medewerkers gevonden
+            <div className="p-8 text-center">
+              <UserPlus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Geen medewerkers gevonden</h3>
+              <p className="text-gray-600 mb-6">
+                U moet eerst medewerkers toevoegen voordat u ze aan behandelingen kunt toewijzen.
+              </p>
+              <div className="space-y-3">
+                <Link 
+                  href="/admin/staff" 
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Voeg Medewerkers Toe
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+                <p className="text-sm text-gray-500">
+                  Ga naar Admin Panel → Medewerkers om je team toe te voegen
+                </p>
+              </div>
             </div>
           )}
         </div>

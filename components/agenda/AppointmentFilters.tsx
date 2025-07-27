@@ -7,6 +7,8 @@ export function AppointmentFilters() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [serviceFilter, setServiceFilter] = useState('all')
+  const [staffFilter, setStaffFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState('today')
 
   return (
     <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-4">
@@ -23,6 +25,22 @@ export function AppointmentFilters() {
       </div>
 
       <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 lg:space-x-4">
+        {/* Date Filter */}
+        <div className="relative">
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
+          >
+            <option value="today">Vandaag</option>
+            <option value="tomorrow">Morgen</option>
+            <option value="week">Deze week</option>
+            <option value="month">Deze maand</option>
+            <option value="custom">Aangepast</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+        </div>
+
         {/* Status Filter */}
         <div className="relative">
           <select
@@ -35,6 +53,22 @@ export function AppointmentFilters() {
             <option value="confirmed">Bevestigd</option>
             <option value="completed">Afgerond</option>
             <option value="cancelled">Geannuleerd</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+        </div>
+
+        {/* Staff Filter */}
+        <div className="relative">
+          <select
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
+          >
+            <option value="all">Alle medewerkers</option>
+            <option value="sarah">Sarah van der Berg</option>
+            <option value="emma">Emma Jansen</option>
+            <option value="lisa">Lisa Vermeulen</option>
+            <option value="anna">Anna de Vries</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
         </div>

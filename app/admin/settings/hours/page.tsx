@@ -206,7 +206,6 @@ export default function BusinessHoursPage() {
                     type="checkbox"
                     checked={hours[day].closed}
                     onChange={() => handleClosedToggle(day)}
-                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                   />
                   <span className="text-sm">Gesloten</span>
                 </label>

@@ -81,8 +81,12 @@ export class BookingService {
   }
 
   static async update(id: string, updates: Omit<BookingUpdate, 'tenant_id'>): Promise<Booking> {
+    console.log('BookingService.update called:', { id, updates })
+    
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
+
+    console.log('Tenant ID:', tenantId)
 
     const { data, error } = await supabase
       .from('bookings')
@@ -91,6 +95,8 @@ export class BookingService {
       .eq('tenant_id', tenantId)
       .select()
       .single()
+
+    console.log('Supabase response:', { data, error })
 
     if (error) throw error
     return data

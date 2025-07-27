@@ -70,12 +70,12 @@ export function useStaffWithServices() {
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant found')
 
-      // First get all staff members
+      // First get all staff members (including admins who can also perform services)
       const { data: staff, error: staffError } = await supabase
         .from('users')
         .select('id, first_name, last_name, email')
         .eq('tenant_id', tenantId)
-        .eq('role', 'staff')
+        .in('role', ['staff', 'admin'])
         .eq('active', true)
         .order('first_name', { ascending: true })
 

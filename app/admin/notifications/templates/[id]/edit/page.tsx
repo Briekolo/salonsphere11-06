@@ -363,7 +363,6 @@ Het team van {{salon_name}}`,
                   id="active"
                   checked={template.active}
                   onChange={(e) => handleInputChange('active', e.target.checked)}
-                  className="h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
                 />
                 <label htmlFor="active" className="text-sm font-medium text-gray-700">
                   Template is actief

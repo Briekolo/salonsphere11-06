@@ -76,9 +76,48 @@ export function useCreateBooking() {
 export function useUpdateBooking() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<Booking> }) =>
-      BookingService.update(id, updates as any),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Booking> }) => {
+      console.log('Mutation function called:', { id, updates })
+      return BookingService.update(id, updates as any)
+    },
+    onMutate: async ({ id, updates }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['bookings'] })
+      
+      // Snapshot the previous value
+      const previousBookings = queryClient.getQueriesData({ queryKey: ['bookings'] })
+      
+      // Optimistically update all booking queries
+      queryClient.setQueriesData<Booking[]>({ queryKey: ['bookings'] }, (old) => {
+        if (!old) return old
+        return old.map(booking => 
+          booking.id === id ? { ...booking, ...updates } : booking
+        )
+      })
+      
+      console.log('Optimistic update applied for booking:', id)
+      
+      // Return a context with the previous value
+      return { previousBookings }
+    },
+    onSuccess: (data, variables) => {
+      console.log('Mutation success:', { data, variables })
+      // Invalidate and refetch to ensure server state is correct
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    },
+    onError: (error, variables, context) => {
+      console.error('Mutation error:', { error, variables })
+      // Rollback the optimistic update
+      if (context?.previousBookings) {
+        context.previousBookings.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    },
   })
 }
 

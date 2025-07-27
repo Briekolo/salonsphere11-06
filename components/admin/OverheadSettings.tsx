@@ -181,7 +181,7 @@ export function OverheadSettings() {
             <ul className="space-y-1 ml-4">
               <li>• <span className="text-green-600 font-medium">10-20%:</span> Efficiënte kostenstructuur</li>
               <li>• <span className="text-yellow-600 font-medium">20-30%:</span> Gemiddelde overhead</li>
-              <li>• <span className="text-red-600 font-medium">>30%:</span> Hoge overhead, evalueer kosten</li>
+              <li>• <span className="text-red-600 font-medium">&gt;30%:</span> Hoge overhead, evalueer kosten</li>
             </ul>
           </div>
         </div>

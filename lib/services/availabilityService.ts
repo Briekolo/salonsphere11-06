@@ -76,22 +76,46 @@ export class AvailabilityService {
       // Get staff members who can perform this service
       let staffMembers: any[] = [];
       if (staffId) {
-        const { data } = await supabase
-          .from('users')
-          .select('id, first_name, last_name')
-          .eq('id', staffId)
+        // Check if specific staff can perform this service
+        const { data: staffService } = await supabase
+          .from('staff_services')
+          .select('staff_id, custom_duration_minutes')
+          .eq('staff_id', staffId)
+          .eq('service_id', serviceId)
           .eq('tenant_id', tenantId)
+          .eq('active', true)
           .single();
-        if (data) staffMembers = [data];
+
+        if (staffService) {
+          const { data } = await supabase
+            .from('users')
+            .select('id, first_name, last_name')
+            .eq('id', staffId)
+            .eq('tenant_id', tenantId)
+            .single();
+          if (data) {
+            staffMembers = [{ ...data, custom_duration_minutes: staffService.custom_duration_minutes }];
+          }
+        }
       } else {
         // Get all staff who can perform this service
-        const { data } = await supabase
-          .from('users')
-          .select('id, first_name, last_name')
+        const { data: staffServices } = await supabase
+          .from('staff_services')
+          .select('staff_id, custom_duration_minutes, users!staff_services_staff_id_fkey(id, first_name, last_name)')
+          .eq('service_id', serviceId)
           .eq('tenant_id', tenantId)
-          .in('role', ['admin', 'staff'])
           .eq('active', true);
-        staffMembers = data || [];
+
+        if (staffServices) {
+          staffMembers = staffServices
+            .filter(ss => ss.users)
+            .map(ss => ({
+              id: ss.users.id,
+              first_name: ss.users.first_name,
+              last_name: ss.users.last_name,
+              custom_duration_minutes: ss.custom_duration_minutes
+            }));
+        }
       }
 
       // Get day of week for the selected date
@@ -141,9 +165,12 @@ export class AvailabilityService {
         const endTime = parse(schedule.end_time, 'HH:mm:ss', new Date());
         let currentTime = startTime;
 
-        while (isBefore(addMinutes(currentTime, service.duration_minutes), endTime)) {
+        // Use custom duration if available for this staff member, otherwise use service default
+        const effectiveDuration = staff.custom_duration_minutes || service.duration_minutes;
+
+        while (isBefore(addMinutes(currentTime, effectiveDuration), endTime)) {
           const slotTime = format(currentTime, 'HH:mm');
-          const slotEndTime = addMinutes(currentTime, service.duration_minutes + service.buffer_time_after);
+          const slotEndTime = addMinutes(currentTime, effectiveDuration + service.buffer_time_after);
 
           // Check if slot is available
           let isAvailable = true;
@@ -154,7 +181,7 @@ export class AvailabilityService {
             const bookingTime = new Date(booking.scheduled_at);
             const bookingEndTime = addMinutes(bookingTime, booking.duration_minutes);
             const slotDateTime = parse(`${date} ${slotTime}`, 'yyyy-MM-dd HH:mm', new Date());
-            const slotEndDateTime = addMinutes(slotDateTime, service.duration_minutes);
+            const slotEndDateTime = addMinutes(slotDateTime, effectiveDuration);
             
             return (
               (isAfter(slotDateTime, bookingTime) && isBefore(slotDateTime, bookingEndTime)) ||
