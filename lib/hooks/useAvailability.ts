@@ -254,3 +254,21 @@ export function useHoldCountdown(expiresAt: string | null) {
     formattedTime: `${minutes}:${seconds.toString().padStart(2, '0')}`
   };
 }
+
+// Hook to manually invalidate availability cache after booking creation
+export function useInvalidateAvailability() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateAvailability: (tenantId: string, date: string) => {
+      // Invalidate all availability queries for this tenant and date
+      queryClient.invalidateQueries({ 
+        queryKey: ['available-slots', tenantId, date] 
+      });
+      // Also invalidate staff availability for the broader date range
+      queryClient.invalidateQueries({ 
+        queryKey: ['staff-availability', tenantId] 
+      });
+    }
+  };
+}

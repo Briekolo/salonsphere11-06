@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/lib/client/tenant-context';
-import { useHoldSlot } from '@/lib/hooks/useAvailability';
+import { useHoldSlot, useInvalidateAvailability } from '@/lib/hooks/useAvailability';
 import { supabase } from '@/lib/supabase';
 import { BookingService } from '@/lib/client/booking-service';
 import { 
@@ -74,6 +74,9 @@ export default function BookingConfirmationPage({
   
   // Hold management
   const { currentHold, confirmBooking, releaseSlot } = useHoldSlot();
+  
+  // Availability cache invalidation
+  const { invalidateAvailability } = useInvalidateAvailability();
 
   useEffect(() => {
     // Validate required data
@@ -121,7 +124,7 @@ export default function BookingConfirmationPage({
   };
 
   const handleConfirmBooking = async () => {
-    if (!currentHold || !tenant?.id || !service) return;
+    if (!tenant?.id || !service) return;
     
     setSubmitting(true);
     
@@ -137,18 +140,22 @@ export default function BookingConfirmationPage({
         marketingConsent: bookingData.marketingOptIn
       });
       
-      // Confirm the booking using the hold
+      // Release any existing hold
       if (currentHold) {
-        await confirmBooking({
-          holdId: currentHold.id,
-          clientData: {
-            first_name: bookingData.firstName,
-            last_name: bookingData.lastName,
-            email: bookingData.email,
-            phone: bookingData.phone,
-            notes: bookingData.notes
-          }
-        });
+        try {
+          await confirmBooking({
+            holdId: currentHold.id,
+            clientData: {
+              first_name: bookingData.firstName,
+              last_name: bookingData.lastName,
+              email: bookingData.email,
+              phone: bookingData.phone,
+              notes: bookingData.notes
+            }
+          });
+        } catch (holdError) {
+          console.log('Hold confirmation failed, proceeding with direct booking creation');
+        }
       }
       
       // Create the actual booking
@@ -167,6 +174,9 @@ export default function BookingConfirmationPage({
       
       setBookingId(booking.id);
       setBookingComplete(true);
+      
+      // Invalidate availability cache to remove the booked time slot
+      invalidateAvailability(tenant.id, bookingData.date);
       
       // TODO: Send confirmation email using Supabase Edge Functions
       // TODO: Add email reminder scheduling

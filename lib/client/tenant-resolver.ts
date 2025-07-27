@@ -41,7 +41,7 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
   try {
     // For development, extract subdomain from the path
     // In production, this would check actual domain/subdomain
-    const isDevelopment = domain.includes('localhost');
+    const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     
     if (isDevelopment) {
       // In development: /salon-name/services -> extract "salon-name"
@@ -54,35 +54,47 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
         .single();
         
       if (error) {
-        console.error('Tenant not found:', subdomain);
+        console.error('Tenant not found:', subdomain, error);
         return getMockTenant(subdomain);
       }
       
       return data as TenantInfo;
     } else {
       // In production: check actual domain
-      // First check custom domain
-      const { data: customDomainTenant } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('custom_domain', domain)
-        .eq('domain_verified', true)
-        .single();
+      try {
+        // First check custom domain
+        const { data: customDomainTenant, error: customDomainError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('custom_domain', domain)
+          .eq('domain_verified', true)
+          .single();
+          
+        if (customDomainTenant) {
+          return customDomainTenant as TenantInfo;
+        }
         
-      if (customDomainTenant) {
-        return customDomainTenant as TenantInfo;
+        console.log('Custom domain not found, checking subdomain...', customDomainError);
+      } catch (error) {
+        console.log('Custom domain query failed, trying subdomain...', error);
       }
       
-      // Then check subdomain
-      const subdomain = domain.split('.')[0];
-      const { data: subdomainTenant } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('subdomain', subdomain)
-        .single();
+      try {
+        // Then check subdomain
+        const subdomain = domain.split('.')[0];
+        const { data: subdomainTenant, error: subdomainError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('subdomain', subdomain)
+          .single();
+          
+        if (subdomainTenant) {
+          return subdomainTenant as TenantInfo;
+        }
         
-      if (subdomainTenant) {
-        return subdomainTenant as TenantInfo;
+        console.log('Subdomain not found:', subdomainError);
+      } catch (error) {
+        console.log('Subdomain query failed:', error);
       }
     }
     

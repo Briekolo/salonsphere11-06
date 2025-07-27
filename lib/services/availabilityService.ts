@@ -50,6 +50,7 @@ export class AvailabilityService {
     staffId?: string
   ): Promise<TimeSlot[]> {
     try {
+
       // Get service details
       const { data: service } = await supabase
         .from('services')
@@ -137,12 +138,14 @@ export class AvailabilityService {
       // Get existing bookings for the date
       const { data: existingBookings } = await supabase
         .from('bookings')
-        .select('staff_id, scheduled_at, duration_minutes')
+        .select('staff_id, scheduled_at, duration_minutes, status')
         .eq('tenant_id', tenantId)
         .gte('scheduled_at', `${date}T00:00:00`)
         .lt('scheduled_at', `${date}T23:59:59`)
         .in('status', ['scheduled', 'confirmed'])
         .in('staff_id', staffMembers.map(s => s.id));
+
+      console.log('Existing bookings for', date, ':', existingBookings);
 
       // Get active holds
       const { data: activeHolds } = await supabase
@@ -178,16 +181,35 @@ export class AvailabilityService {
           // Check against existing bookings
           const hasConflict = existingBookings?.some(booking => {
             if (booking.staff_id !== staff.id) return false;
+            
             const bookingTime = new Date(booking.scheduled_at);
             const bookingEndTime = addMinutes(bookingTime, booking.duration_minutes);
             const slotDateTime = parse(`${date} ${slotTime}`, 'yyyy-MM-dd HH:mm', new Date());
             const slotEndDateTime = addMinutes(slotDateTime, effectiveDuration);
             
-            return (
-              (isAfter(slotDateTime, bookingTime) && isBefore(slotDateTime, bookingEndTime)) ||
-              (isAfter(slotEndDateTime, bookingTime) && isBefore(slotEndDateTime, bookingEndTime)) ||
-              (isBefore(slotDateTime, bookingTime) && isAfter(slotEndDateTime, bookingEndTime))
+            // Check for any overlap between booking and proposed slot
+            const hasOverlap = (
+              // Slot starts during existing booking
+              (slotDateTime >= bookingTime && slotDateTime < bookingEndTime) ||
+              // Slot ends during existing booking  
+              (slotEndDateTime > bookingTime && slotEndDateTime <= bookingEndTime) ||
+              // Slot completely encompasses existing booking
+              (slotDateTime <= bookingTime && slotEndDateTime >= bookingEndTime) ||
+              // Existing booking completely encompasses slot
+              (bookingTime <= slotDateTime && bookingEndTime >= slotEndDateTime)
             );
+            
+            if (hasOverlap) {
+              console.log(`Conflict detected for ${staff.first_name} at ${slotTime}:`, {
+                slotStart: slotDateTime,
+                slotEnd: slotEndDateTime,
+                bookingStart: bookingTime,
+                bookingEnd: bookingEndTime,
+                bookingStatus: booking.status
+              });
+            }
+            
+            return hasOverlap;
           });
 
           // Check against active holds
@@ -431,6 +453,23 @@ export class AvailabilityService {
     } catch (error) {
       console.error('Error fetching staff availability:', error);
       throw error;
+    }
+  }
+
+  // Refresh availability cache after booking changes
+  static async refreshAvailabilityCache(
+    tenantId: string,
+    date: string,
+    serviceId: string,
+    staffId?: string
+  ): Promise<void> {
+    try {
+      // This function can be used to trigger re-fetching of availability
+      // For now, we rely on the existing booking conflict detection
+      // In the future, this could invalidate cached results
+      console.log('Refreshing availability cache for:', { tenantId, date, serviceId, staffId });
+    } catch (error) {
+      console.error('Error refreshing availability cache:', error);
     }
   }
 }

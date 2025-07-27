@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { InvoiceService } from '@/lib/services/invoiceService';
+import { AvailabilityService } from '@/lib/services/availabilityService';
 
 export interface CreateBookingData {
   tenantId: string;
@@ -120,6 +121,21 @@ export class BookingService {
         console.error('Error creating invoice:', invoiceError);
         // Don't throw - booking is still created successfully
       }
+    }
+
+    // Refresh availability cache to remove booked time slot from future availability
+    try {
+      const bookingDate = new Date(data.scheduledAt);
+      const dateStr = bookingDate.toISOString().split('T')[0];
+      await AvailabilityService.refreshAvailabilityCache(
+        data.tenantId,
+        dateStr,
+        data.serviceId,
+        data.staffId
+      );
+    } catch (cacheError) {
+      console.error('Error refreshing availability cache:', cacheError);
+      // Don't throw - booking is still created successfully
     }
     
     return booking;
