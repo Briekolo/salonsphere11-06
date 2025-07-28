@@ -216,7 +216,7 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  {format(new Date(booking.scheduled_at), 'HH:mm', { locale: nl })} ({booking.services?.duration_minutes ?? 0}min)
+                  {format(new Date(booking.scheduled_at), 'HH:mm', { locale: nl })} ({booking.duration_minutes || booking.services?.duration_minutes || 60}min)
                 </div>
                 <div className="flex items-center gap-2">
                   {booking.clients?.phone && (
@@ -293,7 +293,7 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
                     <span className="text-gray-900">{booking.services?.name}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-gray-600">{booking.services?.duration_minutes ?? 0}min</span>
+                    <span className="text-gray-600">{booking.duration_minutes || booking.services?.duration_minutes || 60}min</span>
                   </td>
                   <td className="py-4 px-4">
                     <span className={`status-chip ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
