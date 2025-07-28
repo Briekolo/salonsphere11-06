@@ -219,7 +219,9 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: booking.id,
-    data: booking // Pass booking directly, DnD Kit will wrap it properly
+    data: {
+      booking: booking // Wrap booking in an object to ensure it's properly passed
+    }
   })
 
   const style = transform ? {
@@ -506,11 +508,7 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
                   // Only include bookings that START in this hour
                   return bookingHour === hour
                 })}
-                onEmptyClick={() => {
-                  const slotDate = new Date(selectedDate)
-                  slotDate.setHours(hour, 0, 0, 0)
-                  onEmptyClick(slotDate)
-                }}
+                onEmptyClick={onEmptyClick}
                 onBookingClick={onBookingClick}
               />
             ))}
@@ -595,11 +593,7 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
                       // Only include bookings that START in this hour
                       return bookingHour === hour
                     })}
-                    onEmptyClick={() => {
-                      const slotDate = new Date(date)
-                      slotDate.setHours(hour, 0, 0, 0)
-                      onEmptyClick(slotDate)
-                    }}
+                    onEmptyClick={onEmptyClick}
                     onBookingClick={onBookingClick}
                   />
                 ))}
@@ -626,26 +620,43 @@ function QuarterHourSlot({ date, hour, quarter, isOver, onEmptyClick }: {
   slotDate.setSeconds(0)
   slotDate.setMilliseconds(0)
   
+  const dropId = `drop-${format(date, 'yyyy-MM-dd')}-${hour}-${minutes}`
+  
   const { setNodeRef, isOver: quarterIsOver } = useDroppable({
-    id: `${format(date, 'yyyy-MM-dd')}-${hour}-${minutes}`,
+    id: dropId,
     data: { 
-      date: slotDate.toISOString()
+      date: slotDate,
+      hour: hour,
+      minutes: minutes
     }
   })
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('QuarterHourSlot mounted:', {
+      id: dropId,
+      setNodeRef: !!setNodeRef,
+      isOver: quarterIsOver,
+      date: format(slotDate, 'yyyy-MM-dd HH:mm')
+    })
+  }, [])
 
   return (
     <div
       ref={setNodeRef}
-      className={`relative h-4 cursor-pointer transition-colors ${
+      className={`absolute h-4 w-full cursor-pointer transition-colors ${
         quarterIsOver ? 'bg-blue-100 ring-1 ring-blue-400' : 'hover:bg-gray-50'
       } ${quarter < 3 ? 'border-b border-gray-50' : ''}`}
+      style={{ top: `${quarter * 16}px` }}
       onClick={onEmptyClick}
       title={`${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`}
     >
-      {/* Time indicator on hover */}
+      {/* Time indicator on hover - positioned above the slot */}
       {quarterIsOver && (
-        <div className="absolute left-2 top-0 z-30 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-lg font-medium">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-50 bg-blue-600 text-white text-xs px-3 py-1.5 rounded-md shadow-lg font-medium whitespace-nowrap">
           {hour.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
+          {/* Arrow pointing down */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
         </div>
       )}
     </div>
@@ -657,7 +668,7 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
   date: Date
   hour: number
   bookings: Booking[]
-  onEmptyClick: () => void
+  onEmptyClick: (date: Date) => void
   onBookingClick: (bookingId: string) => void
 }) {
   // Hour slot height in pixels - using rem values
@@ -678,7 +689,7 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
             onEmptyClick={() => {
               const slotDate = new Date(date)
               slotDate.setHours(hour, minutes, 0, 0)
-              onEmptyClick()
+              onEmptyClick(slotDate)
             }}
           />
         )
@@ -1059,7 +1070,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
   // Drag and drop handlers
   const handleDragStart = (event: DragStartEvent) => {
     // Try both data structures that DnD Kit might use
-    const booking = (event.active.data.current || event.active.data) as Booking
+    const booking = event.active.data.current?.booking || event.active.data?.booking
     
     console.log('Drag start:', {
       activeId: event.active.id,
@@ -1092,7 +1103,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
     }
 
     // Try both data structures that DnD Kit might use
-    const booking = (active.data.current || active.data) as Booking
+    const booking = active.data.current?.booking || active.data?.booking
     
     console.log('Debug booking data:', {
       activeCurrent: active.data.current,
@@ -1115,6 +1126,14 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
     }
     
     const dropData = over.data.current
+    
+    console.log('Drop data:', {
+      dropData,
+      hasDate: !!dropData?.date,
+      dateType: typeof dropData?.date,
+      overId: over.id,
+      overData: over.data
+    })
     
     if (!dropData || !dropData.date) {
       console.log('No drop data or date')
@@ -1180,17 +1199,27 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       // For week view time slots, use the target hour from the drop zone
       // For month view, keep the original time
       const dropZoneId = over.id.toString()
-      const isTimeSlotDrop = dropZoneId.split('-').length === 4 // format: "yyyy-mm-dd-hour"
+      const isTimeSlotDrop = dropZoneId.startsWith('drop-')
       
-      console.log('Drop zone analysis:', { dropZoneId, isTimeSlotDrop })
+      console.log('Drop zone analysis:', { dropZoneId, isTimeSlotDrop, dropData })
       
       if (isTimeSlotDrop) {
-        // This is a time slot drop in week view
-        const parts = dropZoneId.split('-')
-        const hourFromDropZone = parseInt(parts[3] || '0')
-        console.log('Time slot drop:', { parts, hour: hourFromDropZone })
-        newDate.setHours(hourFromDropZone)
-        newDate.setMinutes(originalDate.getMinutes()) // Keep original minutes
+        // This is a time slot drop in week view - use the data from the drop zone
+        if (dropData.hour !== undefined && dropData.minutes !== undefined) {
+          console.log('Using drop zone data:', { hour: dropData.hour, minutes: dropData.minutes })
+          newDate.setHours(dropData.hour)
+          newDate.setMinutes(dropData.minutes)
+        } else {
+          // Fallback to parsing the ID
+          const parts = dropZoneId.replace('drop-', '').split('-')
+          if (parts.length >= 4) {
+            const hourFromDropZone = parseInt(parts[3] || '0')
+            const minutesFromDropZone = parts.length === 5 ? parseInt(parts[4] || '0') : 0
+            console.log('Parsed from ID:', { hour: hourFromDropZone, minutes: minutesFromDropZone })
+            newDate.setHours(hourFromDropZone)
+            newDate.setMinutes(minutesFromDropZone)
+          }
+        }
       } else {
         // This is a day drop (month view), keep the original time
         newDate.setHours(originalDate.getHours())
@@ -1325,7 +1354,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
 
           <DragOverlay>
             {draggedBooking && (
-              <div className="shadow-2xl rounded-lg opacity-90 transform rotate-2 scale-105">
+              <div className="shadow-2xl rounded-lg opacity-90 transform rotate-2 scale-105 pointer-events-none">
                 <DraggableAppointment
                   booking={draggedBooking}
                   onClick={() => {}}
