@@ -57,27 +57,28 @@ const LowStockAlert = ({ onNewOrder }: { onNewOrder: () => void }) => {
   }
 
   return (
-    <div className="card bg-red-50 border-red-200">
-      <div className="flex items-start gap-4">
-        <div className="p-2 bg-red-100 rounded-lg">
-          <AlertTriangle className="w-5 h-5 text-red-600" />
+    <div className="card bg-red-50 border-red-200 p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+        <div className="p-1.5 sm:p-2 bg-red-100 rounded-lg">
+          <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-red-900 mb-2">Voorraad waarschuwingen</h3>
-          <p className="text-red-800 mb-3">
+          <h3 className="font-semibold text-red-900 mb-1 sm:mb-2 text-sm sm:text-base">Voorraad waarschuwingen</h3>
+          <p className="text-red-800 mb-2 sm:mb-3 text-xs sm:text-sm">
             Er zijn {lowStockItems.length} producten die aandacht nodig hebben.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {lowStockItems.map((product) => (
-              <span key={product.id} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+              <span key={product.id} className="px-2 sm:px-3 py-0.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs sm:text-sm">
                 {product.name} ({product.current_stock} {product.unit})
               </span>
             ))}
           </div>
         </div>
-        <button onClick={onNewOrder} className="btn-primary flex items-center gap-2">
-          <ShoppingCart className="w-4 h-4" />
-          Bestelling plaatsen
+        <button onClick={onNewOrder} className="btn-primary flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center min-h-[36px] sm:min-h-[40px]">
+          <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+          <span className="hidden xs:inline">Bestelling plaatsen</span>
+          <span className="xs:hidden">Bestellen</span>
         </button>
       </div>
     </div>
@@ -133,19 +134,19 @@ export function InventoryOverview({ onProductEdit, onStockAdjustment, onViewHist
       <LowStockAlert onNewOrder={() => console.log('New order modal')} />
 
       {/* Category Filter */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
         {categories.map((category) => (
           <button
             key={category.name}
             onClick={() => setSelectedCategory(category.name)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-colors min-h-[32px] sm:min-h-[36px] ${
               selectedCategory === category.name
                 ? 'bg-[#02011F] text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             {category.name}
-            <span className={`px-2 py-0.5 rounded-full text-xs ${
+            <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-xs ${
               selectedCategory === category.name
                 ? 'bg-white/20 text-white'
                 : 'bg-gray-200 text-gray-600'
@@ -163,13 +164,13 @@ export function InventoryOverview({ onProductEdit, onStockAdjustment, onViewHist
          <p className="mt-1 text-sm text-gray-500">Selecteer een andere categorie of voeg een nieuw product toe.</p>
        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
         {filteredProducts.map((product) => {
           const statusInfo = getStatusInfo(product)
           const stockBar = getStockBarProps(product)
 
           return (
-            <div key={product.id} className="card group">
+            <div key={product.id} className="card group p-3 sm:p-4 lg:p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -221,12 +222,12 @@ export function InventoryOverview({ onProductEdit, onStockAdjustment, onViewHist
                 </div>
               </div>
               <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                <button onClick={() => onStockAdjustment(product.id)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm">
-                  <Plus className="w-4 h-4" />
+                <button onClick={() => onStockAdjustment(product.id)} className="flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-xs sm:text-sm min-h-[32px] sm:min-h-[36px]">
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                   Aanpassen
                 </button>
-                <button onClick={() => onViewHistory(product.id)} className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm">
-                  <History className="w-4 h-4" />
+                <button onClick={() => onViewHistory(product.id)} className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs sm:text-sm min-h-[32px] sm:min-h-[36px]">
+                  <History className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               </div>
 

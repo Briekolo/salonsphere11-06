@@ -22,24 +22,24 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
   return (
     <div className="space-y-6">
       {/* View Toggle and Bulk Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <div className="flex bg-gray-100 rounded-full p-1">
-            <button onClick={() => onViewChange('overview')} className="px-4 py-2 rounded-full text-sm font-medium bg-[#02011F] text-white">
+            <button onClick={() => onViewChange('overview')} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium bg-[#02011F] text-white min-h-[32px] sm:min-h-[36px]">
               Overzicht
             </button>
-            <button onClick={() => onViewChange('list')} className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900">
+            <button onClick={() => onViewChange('list')} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 min-h-[32px] sm:min-h-[36px]">
               Lijst
             </button>
           </div>
         </div>
-        <div className="text-sm text-gray-600">{clients.length} klanten gevonden</div>
+        <div className="text-xs sm:text-sm text-gray-600">{clients.length} klanten gevonden</div>
       </div>
 
       {/* Clients Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
         {clients.map((client: Client) => (
-          <div key={client.id} className="card group cursor-pointer" onClick={() => onClientSelect(client.id)}>
+          <div key={client.id} className="card p-4 sm:p-6 group cursor-pointer hover:shadow-md transition-shadow" onClick={() => onClientSelect(client.id)}>
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -72,20 +72,20 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-<button
-  className="btn-outlined flex items-center gap-1 text-xs"
-  onClick={(e) => {
-    e.stopPropagation()
-    if (client.phone) {
-      window.location.href = `tel:${client.phone}`
-    }
-  }}
->
+              <button
+                className="btn-outlined flex-1 flex items-center justify-center gap-1 text-xs py-2 min-h-[36px]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (client.phone) {
+                    window.location.href = `tel:${client.phone}`
+                  }
+                }}
+              >
                 <Phone className="w-3 h-3" />
-                Bellen
+                <span className="hidden sm:inline">Bellen</span>
               </button>
               <button 
-                className="btn-outlined flex items-center gap-1 text-xs"
+                className="btn-outlined flex-1 flex items-center justify-center gap-1 text-xs py-2 min-h-[36px]"
                 onClick={(e) => {
                   e.stopPropagation()
                   if (client.email) {
@@ -94,7 +94,7 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
                 }}
               >
                 <Mail className="w-3 h-3" />
-                Mailen
+                <span className="hidden sm:inline">Mailen</span>
               </button>
             </div>
           </div>

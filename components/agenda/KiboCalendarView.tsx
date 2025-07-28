@@ -1214,17 +1214,17 @@ function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate }:
   }, [viewMode, currentDate])
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 mb-3 sm:mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
         {/* Mobile: Stack elements vertically */}
         <div className="flex items-center justify-between w-full sm:w-auto">
-          <h2 className="text-lg sm:text-xl font-medium text-gray-900 capitalize">{displayText}</h2>
+          <h2 className="text-base sm:text-lg lg:text-xl font-medium text-gray-900 capitalize">{displayText}</h2>
           
           {/* Mobile: Show view mode toggle on the right */}
           <div className="flex sm:hidden bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => onViewModeChange('week')}
-              className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
+              className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all min-h-[32px] ${
                 viewMode === 'week' 
                   ? 'bg-white text-gray-900 shadow-sm' 
                   : 'text-gray-600'
@@ -1818,7 +1818,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
         onNavigate={handleNavigate}
       />
 
-      <div className="flex-1 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="flex-1 bg-white rounded-lg sm:rounded-xl shadow-sm overflow-hidden flex flex-col">
         <DndContext 
           sensors={sensors} 
           onDragStart={handleDragStart} 
@@ -1831,7 +1831,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
               {['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].map((day, index) => (
                 <div
                   key={day}
-                  className={`px-2 py-3 text-sm font-medium text-center ${
+                  className={`px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-medium text-center ${
                     index === 5 || index === 6 ? 'text-gray-500' : 'text-gray-700'
                   }`}
                 >
@@ -1890,7 +1890,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       {/* Add appointment button */}
       <button
         onClick={() => openModalForNew()}
-        className="fixed bottom-6 right-6 w-12 h-12 sm:w-14 sm:h-14 bg-[#02011F] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-opacity-90 transition-all z-20"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 bg-[#02011F] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-opacity-90 active:scale-95 transition-all z-20"
       >
         <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
       </button>

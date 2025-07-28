@@ -46,11 +46,11 @@ export function TopBar() {
   const isDashboard = pathname === '/'
   
   return (
-    <header className="bg-background border-b border-gray-200 px-4 lg:px-6 py-3 lg:py-4 sticky top-0 z-10">
+    <header className="bg-background border-b border-gray-200 px-3 sm:px-4 lg:px-6 py-3 lg:py-4 sticky top-0 z-10">
       <div className="flex items-center justify-between">
         {/* Left side - Greeting */}
         <div className="flex-1 min-w-0 ml-12 lg:ml-0">
-          <h1 className="text-lg lg:text-xl font-semibold text-gray-900 truncate">
+          <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 truncate">
             {greeting}, {firstName === null ? <span className="opacity-0">Laden...</span> : name}
           </h1>
           <p className="text-xs lg:text-sm text-muted hidden sm:block">
@@ -59,32 +59,42 @@ export function TopBar() {
         </div>
 
         {/* Right side - Actions */}
-        <div className="flex items-center gap-2 lg:gap-4">
+        <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
           {/* Search - Hidden on mobile */}
           <button className="hidden sm:flex p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] items-center justify-center">
-            <Search className="w-5 h-5" />
+            <Search className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           
           {/* Notifications */}
-          <button className="p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full border-2 border-white"></span>
+          <button className="p-1.5 sm:p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-error rounded-full border-2 border-white"></span>
           </button>
 
           {/* Profile */}
-          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#02011F] rounded-full flex items-center justify-center text-white text-sm font-medium">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#02011F] rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-medium">
             {initials}
           </div>
           
-          {/* New Appointment Button - Only on dashboard and larger screens */}
+          {/* New Appointment Button - Mobile FAB on dashboard, button on larger screens */}
           {isDashboard && (
-            <button 
-              onClick={() => router.push('/appointments')}
-              className="hidden lg:flex btn-primary items-center gap-2 min-h-[44px]"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden xl:inline">Nieuwe afspraak</span>
-            </button>
+            <>
+              <button 
+                onClick={() => router.push('/appointments')}
+                className="hidden lg:flex btn-primary items-center gap-2 min-h-[44px]"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden xl:inline">Nieuwe afspraak</span>
+              </button>
+              
+              {/* Mobile FAB */}
+              <button 
+                onClick={() => router.push('/appointments')}
+                className="fixed bottom-6 right-4 lg:hidden w-14 h-14 bg-[#02011F] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-opacity-90 transition-all z-20"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            </>
           )}
         </div>
       </div>

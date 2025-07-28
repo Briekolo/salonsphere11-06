@@ -86,22 +86,22 @@ export function ClientsContent() {
               <ClientsFilters searchTerm={searchTerm} onSearch={setSearchTerm} />
             </div>
             
-            <div className="flex flex-col space-y-2 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-3">
+            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 lg:space-x-3">
               {/* Export */}
-              <button onClick={handleExport} className="btn-outlined flex items-center gap-2 text-sm">
+              <button onClick={handleExport} className="btn-outlined flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">
                 <FileText className="w-4 h-4" />
-                <span>Exporteren</span>
+                <span className="hidden sm:inline">Exporteren</span>
               </button>
 
               {/* Import */}
-              <button onClick={handleImportButton} className="btn-outlined flex items-center gap-2 text-sm">
+              <button onClick={handleImportButton} className="btn-outlined flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">
                 <Upload className="w-4 h-4" />
-                <span>Importeren</span>
+                <span className="hidden sm:inline">Importeren</span>
               </button>
               <input type="file" accept=".csv,text/csv" ref={fileInputRef} onChange={handleImportFile} className="hidden" />
 
               {/* Nieuw */}
-              <button onClick={()=>setView('form')} className="btn-primary flex items-center gap-2 text-sm">
+              <button onClick={()=>setView('form')} className="btn-primary flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">
                 <PlusCircle className="w-4 h-4" />
                 <span>Nieuwe klant</span>
               </button>

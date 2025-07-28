@@ -142,46 +142,48 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   }
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col space-y-3 sm:space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={onBack}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
-          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Klantprofiel</h1>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Klantprofiel</h1>
         </div>
 
-        <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3">
-          <button className="btn-outlined flex items-center justify-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Bericht sturen
+        <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+          <button className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]">
+            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Bericht</span>
+            <span className="xs:hidden">Bericht</span>
           </button>
-          <button className="btn-outlined flex items-center justify-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Afspraak maken
+          <button className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]">
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Afspraak</span>
+            <span className="xs:hidden">Afspraak</span>
           </button>
           <button 
             onClick={() => setIsEditing(!isEditing)}
-            className="btn-primary flex items-center justify-center gap-2"
+            className="btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]"
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
             {isEditing ? 'Opslaan' : 'Bewerken'}
           </button>
         </div>
       </div>
 
       {/* Client Info Card */}
-      <div className="card">
-        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-          <div className="relative self-center lg:self-start">
+      <div className="card p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+          <div className="relative self-center sm:self-start">
             <img 
               src={client.avatar_url || `https://ui-avatars.com/api/?name=${client.first_name}+${client.last_name}`}
               alt={`${client.first_name} ${client.last_name}`}
-              className="w-20 h-20 lg:w-24 lg:h-24 rounded-full object-cover"
+              className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full object-cover"
             />
             {client.tags?.includes('VIP') && (
               <div className="absolute -top-2 -right-2 w-6 h-6 lg:w-8 lg:h-8 bg-purple-500 rounded-full flex items-center justify-center">
@@ -191,21 +193,21 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           </div>
 
           <div className="flex-1">
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
-              <div className="text-center lg:text-left">
-                <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-3 sm:mb-4">
+              <div className="text-center sm:text-left">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                   {client.first_name} {client.last_name}
                 </h2>
-                <p className="text-gray-600">{client.email}</p>
-                <p className="text-gray-600">{client.phone}</p>
+                <p className="text-sm sm:text-base text-gray-600">{client.email}</p>
+                <p className="text-sm sm:text-base text-gray-600">{client.phone}</p>
               </div>
 
-              <div className="flex items-center justify-center lg:justify-start gap-2 mt-4 lg:mt-0">
-                <span className={`status-chip ${getStatusColor(client.status || 'active')}`}>
+              <div className="flex items-center justify-center sm:justify-start lg:justify-start gap-2 mt-3 sm:mt-4 lg:mt-0">
+                <span className={`status-chip text-xs sm:text-sm ${getStatusColor(client.status || 'active')}`}>
                   {client.status?.toUpperCase() || 'ACTIEF'}
                 </span>
-                <button className="p-1 hover:bg-gray-100 rounded min-h-[44px] min-w-[44px] flex items-center justify-center">
-                  <Trash2 className="w-4 h-4 text-red-500" />
+                <button className="p-1 hover:bg-gray-100 rounded min-h-[32px] min-w-[32px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center">
+                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
                 </button>
               </div>
             </div>

@@ -289,9 +289,9 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
 
         {/* Services Grid */}
         {filteredServices.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-xl mb-4">
-              <Search className="h-8 w-8 text-gray-400" />
+          <div className="text-center py-12 sm:py-16">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-xl mb-3 sm:mb-4">
+              <Search className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-[#010009] mb-2">Geen behandelingen gevonden</h3>
             <p className="text-gray-600">
@@ -299,7 +299,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
             {filteredServices.map(service => (
               <button
                 key={service.id}
@@ -310,7 +310,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                 onMouseLeave={(e) => e.currentTarget.style.boxShadow = '1px 4px 8px rgba(0, 0, 0, 0.04)'}
               >
                 {/* Service Image */}
-                <div className="relative h-40 bg-gray-50 overflow-hidden">
+                <div className="relative h-32 sm:h-40 bg-gray-50 overflow-hidden">
                   {service.image_url ? (
                     <Image
                       src={service.image_url}
@@ -321,8 +321,8 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 bg-[#E3ECFB] rounded-xl mb-2">
-                          <Sparkles className="h-6 w-6 text-[#7091D9]" />
+                        <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-[#E3ECFB] rounded-xl mb-2">
+                          <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#7091D9]" />
                         </div>
                       </div>
                     </div>
@@ -337,14 +337,14 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                   )}
                 </div>
 
-                <div className="p-4">
+                <div className="p-3 sm:p-4">
                   {/* Category Badge */}
-                  <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full mb-3 ${getCategoryBadgeClasses(service.treatment_categories?.color)}`}>
+                  <span className={`inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-medium rounded-full mb-2 sm:mb-3 ${getCategoryBadgeClasses(service.treatment_categories?.color)}`}>
                     {service.treatment_categories?.name || service.category}
                   </span>
 
                   {/* Service Name */}
-                  <h3 className="text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                  <h3 className="text-base sm:text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                     {service.name}
                   </h3>
 
@@ -357,9 +357,9 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
 
                   {/* Treatment Sessions Info */}
                   {service.treatments_needed && service.treatments_needed > 1 && (
-                    <div className="mb-3 p-2.5 bg-[#E3ECFB] rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <Info className="h-4 w-4 text-[#7091D9] mt-0.5 flex-shrink-0" />
+                    <div className="mb-2 sm:mb-3 p-2 sm:p-2.5 bg-[#E3ECFB] rounded-lg">
+                      <div className="flex items-start gap-1.5 sm:gap-2">
+                        <Info className="h-3 w-3 sm:h-4 sm:w-4 text-[#7091D9] mt-0.5 flex-shrink-0" />
                         <div className="flex-1 text-xs">
                           <p className="font-medium text-[#010009]">
                             Kuur van {service.treatments_needed} behandelingen
@@ -373,18 +373,18 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                   )}
 
                   {/* Duration and Price */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-3 text-sm">
+                  <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
                       <span className="flex items-center gap-1 text-gray-600">
-                        <Clock className="h-4 w-4" />
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                         {formatDuration(service.duration_minutes)}
                       </span>
                       <span className="flex items-center gap-1 font-medium text-[#010009]">
-                        <Euro className="h-4 w-4 text-gray-600" />
+                        <Euro className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600" />
                         {service.price.toFixed(2)}
                       </span>
                     </div>
-                    <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-[#7091D9] group-hover:translate-x-1 transition-all duration-200" />
+                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-[#7091D9] group-hover:translate-x-1 transition-all duration-200" />
                   </div>
                 </div>
               </button>

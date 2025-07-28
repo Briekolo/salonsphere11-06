@@ -323,7 +323,7 @@ export function DashboardContent() {
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {dashboardMetrics.map((metric, index) => (
           <div key={`dashboard-metric-${index}-${metric.title}`} className="metric-card" suppressHydrationWarning={true}>
             <div className={`metric-icon ${metric.bgColor}`}>
@@ -337,7 +337,7 @@ export function DashboardContent() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Revenue Chart */}
         <div className="lg:col-span-2">
           <RevenueChart />
@@ -345,11 +345,11 @@ export function DashboardContent() {
         
         {/* Quick Actions */}
         <div className="card">
-          <h2 className="text-heading mb-4">Snelle Acties</h2>
-          <div className="space-y-3">
+          <h2 className="text-heading mb-3 sm:mb-4">Snelle Acties</h2>
+          <div className="space-y-2 sm:space-y-3">
             <button
               onClick={() => router.push('/appointments')}
-              className="w-full flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px] text-left"
+              className="w-full flex items-center p-3 sm:p-4 border border-gray-200 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px] text-left"
             >
               <Calendar className="w-5 h-5 text-icon-blue mr-3 flex-shrink-0" />
               <div className="flex-1">
@@ -360,7 +360,7 @@ export function DashboardContent() {
             </button>
             <button
               onClick={() => router.push('/clients')}
-              className="w-full flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px] text-left"
+              className="w-full flex items-center p-3 sm:p-4 border border-gray-200 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px] text-left"
             >
               <Users className="w-5 h-5 text-icon-green mr-3 flex-shrink-0" />
               <div className="flex-1">
@@ -371,7 +371,7 @@ export function DashboardContent() {
             </button>
             <button
               onClick={() => router.push('/treatments')}
-              className="w-full flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px] text-left"
+              className="w-full flex items-center p-3 sm:p-4 border border-gray-200 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px] text-left"
             >
               <Package className="w-5 h-5 text-icon-purple mr-3 flex-shrink-0" />
               <div className="flex-1">
