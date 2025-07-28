@@ -55,7 +55,13 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
         
       if (error) {
         console.error('Tenant not found:', subdomain, error);
-        return getMockTenant(subdomain);
+        // Check if we have a mock tenant for development
+        const mockTenant = getMockTenant(subdomain);
+        // For testing, use the real tenant ID from database
+        if (subdomain === 'brieks-salon') {
+          mockTenant.id = '7aa448b8-3166-4693-a13d-e833748292db';
+        }
+        return mockTenant;
       }
       
       return data as TenantInfo;

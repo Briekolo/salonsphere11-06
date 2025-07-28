@@ -1,13 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User, createClient } from '@supabase/supabase-js'
+import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-
-// Create a direct client for auth operations to avoid issues with createPagesBrowserClient
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-const authClient = createClient(supabaseUrl, supabaseAnonKey)
 
 interface AuthContextType {
   user: User | null
@@ -54,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // First check if we can reach Supabase
     try {
-      const { data: testData, error: testError } = await authClient
+      const { data: testData, error: testError } = await supabase
         .from('tenants')
         .select('count')
         .limit(1)
@@ -63,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Cannot connect to Supabase:', connError)
     }
     
-    const { data, error } = await authClient.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -91,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await new Promise(resolve => setTimeout(resolve, 1000))
         
         // Get the tenant_id from the users table
-        const { data: userData, error: userError } = await authClient
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('tenant_id')
           .eq('id', data.user.id)
@@ -99,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
         if (userData?.tenant_id) {
           // Update the auth metadata
-          await authClient.rpc('update_user_tenant_metadata', {
+          await supabase.rpc('update_user_tenant_metadata', {
             user_id: data.user.id,
             tenant_id: userData.tenant_id
           })
