@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, isSameDay, isToday, startOfMonth, endOfMonth, addMonths, getDay } from 'date-fns'
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, isSameDay, isToday, startOfMonth, endOfMonth, addMonths, getDay, differenceInDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useBookings, useUpdateBooking, Booking } from '@/lib/hooks/useBookings'
 import { BookingFormModal } from './BookingFormModal'
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, Plus, MoreHorizontal, GripVertical, Phone, Mail, Euro, Star } from 'lucide-react'
-import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { atom, useAtom } from 'jotai'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -20,7 +20,29 @@ const viewModeAtom = atom<'week' | 'month'>('month')
 const currentDateAtom = atom(new Date())
 const selectedBookingAtom = atom<string | null>(null)
 const draggedBookingAtom = atom<Booking | null>(null)
-const hoveredBookingAtom = atom<{ booking: Booking; position: { x: number; y: number } } | null>(null)
+const hoveredBookingAtom = atom<{ 
+  booking: Booking; 
+  position: { 
+    x: number; 
+    y: number; 
+    horizontalAlignment?: 'left' | 'right' | 'center';
+    verticalAlignment?: 'above' | 'below' | 'center';
+    rect?: {
+      width: number;
+      height: number;
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }
+  } 
+} | null>(null)
+const resizePreviewAtom = atom<{
+  booking: Booking;
+  newStartTime?: Date;
+  newDuration?: number;
+  type: 'resize-top' | 'resize-bottom';
+} | null>(null)
 
 // Color mapping for appointment status
 const statusColors = {
@@ -65,7 +87,20 @@ const statusColors = {
 // Hover preview component
 function AppointmentHoverPreview({ booking, position }: { 
   booking: Booking; 
-  position: { x: number; y: number } 
+  position: { 
+    x: number; 
+    y: number;
+    horizontalAlignment?: 'left' | 'right' | 'center';
+    verticalAlignment?: 'above' | 'below' | 'center';
+    rect?: {
+      width: number;
+      height: number;
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }
+  } 
 }) {
   const status = booking.status || 'scheduled'
   const colors = statusColors[status as keyof typeof statusColors]
@@ -89,15 +124,45 @@ function AppointmentHoverPreview({ booking, position }: {
   
   const price = booking.services?.price || 0
 
+  // Calculate optimal positioning based on smart positioning data
+  const getPositioningStyles = () => {
+    const horizontalAlignment = position.horizontalAlignment || 'right'
+    const verticalAlignment = position.verticalAlignment || 'above'
+    const margin = 10
+    
+    let styles: React.CSSProperties = {}
+    
+    // Horizontal positioning
+    if (horizontalAlignment === 'left') {
+      styles.right = `${window.innerWidth - position.rect!.left + margin}px`
+    } else if (horizontalAlignment === 'center') {
+      styles.left = `${position.rect!.left + position.rect!.width / 2}px`
+      styles.transform = 'translateX(-50%)'
+    } else {
+      // Default 'right' positioning
+      styles.left = `${position.rect!.right + margin}px`
+    }
+    
+    // Vertical positioning
+    if (verticalAlignment === 'above') {
+      styles.bottom = `${window.innerHeight - position.rect!.top + margin}px`
+    } else if (verticalAlignment === 'below') {
+      styles.top = `${position.rect!.bottom + margin}px`
+    } else {
+      // Center vertically
+      styles.top = `${position.rect!.top + position.rect!.height / 2}px`
+      styles.transform = (styles.transform || '') + ' translateY(-50%)'
+    }
+    
+    return styles
+  }
+
   return (
     <div
       className="fixed z-50 pointer-events-none"
-      style={{
-        left: `${position.x + 10}px`,
-        top: `${position.y - 10}px`,
-        transform: 'translateY(-100%)'
-      }}
+      style={getPositioningStyles()}
     >
+      
       <div className={`bg-white rounded-xl shadow-2xl border-2 p-4 w-80 ${colors.modalBorder}`}>
         {/* Header */}
         <div className={`rounded-lg p-3 mb-3 ${colors.headerBg} ${colors.headerBorder} border`}>
@@ -172,16 +237,50 @@ function AppointmentHoverPreview({ booking, position }: {
         </div>
       </div>
 
-      {/* Arrow pointing to appointment */}
-      <div className="absolute left-6 bottom-0 transform translate-y-full">
-        <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white"></div>
+    </div>
+  )
+}
+
+// Resize preview component
+function ResizePreview({ booking, type, previewTime, previewDuration }: {
+  booking: Booking;
+  type: 'resize-top' | 'resize-bottom';
+  previewTime?: Date;
+  previewDuration?: number;
+}) {
+  const originalDate = new Date(booking.scheduled_at)
+  const originalDuration = booking.duration_minutes || 60
+  
+  // Calculate the preview dimensions
+  const startTime = type === 'resize-top' && previewTime ? previewTime : originalDate
+  const duration = type === 'resize-bottom' && previewDuration ? previewDuration : 
+                   type === 'resize-top' && previewTime ? 
+                     Math.max(15, Math.round((originalDate.getTime() + originalDuration * 60000 - previewTime.getTime()) / 60000)) :
+                     originalDuration
+  
+  const startHour = startTime.getHours()
+  const startMinutes = startTime.getMinutes()
+  const topPosition = ((startHour - 7) * 64) + (startMinutes / 60 * 64) // 7am start, 64px per hour
+  const height = (duration / 60) * 64
+  
+  return (
+    <div 
+      className="absolute left-1 right-1 bg-blue-200 border-2 border-blue-500 rounded-lg opacity-50 pointer-events-none z-40 transition-none"
+      style={{
+        top: `${topPosition}px`,
+        height: `${height}px`,
+      }}
+    >
+      <div className="p-1 text-xs font-medium text-blue-900">
+        {format(startTime, 'HH:mm')} - {format(new Date(startTime.getTime() + duration * 60000), 'HH:mm')}
+        <span className="ml-1">({duration} min)</span>
       </div>
     </div>
   )
 }
 
 // Compact appointment card for month view with multiple appointments
-function CompactAppointmentCard({ booking, onClick }: { booking: Booking; onClick: () => void }) {
+function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { booking: Booking; onClick: () => void; viewMode?: 'week' | 'month' }) {
   const status = booking.status || 'scheduled'
   const colors = statusColors[status as keyof typeof statusColors]
   
@@ -191,25 +290,62 @@ function CompactAppointmentCard({ booking, onClick }: { booking: Booking; onClic
   
   const clientName = booking.clients?.first_name || 'Onbekend'
   
+  // Add drag functionality
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: booking.id,
+    data: {
+      type: 'move',
+      booking: booking
+    }
+  })
+  
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+  
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
+  
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined
+  
   return (
     <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
       onClick={(e) => {
         e.stopPropagation()
         onClick()
       }}
-      className={`group p-1 rounded border text-xs cursor-pointer transition-all ${colors.bg} ${colors.text}`}
+      className={`group relative p-1 rounded border text-xs cursor-pointer transition-all ${colors.bg} ${colors.text} ${isDragging ? 'opacity-50 z-50' : ''}`}
     >
       <div className="flex items-center gap-1">
         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colors.dot}`} />
         <span className="font-medium">{time}</span>
         <span className="truncate opacity-90">{clientName}</span>
       </div>
+      
+      {/* Drag handle for touch devices */}
+      <div 
+        {...listeners}
+        className={`absolute top-0 right-0 flex items-center justify-center cursor-move transition-opacity
+          ${isTouchDevice 
+            ? 'w-4 h-4 opacity-40' 
+            : 'w-3 h-3 opacity-0 group-hover:opacity-60 hover:!opacity-100'
+          }`}
+        style={{ touchAction: 'manipulation' }}
+        title="Sleep om te verplaatsen"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className={`${isTouchDevice ? 'w-2 h-2' : 'w-2 h-2'} text-gray-600`} />
+      </div>
     </div>
   )
 }
 
 // Draggable appointment card
-function DraggableAppointment({ booking, onClick, compact = false }: { booking: Booking; onClick: () => void; compact?: boolean }) {
+function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'month' }: { booking: Booking; onClick: () => void; compact?: boolean; viewMode?: 'week' | 'month' }) {
   const [hoveredBooking, setHoveredBooking] = useAtom(hoveredBookingAtom)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   
@@ -217,15 +353,58 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
     setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
   }, [])
   
+  // Main draggable for moving appointments
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: booking.id,
-    data: booking // Pass booking directly, DnD Kit will wrap it properly
+    data: {
+      type: 'move',
+      booking: booking
+    }
   })
 
-  const style = transform ? {
+  // Top resize handle
+  const { 
+    attributes: topResizeAttributes, 
+    listeners: topResizeListeners, 
+    setNodeRef: setTopResizeNodeRef,
+    transform: topResizeTransform,
+    isDragging: isTopResizing
+  } = useDraggable({
+    id: `${booking.id}-resize-top`,
+    data: {
+      type: 'resize-top',
+      booking: booking
+    }
+  })
+
+  // Bottom resize handle
+  const { 
+    attributes: bottomResizeAttributes, 
+    listeners: bottomResizeListeners, 
+    setNodeRef: setBottomResizeNodeRef,
+    transform: bottomResizeTransform,
+    isDragging: isBottomResizing
+  } = useDraggable({
+    id: `${booking.id}-resize-bottom`,
+    data: {
+      type: 'resize-bottom',
+      booking: booking
+    }
+  })
+
+  // Only apply transform for move operations, not resize
+  const style = transform && !isTopResizing && !isBottomResizing ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     opacity: isDragging ? 0.5 : 1,
   } : undefined
+
+  // Visual feedback for resizing
+  const isResizing = isTopResizing || isBottomResizing
+  const resizeStyles = isResizing ? {
+    boxShadow: '0 0 0 2px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.3)',
+    zIndex: 50,
+    transition: 'none' // Disable transitions during resize
+  } : {}
 
   const status = booking.status || 'scheduled'
   const colors = statusColors[status as keyof typeof statusColors]
@@ -249,11 +428,76 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
   const handleMouseEnter = (e: React.MouseEvent) => {
     if (!isTouchDevice) {
       const rect = e.currentTarget.getBoundingClientRect()
+      const menuWidth = 320 // w-80 in Tailwind
+      const menuHeight = 450 // Approximate height of the hover menu
+      const margin = 15
+      
+      // Calculate available space
+      const rightSpace = window.innerWidth - rect.right
+      const leftSpace = rect.left
+      const topSpace = rect.top
+      const bottomSpace = window.innerHeight - rect.bottom
+      
+      // Determine optimal horizontal position
+      let horizontalAlignment: 'left' | 'right' | 'center' = 'right'
+      
+      if (rightSpace < menuWidth + margin && leftSpace >= menuWidth + margin) {
+        // Not enough space on right, but enough on left
+        horizontalAlignment = 'left'
+      } else if (rightSpace < menuWidth + margin && leftSpace < menuWidth + margin) {
+        // Not enough space on either side, center it
+        horizontalAlignment = 'center'
+      }
+      
+      // Determine optimal vertical position
+      let verticalAlignment: 'above' | 'below' | 'center' = 'center'
+      
+      // Priority: 1. Side positioning if horizontal space allows
+      // 2. Above if bottom space insufficient
+      // 3. Below if top space insufficient
+      
+      if (horizontalAlignment !== 'center') {
+        // Side positioning - check if we need to adjust vertical
+        if (topSpace < menuHeight / 2 && bottomSpace >= menuHeight / 2) {
+          // Too close to top, align with top of appointment
+          verticalAlignment = 'center'
+        } else if (bottomSpace < menuHeight / 2 && topSpace >= menuHeight / 2) {
+          // Too close to bottom, align with bottom of appointment
+          verticalAlignment = 'center'
+        }
+      } else {
+        // Center horizontal - must position above or below
+        if (bottomSpace < menuHeight + margin) {
+          verticalAlignment = 'above'
+        } else {
+          verticalAlignment = 'below'
+        }
+      }
+      
+      // If appointment is near bottom and we can't fit menu anywhere
+      if (bottomSpace < menuHeight + margin && topSpace >= menuHeight + margin) {
+        verticalAlignment = 'above'
+        // Force horizontal center if needed for vertical space
+        if (horizontalAlignment !== 'center' && bottomSpace < 100) {
+          horizontalAlignment = 'center'
+        }
+      }
+      
       setHoveredBooking({
         booking,
         position: {
-          x: rect.right,
-          y: rect.top + rect.height / 2
+          x: 0, // Not used anymore, keeping for compatibility
+          y: 0, // Not used anymore, keeping for compatibility
+          horizontalAlignment,
+          verticalAlignment,
+          rect: {
+            width: rect.width,
+            height: rect.height,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom
+          }
         }
       })
     }
@@ -268,12 +512,54 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{...style, ...resizeStyles}}
       {...attributes}
-      className={`group relative p-1 sm:p-2 rounded-lg border transition-all h-full ${colors.bg} ${colors.text}`}
+      className={`group relative p-1 sm:p-2 rounded-lg border transition-all h-full ${colors.bg} ${colors.text} ${isResizing ? 'ring-2 ring-blue-500' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      {/* Top resize handle - only show in week view */}
+      {viewMode === 'week' && (
+        <div
+          ref={setTopResizeNodeRef}
+          {...topResizeAttributes}
+          {...topResizeListeners}
+          className={`absolute -top-1 left-1/2 transform -translate-x-1/2 w-8 h-2 cursor-ns-resize transition-opacity z-20
+            ${isTouchDevice 
+              ? 'opacity-30 bg-blue-500 rounded-b-md' 
+              : 'opacity-0 group-hover:opacity-60 hover:!opacity-100 bg-blue-400 rounded-b-md'
+            }`}
+          style={{ touchAction: 'manipulation' }}
+          title="Sleep om starttijd aan te passen"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-4 h-0.5 bg-white rounded-full"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom resize handle - only show in week view */}
+      {viewMode === 'week' && (
+        <div
+          ref={setBottomResizeNodeRef}
+          {...bottomResizeAttributes}
+          {...bottomResizeListeners}
+          className={`absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-2 cursor-ns-resize transition-opacity z-20
+            ${isTouchDevice 
+              ? 'opacity-30 bg-blue-500 rounded-t-md' 
+              : 'opacity-0 group-hover:opacity-60 hover:!opacity-100 bg-blue-400 rounded-t-md'
+            }`}
+          style={{ touchAction: 'manipulation' }}
+          title="Sleep om eindtijd aan te passen"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-4 h-0.5 bg-white rounded-full"></div>
+          </div>
+        </div>
+      )}
+
       {/* Clickable content area */}
       <div onClick={handleClick} className="flex items-start gap-1 sm:gap-2 w-full cursor-pointer relative">
         <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-1 sm:mt-1.5 flex-shrink-0 ${colors.dot}`} />
@@ -312,8 +598,9 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
               ? 'w-8 h-8 opacity-40' 
               : 'w-5 h-5 opacity-0 group-hover:opacity-60 hover:!opacity-100'
             }`}
+          style={{ touchAction: 'manipulation' }}
           title="Sleep om te verplaatsen"
-          onClick={(e) => e.stopPropagation()} // Prevent triggering the appointment click
+          onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className={`${isTouchDevice ? 'w-4 h-4' : 'w-3 h-3'}`} />
         </div>
@@ -506,11 +793,7 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
                   // Only include bookings that START in this hour
                   return bookingHour === hour
                 })}
-                onEmptyClick={() => {
-                  const slotDate = new Date(selectedDate)
-                  slotDate.setHours(hour, 0, 0, 0)
-                  onEmptyClick(slotDate)
-                }}
+                onEmptyClick={onEmptyClick}
                 onBookingClick={onBookingClick}
               />
             ))}
@@ -595,11 +878,7 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
                       // Only include bookings that START in this hour
                       return bookingHour === hour
                     })}
-                    onEmptyClick={() => {
-                      const slotDate = new Date(date)
-                      slotDate.setHours(hour, 0, 0, 0)
-                      onEmptyClick(slotDate)
-                    }}
+                    onEmptyClick={onEmptyClick}
                     onBookingClick={onBookingClick}
                   />
                 ))}
@@ -612,38 +891,96 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
   )
 }
 
-// Individual time slot component
-function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
+// Quarter hour slot component for 15-minute intervals
+function QuarterHourSlot({ date, hour, quarter, isOver, onEmptyClick }: {
   date: Date
   hour: number
-  bookings: Booking[]
+  quarter: number // 0 (00min), 1 (15min), 2 (30min), 3 (45min)
+  isOver: boolean
   onEmptyClick: () => void
-  onBookingClick: (bookingId: string) => void
 }) {
-  // Create a new date object to avoid mutating the original
+  const minutes = quarter * 15
   const slotDate = new Date(date)
-  slotDate.setHours(hour, 0, 0, 0)
+  slotDate.setHours(hour, minutes, 0, 0)
   slotDate.setSeconds(0)
   slotDate.setMilliseconds(0)
   
-  const { setNodeRef, isOver } = useDroppable({
-    id: `${format(date, 'yyyy-MM-dd')}-${hour}`,
+  const dropId = `drop-${format(date, 'yyyy-MM-dd')}-${hour}-${minutes}`
+  
+  const { setNodeRef, isOver: quarterIsOver } = useDroppable({
+    id: dropId,
     data: { 
-      date: slotDate.toISOString() // Convert to ISO string to ensure proper serialization
+      date: slotDate,
+      hour: hour,
+      minutes: minutes
     }
   })
-
-  // Hour slot height in pixels - using rem values
-  const HOUR_HEIGHT = 64 // 4rem = 64px at default font size
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('QuarterHourSlot mounted:', {
+      id: dropId,
+      setNodeRef: !!setNodeRef,
+      isOver: quarterIsOver,
+      date: format(slotDate, 'yyyy-MM-dd HH:mm')
+    })
+  }, [])
 
   return (
     <div
       ref={setNodeRef}
-      className={`relative h-16 border-b border-gray-100 hover:bg-gray-50 cursor-pointer overflow-visible ${
-        isOver ? 'ring-2 ring-blue-500 ring-inset bg-blue-50' : ''
-      }`}
+      className={`absolute h-4 w-full cursor-pointer transition-colors ${
+        quarterIsOver ? 'bg-blue-100 ring-1 ring-blue-400' : 'hover:bg-gray-50'
+      } ${quarter < 3 ? 'border-b border-gray-50' : ''}`}
+      style={{ top: `${quarter * 16}px` }}
       onClick={onEmptyClick}
+      title={`${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`}
     >
+      {/* Time indicator on hover - positioned above the slot */}
+      {quarterIsOver && (
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-50 bg-blue-600 text-white text-xs px-3 py-1.5 rounded-md shadow-lg font-medium whitespace-nowrap">
+          {hour.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
+          {/* Arrow pointing down */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Individual time slot component with 15-minute intervals
+function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
+  date: Date
+  hour: number
+  bookings: Booking[]
+  onEmptyClick: (date: Date) => void
+  onBookingClick: (bookingId: string) => void
+}) {
+  // Hour slot height in pixels - using rem values
+  const HOUR_HEIGHT = 64 // 4rem = 64px at default font size
+  const [resizePreview] = useAtom(resizePreviewAtom)
+
+  return (
+    <div className="relative h-16 border-b border-gray-100 overflow-visible">
+      {/* Four quarter-hour slots */}
+      {[0, 1, 2, 3].map((quarter) => {
+        const minutes = quarter * 15
+        return (
+          <QuarterHourSlot
+            key={quarter}
+            date={date}
+            hour={hour}
+            quarter={quarter}
+            isOver={false}
+            onEmptyClick={() => {
+              const slotDate = new Date(date)
+              slotDate.setHours(hour, minutes, 0, 0)
+              onEmptyClick(slotDate)
+            }}
+          />
+        )
+      })}
+
       {/* Appointments in this hour */}
       {bookings.map((booking) => {
         const bookingTime = new Date(booking.scheduled_at)
@@ -661,33 +998,90 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
         const topPixels = (minutes / 60) * HOUR_HEIGHT
         const heightPixels = (duration / 60) * HOUR_HEIGHT
         
+        // Check if this booking is being resized
+        const isBeingResized = resizePreview && resizePreview.booking.id === booking.id
+        
         return (
           <div
             key={booking.id}
             className="absolute left-1 right-1 z-10"
             style={{
               top: `${topPixels}px`,
-              height: `${heightPixels}px`
+              height: `${heightPixels}px`,
+              opacity: isBeingResized ? 0.3 : 1 // Make original appointment semi-transparent during resize
             }}
           >
             <DraggableAppointment
               booking={booking}
               onClick={() => onBookingClick(booking.id)}
+              viewMode="week"
             />
           </div>
         )
       })}
+      
+      {/* Render resize preview if applicable to this hour */}
+      {resizePreview && (() => {
+        const previewStartTime = resizePreview.type === 'resize-top' && resizePreview.newStartTime ? 
+          resizePreview.newStartTime : new Date(resizePreview.booking.scheduled_at)
+        const previewDuration = resizePreview.type === 'resize-bottom' && resizePreview.newDuration ? 
+          resizePreview.newDuration : resizePreview.booking.duration_minutes || 60
+        
+        const previewStartHour = previewStartTime.getHours()
+        const previewEndTime = new Date(previewStartTime.getTime() + previewDuration * 60000)
+        const previewEndHour = previewEndTime.getHours()
+        
+        // Check if preview overlaps with this hour
+        if ((previewStartHour === hour || (previewStartHour < hour && previewEndHour >= hour)) && 
+            isSameDay(date, previewStartTime)) {
+          
+          // Calculate position relative to this hour
+          let topInHour = 0
+          let heightInHour = 64 // Full hour height
+          
+          if (previewStartHour === hour) {
+            // Preview starts in this hour
+            topInHour = (previewStartTime.getMinutes() / 60) * HOUR_HEIGHT
+            const remainingMinutesInHour = 60 - previewStartTime.getMinutes()
+            heightInHour = Math.min((previewDuration / 60) * HOUR_HEIGHT, (remainingMinutesInHour / 60) * HOUR_HEIGHT)
+          } else if (previewStartHour < hour) {
+            // Preview continues from previous hour
+            const minutesFromStart = (hour - previewStartHour) * 60 - previewStartTime.getMinutes()
+            const remainingDuration = previewDuration - minutesFromStart
+            heightInHour = Math.min((remainingDuration / 60) * HOUR_HEIGHT, HOUR_HEIGHT)
+          }
+          
+          return (
+            <div 
+              className="absolute left-1 right-1 bg-blue-200 border-2 border-blue-500 rounded-lg opacity-50 pointer-events-none z-30"
+              style={{
+                top: `${topInHour}px`,
+                height: `${heightInHour}px`,
+              }}
+            >
+              {previewStartHour === hour && (
+                <div className="p-1 text-xs font-medium text-blue-900">
+                  {format(previewStartTime, 'HH:mm')} - {format(previewEndTime, 'HH:mm')}
+                  <span className="ml-1">({previewDuration} min)</span>
+                </div>
+              )}
+            </div>
+          )
+        }
+        return null
+      })()}
     </div>
   )
 }
 
 // Droppable calendar cell
-function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: { 
+function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, isCurrentMonth = true }: { 
   date: Date; 
   bookings: Booking[]; 
   onDrop: (date: Date) => void;
   onEmptyClick: (date: Date) => void;
   onBookingClick: (bookingId: string) => void;
+  isCurrentMonth?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: format(date, 'yyyy-MM-dd'),
@@ -735,13 +1129,17 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: 
       }}
       className={`
         relative min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] p-1 sm:p-2 border-r border-b border-gray-200
-        ${isCurrentDay ? 'bg-blue-50/30' : 'bg-white hover:bg-gray-50'}
+        ${isCurrentDay ? 'bg-blue-50/30' : isCurrentMonth ? 'bg-white hover:bg-gray-50' : 'bg-gray-100/70 hover:bg-gray-150/80'}
         ${isOver ? 'ring-2 ring-blue-500 ring-inset bg-blue-50' : ''}
+        ${!isCurrentMonth ? 'shadow-lg shadow-gray-400/30 opacity-60' : ''}
         transition-all cursor-pointer
       `}
     >
       <div className="flex items-center justify-between mb-1 sm:mb-2">
-        <span className={`text-xs sm:text-sm font-medium ${isCurrentDay ? 'text-primary-700' : 'text-gray-700'}`}>
+        <span className={`text-xs sm:text-sm font-medium ${
+          isCurrentDay ? 'text-primary-700' : 
+          isCurrentMonth ? 'text-gray-700' : 'text-gray-400'
+        }`}>
           {dayNumber}
         </span>
         <button
@@ -761,6 +1159,7 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: 
                 key={booking.id}
                 booking={booking}
                 onClick={() => onBookingClick(booking.id)}
+                viewMode="month"
               />
             ))}
             {hiddenCount > 0 && (
@@ -782,6 +1181,7 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: 
               key={booking.id}
               booking={booking}
               onClick={() => onBookingClick(booking.id)}
+              viewMode="month"
             />
           ))
         )}
@@ -797,9 +1197,21 @@ function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate }:
   currentDate: Date
   onNavigate: (direction: 'prev' | 'next' | 'today') => void
 }) {
-  const displayText = viewMode === 'week' 
-    ? `Week ${format(currentDate, 'w', { locale: nl })}`
-    : format(currentDate, 'MMM yyyy', { locale: nl })
+  const displayText = useMemo(() => {
+    if (viewMode === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 })
+      
+      // If same month, show "d - d MMM"
+      // If different months, show "d MMM - d MMM"
+      if (format(weekStart, 'MMM') === format(weekEnd, 'MMM')) {
+        return `${format(weekStart, 'd')} - ${format(weekEnd, 'd MMM', { locale: nl })}`
+      } else {
+        return `${format(weekStart, 'd MMM', { locale: nl })} - ${format(weekEnd, 'd MMM', { locale: nl })}`
+      }
+    }
+    return format(currentDate, 'MMM yyyy', { locale: nl })
+  }, [viewMode, currentDate])
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-4">
@@ -896,9 +1308,26 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
   const [currentDate, setCurrentDate] = useAtom(currentDateAtom)
   const [draggedBooking, setDraggedBooking] = useAtom(draggedBookingAtom)
   const [hoveredBooking, setHoveredBooking] = useAtom(hoveredBookingAtom)
+  const [resizePreview, setResizePreview] = useAtom(resizePreviewAtom)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
   const [initialModalDate, setInitialModalDate] = useState<Date | undefined>()
+
+  // Configure sensors for mobile drag and drop support
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10, // Require 10px movement before activating (desktop only)
+    },
+  })
+  
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 250, // 250ms hold before drag starts (mobile)
+      tolerance: 5, // Allow 5px movement while holding
+    },
+  })
+
+  const sensors = useSensors(mouseSensor, touchSensor)
 
   const queryClient = useQueryClient()
   const updateBookingMutation = useUpdateBooking()
@@ -910,9 +1339,25 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       const end = endOfWeek(currentDate, { weekStartsOn: 1 })
       return { start, end }
     } else {
-      const start = startOfMonth(currentDate)
-      const end = endOfMonth(currentDate)
-      return { start, end }
+      // For month view, calculate adaptive grid (5-6 weeks based on month layout)
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      // Find first Monday of the calendar grid (may be in previous month)
+      const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 })
+      
+      // Find last Sunday that includes the month end
+      const lastWeekEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
+      
+      // Calculate weeks needed and cap at 6 weeks maximum
+      const daysSpanned = differenceInDays(lastWeekEnd, calendarStart) + 1
+      const weeksNeeded = Math.ceil(daysSpanned / 7)
+      const maxWeeks = Math.min(6, weeksNeeded)
+      
+      // Calculate final end date based on optimal weeks
+      const calendarEnd = new Date(calendarStart.getTime() + ((maxWeeks * 7) - 1) * 24 * 60 * 60 * 1000)
+      
+      return { start: calendarStart, end: calendarEnd }
     }
   }, [currentDate, viewMode])
 
@@ -924,35 +1369,15 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
-    const days = eachDayOfInterval(dateRange)
-    
-    // For month view, pad with days from previous/next month
-    if (viewMode === 'month') {
-      const firstDay = days[0]
-      const lastDay = days[days.length - 1]
-      
-      // Add padding days at the start (Monday = 1, so Sunday = 0 becomes 7)
-      const startPadding = getDay(firstDay) === 0 ? 6 : getDay(firstDay) - 1
-      for (let i = startPadding - 1; i >= 0; i--) {
-        days.unshift(new Date(firstDay.getTime() - (startPadding - i) * 24 * 60 * 60 * 1000))
-      }
-      
-      // Add padding days at the end to make 6 weeks (42 days)
-      while (days.length < 42) {
-        const nextDay = new Date(days[days.length - 1])
-        nextDay.setDate(nextDay.getDate() + 1)
-        days.push(nextDay)
-      }
-    }
-    
-    return days
-  }, [dateRange, viewMode])
+    // dateRange now includes all needed days (including padding for month view)
+    return eachDayOfInterval(dateRange)
+  }, [dateRange])
 
   // Group bookings by date
   const bookingsByDate = useMemo(() => {
     const grouped: Record<string, Booking[]> = {}
     
-    bookings.forEach((booking) => {
+    bookings.forEach((booking: Booking) => {
       // Safely parse and validate the date
       const scheduledDate = new Date(booking.scheduled_at)
       const isValidDate = scheduledDate instanceof Date && !isNaN(scheduledDate.getTime())
@@ -1007,10 +1432,12 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
   // Drag and drop handlers
   const handleDragStart = (event: DragStartEvent) => {
     // Try both data structures that DnD Kit might use
-    const booking = (event.active.data.current || event.active.data) as Booking
+    const booking = event.active.data.current?.booking || event.active.data?.booking
+    const dragType = event.active.data.current?.type || event.active.data?.type || 'move'
     
     console.log('Drag start:', {
       activeId: event.active.id,
+      dragType: dragType,
       activeCurrent: event.active.data.current,
       activeData: event.active.data,
       booking: booking,
@@ -1018,20 +1445,77 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       scheduledAt: booking?.scheduled_at,
       hasValidDate: booking?.scheduled_at ? !isNaN(new Date(booking.scheduled_at).getTime()) : false
     })
-    setDraggedBooking(booking)
+    
+    if (dragType === 'move') {
+      setDraggedBooking(booking)
+    } else if ((dragType === 'resize-top' || dragType === 'resize-bottom') && booking) {
+      setResizePreview({
+        booking,
+        type: dragType
+      })
+    }
+  }
+
+  const handleDragMove = (event: any) => {
+    const { active, over } = event
+    
+    if (!over || !active.data || !resizePreview) return
+    
+    const dragType = active.data.current?.type || active.data?.type || 'move'
+    
+    if (dragType === 'resize-top' || dragType === 'resize-bottom') {
+      const dropData = over.data.current
+      if (!dropData || !dropData.date) return
+      
+      let targetDate: Date
+      if (dropData.date instanceof Date) {
+        targetDate = new Date(dropData.date.getTime())
+      } else if (typeof dropData.date === 'string') {
+        targetDate = new Date(dropData.date)
+      } else {
+        return
+      }
+      
+      if (dropData.hour !== undefined && dropData.minutes !== undefined) {
+        targetDate.setHours(dropData.hour)
+        targetDate.setMinutes(dropData.minutes)
+      }
+      
+      // Round to nearest 15 minutes
+      const minutes = targetDate.getMinutes()
+      const roundedMinutes = Math.round(minutes / 15) * 15
+      targetDate.setMinutes(roundedMinutes)
+      targetDate.setSeconds(0)
+      targetDate.setMilliseconds(0)
+      
+      if (dragType === 'resize-top') {
+        setResizePreview({
+          ...resizePreview,
+          newStartTime: targetDate
+        })
+      } else if (dragType === 'resize-bottom') {
+        const originalDate = new Date(resizePreview.booking.scheduled_at)
+        const newDuration = Math.max(15, Math.round((targetDate.getTime() - originalDate.getTime()) / 60000))
+        setResizePreview({
+          ...resizePreview,
+          newDuration: Math.min(480, newDuration) // Max 8 hours
+        })
+      }
+    }
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setDraggedBooking(null)
+    setResizePreview(null)
 
     console.log('Drag ended:', { 
       activeId: active.id, 
       overId: over?.id,
       activeData: active.data,
-      overData: over.data,
+      overData: over?.data,
       hasActiveCurrent: !!active.data?.current,
-      hasOverCurrent: !!over.data?.current
+      hasOverCurrent: !!over?.data?.current
     })
 
     if (!over || !active.data) {
@@ -1040,9 +1524,11 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
     }
 
     // Try both data structures that DnD Kit might use
-    const booking = (active.data.current || active.data) as Booking
+    const booking = active.data.current?.booking || active.data?.booking
+    const dragType = active.data.current?.type || active.data?.type || 'move'
     
     console.log('Debug booking data:', {
+      dragType: dragType,
       activeCurrent: active.data.current,
       activeData: active.data,
       booking: booking,
@@ -1063,6 +1549,14 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
     }
     
     const dropData = over.data.current
+    
+    console.log('Drop data:', {
+      dropData,
+      hasDate: !!dropData?.date,
+      dateType: typeof dropData?.date,
+      overId: over.id,
+      overData: over.data
+    })
     
     if (!dropData || !dropData.date) {
       console.log('No drop data or date')
@@ -1091,12 +1585,14 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
 
     try {
       const originalDate = new Date(booking.scheduled_at)
+      const originalDuration = booking.duration_minutes || 60
       
       // Enhanced validation with detailed logging
       const originalValid = originalDate instanceof Date && !isNaN(originalDate.getTime())
       const targetValid = targetDate instanceof Date && !isNaN(targetDate.getTime())
       
       console.log('Date validation:', {
+        dragType: dragType,
         originalDate: booking.scheduled_at,
         originalDateParsed: originalDate.toISOString(),
         originalValid,
@@ -1122,75 +1618,175 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
         alert(`Er is een fout opgetreden: ongeldige datum\nOrigineel: ${originalValid ? 'OK' : 'FOUT'}\nDoel: ${targetValid ? 'OK' : 'FOUT'}`)
         return
       }
-      
-      const newDate = new Date(targetDate)
-      
-      // For week view time slots, use the target hour from the drop zone
-      // For month view, keep the original time
-      const dropZoneId = over.id.toString()
-      const isTimeSlotDrop = dropZoneId.split('-').length === 4 // format: "yyyy-mm-dd-hour"
-      
-      console.log('Drop zone analysis:', { dropZoneId, isTimeSlotDrop })
-      
-      if (isTimeSlotDrop) {
-        // This is a time slot drop in week view
-        const parts = dropZoneId.split('-')
-        const hourFromDropZone = parseInt(parts[3] || '0')
-        console.log('Time slot drop:', { parts, hour: hourFromDropZone })
-        newDate.setHours(hourFromDropZone)
-        newDate.setMinutes(originalDate.getMinutes()) // Keep original minutes
-      } else {
-        // This is a day drop (month view), keep the original time
-        newDate.setHours(originalDate.getHours())
-        newDate.setMinutes(originalDate.getMinutes())
-      }
-      
-      newDate.setSeconds(0)
-      newDate.setMilliseconds(0)
 
-      console.log('Date calculation:', {
-        original: originalDate.toISOString(),
-        new: newDate.toISOString(),
-        originalTime: originalDate.getTime(),
-        newTime: newDate.getTime(),
-        timeDiff: newDate.getTime() - originalDate.getTime(),
-        changed: newDate.getTime() !== originalDate.getTime()
+      let newScheduledAt: Date
+      let newDuration: number = originalDuration
+      let updates: any = {}
+      
+      // Handle different drag types
+      if (dragType === 'resize-top') {
+        // Resizing from the top - changing start time
+        const dropZoneId = over.id.toString()
+        const isTimeSlotDrop = dropZoneId.startsWith('drop-')
+        
+        if (isTimeSlotDrop) {
+          // Calculate new start time from drop zone
+          newScheduledAt = new Date(targetDate)
+          if (dropData.hour !== undefined && dropData.minutes !== undefined) {
+            newScheduledAt.setHours(dropData.hour)
+            newScheduledAt.setMinutes(dropData.minutes)
+          }
+          
+          // Round to nearest 15 minutes
+          const minutes = newScheduledAt.getMinutes()
+          const roundedMinutes = Math.round(minutes / 15) * 15
+          newScheduledAt.setMinutes(roundedMinutes)
+          newScheduledAt.setSeconds(0)
+          newScheduledAt.setMilliseconds(0)
+          
+          // Calculate new duration (end time stays the same)
+          const originalEndTime = new Date(originalDate.getTime() + originalDuration * 60000)
+          newDuration = Math.max(15, Math.round((originalEndTime.getTime() - newScheduledAt.getTime()) / 60000))
+          
+          // Ensure minimum 15 minutes and maximum 8 hours
+          newDuration = Math.max(15, Math.min(480, newDuration))
+          
+          updates = {
+            scheduled_at: newScheduledAt.toISOString(),
+            duration_minutes: newDuration
+          }
+        } else {
+          return // Can't resize on non-time slots
+        }
+        
+      } else if (dragType === 'resize-bottom') {
+        // Resizing from the bottom - changing end time (duration)
+        const dropZoneId = over.id.toString()
+        const isTimeSlotDrop = dropZoneId.startsWith('drop-')
+        
+        if (isTimeSlotDrop) {
+          // Calculate new end time from drop zone
+          const newEndTime = new Date(targetDate)
+          if (dropData.hour !== undefined && dropData.minutes !== undefined) {
+            newEndTime.setHours(dropData.hour)
+            newEndTime.setMinutes(dropData.minutes)
+          }
+          
+          // Round to nearest 15 minutes
+          const minutes = newEndTime.getMinutes()
+          const roundedMinutes = Math.round(minutes / 15) * 15
+          newEndTime.setMinutes(roundedMinutes)
+          newEndTime.setSeconds(0)
+          newEndTime.setMilliseconds(0)
+          
+          // Calculate new duration (start time stays the same)
+          newDuration = Math.max(15, Math.round((newEndTime.getTime() - originalDate.getTime()) / 60000))
+          
+          // Ensure minimum 15 minutes and maximum 8 hours
+          newDuration = Math.max(15, Math.min(480, newDuration))
+          
+          newScheduledAt = originalDate
+          updates = {
+            duration_minutes: newDuration
+          }
+        } else {
+          return // Can't resize on non-time slots
+        }
+        
+      } else {
+        // Regular move operation
+        newScheduledAt = new Date(targetDate)
+        
+        // For week view time slots, use the target hour from the drop zone
+        // For month view, keep the original time
+        const dropZoneId = over.id.toString()
+        const isTimeSlotDrop = dropZoneId.startsWith('drop-')
+        
+        console.log('Drop zone analysis:', { dropZoneId, isTimeSlotDrop, dropData })
+        
+        if (isTimeSlotDrop) {
+          // This is a time slot drop in week view - use the data from the drop zone
+          if (dropData.hour !== undefined && dropData.minutes !== undefined) {
+            console.log('Using drop zone data:', { hour: dropData.hour, minutes: dropData.minutes })
+            newScheduledAt.setHours(dropData.hour)
+            newScheduledAt.setMinutes(dropData.minutes)
+          } else {
+            // Fallback to parsing the ID
+            const parts = dropZoneId.replace('drop-', '').split('-')
+            if (parts.length >= 4) {
+              const hourFromDropZone = parseInt(parts[3] || '0')
+              const minutesFromDropZone = parts.length === 5 ? parseInt(parts[4] || '0') : 0
+              console.log('Parsed from ID:', { hour: hourFromDropZone, minutes: minutesFromDropZone })
+              newScheduledAt.setHours(hourFromDropZone)
+              newScheduledAt.setMinutes(minutesFromDropZone)
+            }
+          }
+        } else {
+          // This is a day drop (month view), keep the original time
+          newScheduledAt.setHours(originalDate.getHours())
+          newScheduledAt.setMinutes(originalDate.getMinutes())
+        }
+        
+        newScheduledAt.setSeconds(0)
+        newScheduledAt.setMilliseconds(0)
+        
+        updates = {
+          scheduled_at: newScheduledAt.toISOString()
+        }
+      }
+
+      console.log('Update calculation:', {
+        dragType: dragType,
+        originalTime: originalDate.toISOString(),
+        originalDuration: originalDuration,
+        newTime: newScheduledAt?.toISOString(),
+        newDuration: newDuration,
+        updates: updates,
+        changed: Object.keys(updates).length > 0
       })
 
-      // Only update if the date/time actually changed
-      if (newDate.getTime() !== originalDate.getTime()) {
-        console.log('Updating booking...')
+      // Only update if something actually changed
+      const hasChanges = Object.keys(updates).some(key => {
+        if (key === 'scheduled_at') {
+          return updates[key] !== booking.scheduled_at
+        } else if (key === 'duration_minutes') {
+          return updates[key] !== booking.duration_minutes
+        }
+        return true
+      })
+
+      if (hasChanges) {
+        console.log('Updating booking...', updates)
         
         try {
           await updateBookingMutation.mutateAsync({
             id: booking.id,
-            updates: {
-              scheduled_at: newDate.toISOString()
-            }
+            updates: updates
           })
           
           // Show success feedback
-          console.log('Booking successfully moved!')
+          console.log('Booking successfully updated!')
           
         } catch (updateError) {
           console.error('Failed to update booking:', updateError)
           // Show user-friendly error
-          alert('Er is een fout opgetreden bij het verplaatsen van de afspraak. Probeer het opnieuw.')
+          alert('Er is een fout opgetreden bij het aanpassen van de afspraak. Probeer het opnieuw.')
           throw updateError // Re-throw to trigger error handling
         }
       } else {
         console.log('No change detected, skipping update')
       }
     } catch (error) {
-      console.error('Error moving booking:', {
+      console.error('Error updating booking:', {
         error,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         bookingId: booking?.id,
         originalTime: booking?.scheduled_at,
         dropData: dropData,
-        dropZoneId: over?.id
+        dropZoneId: over?.id,
+        dragType: dragType
       })
-      alert('Er is een fout opgetreden bij het verplaatsen van de afspraak')
+      alert('Er is een fout opgetreden bij het aanpassen van de afspraak')
     }
   }
 
@@ -1223,7 +1819,12 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       />
 
       <div className="flex-1 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext 
+          sensors={sensors} 
+          onDragStart={handleDragStart} 
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+        >
           {/* Days of week header - only for month view */}
           {viewMode === 'month' && (
             <div className="grid grid-cols-7 border-b border-gray-200">
@@ -1257,6 +1858,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
                       onDrop={() => {}}
                       onEmptyClick={openModalForNew}
                       onBookingClick={openModalForEdit}
+                      isCurrentMonth={isCurrentMonth}
                     />
                   )
                 })}
@@ -1272,11 +1874,12 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
           </div>
 
           <DragOverlay>
-            {draggedBooking && (
-              <div className="shadow-2xl rounded-lg opacity-90 transform rotate-2 scale-105">
+            {draggedBooking && !resizePreview && (
+              <div className="shadow-2xl rounded-lg opacity-90 transform rotate-2 scale-105 pointer-events-none">
                 <DraggableAppointment
                   booking={draggedBooking}
                   onClick={() => {}}
+                  viewMode={viewMode}
                 />
               </div>
             )}
