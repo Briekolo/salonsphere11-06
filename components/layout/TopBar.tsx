@@ -31,9 +31,9 @@ export function TopBar() {
     fetchFirstName()
   }, [user])
 
-  const name = firstName ?? (user?.email?.split('@')[0] ?? 'Gebruiker')
+  const name = firstName ?? 'Gebruiker'
 
-  const initials = name
+  const initials = (firstName ?? user?.email?.split('@')[0] ?? 'Gebruiker')
     .split(' ')
     .map((n: string) => n.charAt(0))
     .slice(0, 2)
@@ -51,7 +51,7 @@ export function TopBar() {
         {/* Left side - Greeting */}
         <div className="flex-1 min-w-0 ml-12 lg:ml-0">
           <h1 className="text-lg lg:text-xl font-semibold text-gray-900 truncate">
-            {greeting}, {name}
+            {greeting}, {firstName === null ? <span className="opacity-0">Laden...</span> : name}
           </h1>
           <p className="text-xs lg:text-sm text-muted hidden sm:block">
             {format(today, 'EEEE d MMMM yyyy', { locale: nl })}
