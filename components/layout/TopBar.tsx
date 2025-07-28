@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
+import { ProfileDropdown } from '@/components/ui/ProfileDropdown'
 
 export function TopBar() {
   const pathname = usePathname()
@@ -72,9 +73,11 @@ export function TopBar() {
           </button>
 
           {/* Profile */}
-          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#02011F] rounded-full flex items-center justify-center text-white text-sm font-medium">
-            {initials}
-          </div>
+          <ProfileDropdown 
+            initials={initials}
+            firstName={firstName}
+            userEmail={user?.email}
+          />
           
           {/* New Appointment Button - Only on dashboard and larger screens */}
           {isDashboard && (

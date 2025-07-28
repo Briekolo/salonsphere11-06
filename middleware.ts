@@ -8,19 +8,11 @@ const CACHE_DURATION = 60000
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Publieke / whitelisted routes overslaan
+  // Skip static assets and Next.js internal routes
   if (
-    pathname.startsWith('/auth') ||
-    pathname.startsWith('/onboarding') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    /\.[a-zA-Z0-9]+$/.test(pathname) || // eindigt op bestandsextensie
-    // Client module routes are public
-    /^\/[^\/]+\/book/.test(pathname) || // Booking flow
-    /^\/[^\/]+\/services/.test(pathname) || // Services page
-    /^\/[^\/]+\/staff/.test(pathname) || // Staff page
-    /^\/[^\/]+\/contact/.test(pathname) || // Contact page
-    /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
+    /\.[a-zA-Z0-9]+$/.test(pathname) // eindigt op bestandsextensie
   ) {
     return NextResponse.next()
   }
@@ -32,6 +24,42 @@ export async function middleware(req: NextRequest) {
     data: { session }
   } = await supabase.auth.getSession()
 
+  // Handle auth pages - redirect authenticated users to dashboard
+  if (pathname.startsWith('/auth')) {
+    if (session) {
+      // User is already logged in, redirect to dashboard
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/'
+      return NextResponse.redirect(redirectUrl)
+    }
+    // Allow access to auth pages for non-authenticated users
+    return NextResponse.next()
+  }
+
+  // Handle onboarding - only accessible for authenticated users without tenant_id
+  if (pathname.startsWith('/onboarding')) {
+    if (!session) {
+      // Not authenticated, redirect to sign-in
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/auth/sign-in'
+      return NextResponse.redirect(redirectUrl)
+    }
+    // Allow access to onboarding for authenticated users
+    return NextResponse.next()
+  }
+
+  // Public client module routes
+  if (
+    /^\/[^\/]+\/book/.test(pathname) || // Booking flow
+    /^\/[^\/]+\/services/.test(pathname) || // Services page
+    /^\/[^\/]+\/staff/.test(pathname) || // Staff page
+    /^\/[^\/]+\/contact/.test(pathname) || // Contact page
+    /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
+  ) {
+    return NextResponse.next()
+  }
+
+  // All other routes require authentication
   if (!session) {
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = '/auth/sign-in'
