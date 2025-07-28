@@ -405,6 +405,7 @@ git push origin feature-name   # Push feature branch
 3. **NEVER commit sensitive data (API keys, passwords, .env files)**
 4. **NEVER use `git add .` without reviewing changes**
 5. **NEVER merge without running tests/linting first**
+6. **VERY IMPORTANT: NEVER APPLY ANY GIT COMMANDS THAT WILL ALTER FILES, COMMIT, MERGE OR PUSH, PULL OR DO ANYTHING. THIS SHOULD ALWAYS BE REQUESTED BY THE USER**
 
 ### ALWAYS DO THESE:
 1. **ALWAYS create feature branches for new work**
