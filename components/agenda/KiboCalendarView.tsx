@@ -16,8 +16,8 @@ interface KiboCalendarViewProps {
 }
 
 // Jotai atoms for state management
-const viewModeAtom = atom<'week' | 'month'>('month')
-const currentDateAtom = atom(new Date())
+export const viewModeAtom = atom<'week' | 'month'>('month')
+export const currentDateAtom = atom(new Date())
 const selectedBookingAtom = atom<string | null>(null)
 const draggedBookingAtom = atom<Booking | null>(null)
 const hoveredBookingAtom = atom<{ 
