@@ -20,6 +20,8 @@ export async function middleware(req: NextRequest) {
     /^\/[^\/]+\/services/.test(pathname) || // Services page
     /^\/[^\/]+\/staff/.test(pathname) || // Staff page
     /^\/[^\/]+\/contact/.test(pathname) || // Contact page
+    /^\/[^\/]+\/auth/.test(pathname) || // Client auth pages
+    /^\/[^\/]+\/account/.test(pathname) || // Client account pages
     /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
   ) {
     return NextResponse.next()

@@ -10,16 +10,13 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
-  BarChart3,
   Package,
-  RefreshCw,
-  AlertCircle
+  RefreshCw
 } from 'lucide-react'
 import { useTenantMetrics } from '@/lib/hooks/useTenantMetrics'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { supabase } from '@/lib/supabase'
 import { RevenueChart } from '@/components/dashboard/RevenueChart'
-import { OverheadAnalytics } from '@/components/dashboard/OverheadAnalytics'
 
 interface RecentActivity {
   time: string;
@@ -34,7 +31,6 @@ export function DashboardContent() {
   const router = useRouter()
   const { data: metrics, isLoading } = useTenantMetrics()
   const { tenantId } = useTenant()
-  const [targetRevenue, setTargetRevenue] = useState(5000)
   const [mounted, setMounted] = useState(false)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [refreshingActivities, setRefreshingActivities] = useState(false)
@@ -47,7 +43,6 @@ export function DashboardContent() {
   const revenue = metrics?.revenue_last30 ?? 3233.78
   const appointments = metrics?.appointments_last30 ?? 8
   const avgValue = appointments > 0 ? Math.round(revenue / appointments) : 404
-  const budgetRemaining = targetRevenue - revenue
 
   const fetchRecentActivities = async (showRefreshIndicator = false) => {
     const correctTenantId = tenantId || '7aa448b8-3166-4693-a13d-e833748292db';
@@ -299,8 +294,8 @@ export function DashboardContent() {
       bgColor: 'bg-icon-purple-bg',
     },
     {
-      title: 'Doel Bereikt',
-      value: `${Math.round((revenue / targetRevenue) * 100)}%`,
+      title: 'Nieuwe Klanten',
+      value: metrics?.new_clients_last30 ?? 3,
       icon: <CheckCircle className="w-5 h-5" />,
       color: 'text-icon-orange',
       bgColor: 'bg-icon-orange-bg',
@@ -348,78 +343,6 @@ export function DashboardContent() {
           <RevenueChart />
         </div>
         
-        {/* Overhead Analytics Widget */}
-        <OverheadAnalytics />
-        
-        {/* Revenue Goal Setting */}
-        <div className="card">
-          <h2 className="text-heading mb-4">Omzetdoel Instelling</h2>
-          
-          {/* Goal Progress */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Voortgang dit maand</span>
-              <span className="text-sm text-gray-600">
-                €{revenue.toFixed(0)} / €{targetRevenue.toFixed(0)}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min((revenue / targetRevenue) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              {budgetRemaining > 0 
-                ? `Nog €${budgetRemaining.toFixed(0)} te gaan` 
-                : `Doel behaald! €${Math.abs(budgetRemaining).toFixed(0)} boven target`}
-            </p>
-          </div>
-
-          {/* Goal Input */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Maandelijks omzetdoel
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center border border-gray-300 rounded-xl px-3 py-2 flex-1">
-                  <span className="text-gray-500 mr-2">€</span>
-                  <input
-                    type="number"
-                    value={targetRevenue}
-                    onChange={(e) => setTargetRevenue(parseInt(e.target.value) || 0)}
-                    className="flex-1 outline-none bg-transparent min-h-[40px]"
-                    placeholder="5000"
-                    suppressHydrationWarning={true}
-                  />
-                </div>
-                <button 
-                  className="btn-primary"
-                  onClick={() => {
-                    // Save target revenue logic here
-                    console.log('Saving target revenue:', targetRevenue)
-                  }}
-                >
-                  Opslaan
-                </button>
-              </div>
-            </div>
-            
-            <div className="bg-blue-50 p-4 rounded-xl">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-                <div className="text-sm text-blue-900">
-                  <strong>Tip:</strong> Salons adviseren meestal een omzetdoel van €4.000-€6.000 per maand, 
-                  afhankelijk van uw diensten en klantenbestand.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Quick Actions */}
         <div className="card">
           <h2 className="text-heading mb-4">Snelle Acties</h2>
