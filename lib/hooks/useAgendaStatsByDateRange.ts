@@ -22,6 +22,7 @@ export function useAgendaStatsByDateRange(startDate: string, endDate: string) {
 
     const completedCount = active.filter(b => b.status === 'completed').length
     const confirmedCount = active.filter(b => b.status === 'confirmed').length
+    const scheduledCount = active.filter(b => b.status === 'scheduled').length
     const cancelledCount = bookings.filter(b => b.status === 'cancelled').length
 
     return { 
@@ -30,6 +31,7 @@ export function useAgendaStatsByDateRange(startDate: string, endDate: string) {
       uniqueClients, 
       completedCount, 
       confirmedCount, 
+      scheduledCount,
       cancelledCount 
     }
   }, [rawBookings])

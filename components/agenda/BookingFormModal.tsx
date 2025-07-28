@@ -32,7 +32,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
     service_id: '',
     user_id: '', // staff member
     scheduled_at: initialDate ? roundToQuarterHour(initialDate).toISOString() : roundToQuarterHour(new Date()).toISOString(),
-    status: 'confirmed',
+    status: 'scheduled', // Default to scheduled for new appointments
     notes: '',
     duration_minutes: 60, // Default duration
   })
@@ -50,15 +50,16 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   const { data: clients = [], isLoading: isLoadingClients } = useClients()
   const { data: services = [], isLoading: isLoadingServices } = useServices()
   const { data: staff = [], isLoading: isLoadingStaff } = useUsers({ role: 'staff' })
-  const { data: staffWithServices = [], isLoading: isLoadingStaffServices } = useStaffWithServices()
+  const { data: staffWithServices, isLoading: isLoadingStaffServices } = useStaffWithServices()
+  const staffData = staffWithServices || []
   const { data: existingBooking, isLoading: isLoadingBooking } = useBooking(bookingId || null)
 
   // Filter staff based on selected service - only show staff that can perform the service
   const availableStaff = formData.service_id 
-    ? staffWithServices.filter(staffMember => 
-        staffMember.services.some(service => service.service_id === formData.service_id && service.active)
+    ? staffData.filter((staffMember: any) => 
+        staffMember.services.some((service: any) => service.service_id === formData.service_id && service.active)
       )
-    : staffWithServices
+    : staffData
 
   // Update duration when service changes (only for new bookings)
   useEffect(() => {
@@ -73,8 +74,8 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   // Update duration and price when staff member changes
   useEffect(() => {
     if (formData.service_id && formData.user_id) {
-      const staffMember = staffWithServices.find(s => s.id === formData.user_id)
-      const serviceAssignment = staffMember?.services.find(s => s.service_id === formData.service_id)
+      const staffMember = staffData.find((s: any) => s.id === formData.user_id)
+      const serviceAssignment = staffMember?.services.find((s: any) => s.service_id === formData.service_id)
       const selectedService = services.find(s => s.id === formData.service_id)
       
       if (serviceAssignment && selectedService) {
@@ -93,18 +94,19 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         }
       }
     }
-  }, [formData.service_id, formData.user_id, staffWithServices, services])
+  }, [formData.service_id, formData.user_id, staffData, services])
 
   // Populate form when editing an existing booking
   useEffect(() => {
     if (isEditing && existingBooking) {
+      console.log('Editing booking data:', existingBooking) // Debug log
       const scheduledDate = existingBooking.scheduled_at ? roundToQuarterHour(new Date(existingBooking.scheduled_at)) : ''
       setFormData({
         client_id: existingBooking.client_id || '',
         service_id: existingBooking.service_id || '',
-        user_id: existingBooking.user_id || '',
+        user_id: existingBooking.staff_id || existingBooking.user_id || '', // Check both staff_id and user_id
         scheduled_at: scheduledDate ? scheduledDate.toISOString() : '',
-        status: existingBooking.status || 'confirmed',
+        status: existingBooking.status || 'scheduled',
         notes: existingBooking.notes || '',
         duration_minutes: existingBooking.duration_minutes || 60,
       })
@@ -120,7 +122,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
     e.preventDefault()
     try {
       // Prepare payload - include all fields for update
-      const payload = {
+      const payload: any = {
         client_id: formData.client_id,
         service_id: formData.service_id,
         scheduled_at: formData.scheduled_at,
@@ -128,6 +130,13 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         notes: formData.notes,
         duration_minutes: formData.duration_minutes
       }
+
+      // Add staff_id if a staff member is selected
+      if (formData.user_id) {
+        payload.staff_id = formData.user_id
+      }
+
+      console.log('Submitting payload:', payload) // Debug log
 
       if (isEditing) {
         if (!bookingId) return
@@ -275,15 +284,17 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
               <select
                 name="user_id"
                 value={formData.user_id}
-                onChange={(e) => setFormData(p => ({...p, user_id: e.target.value}))}
+                onChange={(e) => {
+                  console.log('Staff selection changed to:', e.target.value)
+                  setFormData(p => ({...p, user_id: e.target.value}))
+                }}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
-                required
                 disabled={isLoadingStaffServices || isLoading}
               >
                 <option value="">{isLoadingStaffServices ? 'Laden...' : 'Selecteer een medewerker'}</option>
-                {availableStaff.map(member => {
+                {availableStaff.map((member: any) => {
                   const label = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() || member.email || 'Onbekende medewerker'
-                  const serviceAssignment = member.services.find(s => s.service_id === formData.service_id)
+                  const serviceAssignment = member.services.find((s: any) => s.service_id === formData.service_id)
                   const proficiencyLabel = serviceAssignment?.proficiency_level || 'standaard'
                   return (
                     <option key={member.id} value={member.id}>
@@ -311,6 +322,11 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                     <span className="text-xs text-amber-600">→ Medewerker toewijzingen tabblad</span>
                   </div>
                 </div>
+              )}
+              {isEditing && !formData.user_id && availableStaff.length > 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Let op: Deze afspraak heeft geen medewerker toegewezen
+                </p>
               )}
             </div>
             {/* Date and Time */}

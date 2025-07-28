@@ -78,6 +78,8 @@ export function useCreateBooking() {
 
 export function useUpdateBooking() {
   const queryClient = useQueryClient()
+  const { tenantId } = useTenant()
+  
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Booking> }) => {
       console.log('Mutation function called:', { id, updates })
@@ -86,11 +88,13 @@ export function useUpdateBooking() {
     onMutate: async ({ id, updates }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['bookings'] })
+      await queryClient.cancelQueries({ queryKey: ['booking', tenantId, id] })
       
-      // Snapshot the previous value
+      // Snapshot the previous values
       const previousBookings = queryClient.getQueriesData({ queryKey: ['bookings'] })
+      const previousBooking = queryClient.getQueryData(['booking', tenantId, id])
       
-      // Optimistically update all booking queries
+      // Optimistically update all booking list queries
       queryClient.setQueriesData<Booking[]>({ queryKey: ['bookings'] }, (old) => {
         if (!old) return old
         return old.map(booking => 
@@ -98,30 +102,42 @@ export function useUpdateBooking() {
         )
       })
       
+      // Optimistically update the specific booking query
+      queryClient.setQueryData<Booking>(['booking', tenantId, id], (old) => {
+        if (!old) return old
+        return { ...old, ...updates }
+      })
+      
       console.log('Optimistic update applied for booking:', id)
       
-      // Return a context with the previous value
-      return { previousBookings }
+      // Return a context with the previous values
+      return { previousBookings, previousBooking, bookingId: id }
     },
     onSuccess: (data, variables) => {
       console.log('Mutation success:', { data, variables })
       // Invalidate and refetch to ensure server state is correct
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
+      queryClient.invalidateQueries({ queryKey: ['booking', tenantId, variables.id] })
     },
     onError: (error, variables, context) => {
       console.error('Mutation error:', { error, variables })
-      // Rollback the optimistic update
+      // Rollback the optimistic updates
       if (context?.previousBookings) {
         context.previousBookings.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data)
         })
       }
+      // Rollback the specific booking query
+      if (context?.previousBooking && context?.bookingId) {
+        queryClient.setQueryData(['booking', tenantId, context.bookingId], context.previousBooking)
+      }
     },
-    onSettled: () => {
+    onSettled: (data, error, variables) => {
       // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
+      queryClient.invalidateQueries({ queryKey: ['booking', tenantId, variables.id] })
     },
   })
 }
