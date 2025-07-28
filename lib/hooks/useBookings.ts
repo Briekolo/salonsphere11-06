@@ -5,6 +5,7 @@ import { BookingService } from '@/lib/services/bookingService'
 import { Database } from '@/types/database'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { useMemo } from 'react'
+import { debugLog, debugError } from '@/lib/utils/debug'
 
 export type Booking = Database['public']['Tables']['bookings']['Row'] & {
   clients?: {
@@ -82,7 +83,7 @@ export function useUpdateBooking() {
   
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Booking> }) => {
-      console.log('Mutation function called:', { id, updates })
+      debugLog('Mutation function called:', { id, updates })
       return BookingService.update(id, updates as any)
     },
     onMutate: async ({ id, updates }) => {
@@ -108,20 +109,20 @@ export function useUpdateBooking() {
         return { ...old, ...updates }
       })
       
-      console.log('Optimistic update applied for booking:', id)
+      debugLog('Optimistic update applied for booking:', id)
       
       // Return a context with the previous values
       return { previousBookings, previousBooking, bookingId: id }
     },
     onSuccess: (data, variables) => {
-      console.log('Mutation success:', { data, variables })
+      debugLog('Mutation success:', { data, variables })
       // Invalidate and refetch to ensure server state is correct
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
       queryClient.invalidateQueries({ queryKey: ['booking', tenantId, variables.id] })
     },
     onError: (error, variables, context) => {
-      console.error('Mutation error:', { error, variables })
+      debugError('Mutation error:', { error, variables })
       // Rollback the optimistic updates
       if (context?.previousBookings) {
         context.previousBookings.forEach(([queryKey, data]) => {

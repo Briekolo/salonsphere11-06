@@ -7,7 +7,9 @@ import { useCreateBooking, useUpdateBooking, useDeleteBooking, useBooking } from
 import { useClients } from '@/lib/hooks/useClients'
 import { useServices } from '@/lib/hooks/useServices'
 import { useUsers } from '@/lib/hooks/useUsers'
-import { useStaffWithServices } from '@/lib/hooks/useStaffServices'
+import { useAvailableStaff } from '@/lib/hooks/useAvailableStaff'
+import { StaffMember, StaffService } from '@/types/staff'
+import { debugLog, debugError } from '@/lib/utils/debug'
 
 interface BookingFormModalProps {
   bookingId?: string | null
@@ -40,7 +42,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   // Debug log to check if initialDate has the right time
   useEffect(() => {
     if (initialDate) {
-      console.log('Initial date with time:', initialDate)
+      debugLog('Initial date with time:', initialDate)
     }
   }, [initialDate])
 
@@ -49,17 +51,15 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   // Data fetching hooks
   const { data: clients = [], isLoading: isLoadingClients } = useClients()
   const { data: services = [], isLoading: isLoadingServices } = useServices()
-  const { data: staff = [], isLoading: isLoadingStaff } = useUsers({ role: 'staff' })
-  const { data: staffWithServices, isLoading: isLoadingStaffServices } = useStaffWithServices()
-  const staffData = staffWithServices || []
   const { data: existingBooking, isLoading: isLoadingBooking } = useBooking(bookingId || null)
-
-  // Filter staff based on selected service - only show staff that can perform the service
-  const availableStaff = formData.service_id 
-    ? staffData.filter((staffMember: any) => 
-        staffMember.services.some((service: any) => service.service_id === formData.service_id && service.active)
-      )
-    : staffData
+  
+  // Use custom hook for available staff
+  const { 
+    availableStaff, 
+    isLoading: isLoadingStaffServices,
+    getStaffServiceAssignment,
+    allStaff
+  } = useAvailableStaff(formData.service_id)
 
   // Update duration when service changes (only for new bookings)
   useEffect(() => {
@@ -74,12 +74,11 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   // Update duration and price when staff member changes
   useEffect(() => {
     if (formData.service_id && formData.user_id) {
-      const staffMember = staffData.find((s: any) => s.id === formData.user_id)
-      const serviceAssignment = staffMember?.services.find((s: any) => s.service_id === formData.service_id)
+      const serviceAssignment = getStaffServiceAssignment(formData.user_id, formData.service_id)
       const selectedService = services.find(s => s.id === formData.service_id)
       
       if (serviceAssignment && selectedService) {
-        const updates: any = {}
+        const updates: Partial<typeof formData> = {}
         
         // Use custom duration if set, otherwise use service default
         if (serviceAssignment.custom_duration_minutes) {
@@ -94,12 +93,12 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         }
       }
     }
-  }, [formData.service_id, formData.user_id, staffData, services])
+  }, [formData.service_id, formData.user_id, getStaffServiceAssignment, services])
 
   // Populate form when editing an existing booking
   useEffect(() => {
     if (isEditing && existingBooking) {
-      console.log('Editing booking data:', existingBooking) // Debug log
+      debugLog('Editing booking data:', existingBooking)
       const scheduledDate = existingBooking.scheduled_at ? roundToQuarterHour(new Date(existingBooking.scheduled_at)) : ''
       setFormData({
         client_id: existingBooking.client_id || '',
@@ -122,7 +121,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
     e.preventDefault()
     try {
       // Prepare payload - include all fields for update
-      const payload: any = {
+      const payload: Record<string, any> = {
         client_id: formData.client_id,
         service_id: formData.service_id,
         scheduled_at: formData.scheduled_at,
@@ -136,7 +135,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         payload.staff_id = formData.user_id
       }
 
-      console.log('Submitting payload:', payload) // Debug log
+      debugLog('Submitting payload:', payload)
 
       if (isEditing) {
         if (!bookingId) return
@@ -146,7 +145,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
       }
       onClose()
     } catch (error) {
-      console.error('Failed to save booking:', error)
+      debugError('Failed to save booking:', error)
       // Optionally show a user-facing error message
     }
   }
@@ -158,7 +157,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         await deleteMutation.mutateAsync(bookingId)
         onClose()
       } catch (error) {
-        console.error('Failed to delete booking:', error)
+        debugError('Failed to delete booking:', error)
       }
     }
   }
@@ -285,16 +284,16 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                 name="user_id"
                 value={formData.user_id}
                 onChange={(e) => {
-                  console.log('Staff selection changed to:', e.target.value)
+                  debugLog('Staff selection changed to:', e.target.value)
                   setFormData(p => ({...p, user_id: e.target.value}))
                 }}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
                 disabled={isLoadingStaffServices || isLoading}
               >
                 <option value="">{isLoadingStaffServices ? 'Laden...' : 'Selecteer een medewerker'}</option>
-                {availableStaff.map((member: any) => {
+                {availableStaff.map((member: StaffMember) => {
                   const label = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() || member.email || 'Onbekende medewerker'
-                  const serviceAssignment = member.services.find((s: any) => s.service_id === formData.service_id)
+                  const serviceAssignment = member.services.find((s: StaffService) => s.service_id === formData.service_id)
                   const proficiencyLabel = serviceAssignment?.proficiency_level || 'standaard'
                   return (
                     <option key={member.id} value={member.id}>
