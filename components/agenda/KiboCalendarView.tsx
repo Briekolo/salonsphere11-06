@@ -797,9 +797,21 @@ function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate }:
   currentDate: Date
   onNavigate: (direction: 'prev' | 'next' | 'today') => void
 }) {
-  const displayText = viewMode === 'week' 
-    ? `Week ${format(currentDate, 'w', { locale: nl })}`
-    : format(currentDate, 'MMM yyyy', { locale: nl })
+  const displayText = useMemo(() => {
+    if (viewMode === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 })
+      
+      // If same month, show "d - d MMM"
+      // If different months, show "d MMM - d MMM"
+      if (format(weekStart, 'MMM') === format(weekEnd, 'MMM')) {
+        return `${format(weekStart, 'd')} - ${format(weekEnd, 'd MMM', { locale: nl })}`
+      } else {
+        return `${format(weekStart, 'd MMM', { locale: nl })} - ${format(weekEnd, 'd MMM', { locale: nl })}`
+      }
+    }
+    return format(currentDate, 'MMM yyyy', { locale: nl })
+  }, [viewMode, currentDate])
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-4">
