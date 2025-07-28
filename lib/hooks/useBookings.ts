@@ -25,7 +25,7 @@ export type Booking = Database['public']['Tables']['bookings']['Row'] & {
   user_id?: string | null
 }
 
-export function useBookings(startDate?: string, endDate?: string) {
+export function useBookings(startDate?: string, endDate?: string, enabled: boolean = true) {
   const { tenantId } = useTenant()
 
   const queryKey = useMemo(
@@ -35,7 +35,7 @@ export function useBookings(startDate?: string, endDate?: string) {
 
   const query = useQuery<Booking[]>({
     queryKey,
-    enabled: !!tenantId,
+    enabled: !!tenantId && enabled,
     queryFn: () => {
       if (!tenantId) return Promise.resolve([])
       if (startDate && endDate) return BookingService.getByDateRange(startDate, endDate)
@@ -69,7 +69,10 @@ export function useCreateBooking() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: BookingService.create,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
+    },
   })
 }
 
@@ -104,6 +107,7 @@ export function useUpdateBooking() {
       console.log('Mutation success:', { data, variables })
       // Invalidate and refetch to ensure server state is correct
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
     },
     onError: (error, variables, context) => {
       console.error('Mutation error:', { error, variables })
@@ -117,6 +121,7 @@ export function useUpdateBooking() {
     onSettled: () => {
       // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
     },
   })
 }
@@ -125,6 +130,83 @@ export function useDeleteBooking() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => BookingService.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
+    },
+  })
+}
+
+export function usePaginatedBookings(enabled: boolean = true) {
+  const { tenantId } = useTenant()
+
+  return useQuery({
+    queryKey: ['bookings-paginated', tenantId],
+    enabled: !!tenantId && enabled,
+    queryFn: async () => {
+      if (!tenantId) return { bookings: [], futureHasMore: false, pastHasMore: false }
+      
+      // Load only the next 5 appointments
+      const result = await BookingService.getPaginated({ 
+        direction: 'future', 
+        limit: 5 
+      })
+
+      return {
+        bookings: result.data,
+        futureHasMore: result.hasMore,
+        futureCursor: result.nextCursor,
+        pastHasMore: true, // Always assume there might be past appointments initially
+        pastCursor: result.data.length > 0 ? result.data[0].scheduled_at : new Date().toISOString()
+      }
+    },
+    staleTime: 1000 * 60,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useLoadMoreBookings() {
+  const queryClient = useQueryClient()
+  const { tenantId } = useTenant()
+
+  return useMutation({
+    mutationFn: async ({ direction, cursor }: { direction: 'future' | 'past', cursor?: string }) => {
+      return BookingService.getPaginated({ 
+        direction, 
+        cursor, 
+        limit: 5 
+      })
+    },
+    onSuccess: (newData, { direction }) => {
+      queryClient.setQueryData(['bookings-paginated', tenantId], (oldData: any) => {
+        if (!oldData) return oldData
+
+        // Create a map of existing booking IDs for deduplication
+        const existingIds = new Set(oldData.bookings.map((b: Booking) => b.id))
+        
+        // Filter out any duplicates from new data
+        const uniqueNewData = newData.data.filter((b: Booking) => !existingIds.has(b.id))
+
+        if (direction === 'future') {
+          return {
+            ...oldData,
+            bookings: [...oldData.bookings, ...uniqueNewData].sort(
+              (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+            ),
+            futureHasMore: newData.hasMore,
+            futureCursor: newData.nextCursor || oldData.futureCursor
+          }
+        } else {
+          return {
+            ...oldData,
+            bookings: [...uniqueNewData, ...oldData.bookings].sort(
+              (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+            ),
+            pastHasMore: newData.hasMore,
+            pastCursor: uniqueNewData.length > 0 ? uniqueNewData[0].scheduled_at : oldData.pastCursor
+          }
+        }
+      })
+    }
   })
 } 
