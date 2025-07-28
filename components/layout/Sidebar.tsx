@@ -27,7 +27,6 @@ import { useIsAdmin } from '@/lib/hooks/use-admin'
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
-  { name: 'Analytics', href: '/dashboard', icon: PieChart },
   { name: 'Agenda', href: '/appointments', icon: Calendar },
   { name: 'Klantbeheer', href: '/clients', icon: Users },
   { name: 'Behandelingen', href: '/treatments', icon: Sparkles },

@@ -39,7 +39,7 @@ export default function AdminLayout({
       .single();
 
     if (error || !data || data.role !== 'admin') {
-      router.push('/dashboard');
+      router.push('/');
     }
   };
 
