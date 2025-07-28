@@ -1,8 +1,9 @@
 'use client'
 
-import { TrendingUp, TrendingDown, Users, Calendar, Euro, Package } from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, Calendar, Euro, Package, CalendarCheck } from 'lucide-react'
 import clsx from 'clsx'
 import { useTenantMetrics } from '@/lib/hooks/useTenantMetrics'
+import { useExpectedRevenueMetrics } from '@/lib/hooks/useExpectedRevenueMetrics'
 
 interface MetricCardProps {
   title: string
@@ -59,11 +60,13 @@ function MetricCardSkeleton() {
 }
 
 export function MetricsCards() {
-  const { data: metrics, isLoading } = useTenantMetrics()
+  const { data: metrics, isLoading: metricsLoading } = useTenantMetrics()
+  const { data: expectedRevenue, isLoading: expectedLoading } = useExpectedRevenueMetrics()
 
-  if (isLoading) {
+  if (metricsLoading || expectedLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 mobile-gap">
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mobile-gap">
+        <MetricCardSkeleton />
         <MetricCardSkeleton />
         <MetricCardSkeleton />
         <MetricCardSkeleton />
@@ -87,6 +90,14 @@ export function MetricsCards() {
       icon: <Euro className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-green',
       iconBgColor: 'bg-icon-green-bg',
+    },
+    {
+      title: 'Verwachte omzet',
+      value: `€${Number(expectedRevenue?.weeklyExpected ?? 0).toLocaleString('nl-NL')}`,
+      change: 0,
+      icon: <CalendarCheck className="w-4 h-4 lg:w-5 lg:h-5" />,
+      iconColor: 'text-icon-purple',
+      iconBgColor: 'bg-icon-purple-bg',
     },
     {
       title: 'Afspraken (30d)',
@@ -115,7 +126,7 @@ export function MetricsCards() {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 mobile-gap">
+    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mobile-gap">
       {cards.map((metric, index) => (
         <MetricCard key={index} {...metric} />
       ))}
