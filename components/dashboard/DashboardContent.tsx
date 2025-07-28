@@ -320,7 +320,7 @@ export function DashboardContent() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-          Salon Dashboard
+          Dashboard
         </h1>
         <p className="text-gray-600 mt-2">
           Overzicht van uw salon prestaties en belangrijke gegevens
