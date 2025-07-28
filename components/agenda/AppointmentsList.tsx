@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Clock, User, Phone, Mail, MoreVertical, CheckSquare, Square } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { useBookings, Booking } from '@/lib/hooks/useBookings'
+import { useBookings, usePaginatedBookings, useLoadMoreBookings, Booking } from '@/lib/hooks/useBookings'
 import { BookingFormModal } from './BookingFormModal'
 
 interface AppointmentsListProps {
@@ -54,12 +54,22 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
    * vermijden we het 'flikkeren' tussen "Afspraken laden..." en
    * "Geen afspraken".
    */
+  // For calendar view (day view), get bookings for selected date
   const { data: bookingData, isLoading } = useBookings(
     listView ? undefined : startOfDay.toISOString(),
-    listView ? undefined : endOfDay.toISOString()
+    listView ? undefined : endOfDay.toISOString(),
+    !listView // Only enable when NOT in list view
   )
 
-  const bookings: Booking[] = (bookingData ?? []) as Booking[]
+  // For list view, use paginated bookings
+  const { data: paginatedData, isLoading: isPaginatedLoading } = usePaginatedBookings(listView)
+  const loadMoreMutation = useLoadMoreBookings()
+
+  const bookings: Booking[] = listView 
+    ? (paginatedData?.bookings ?? []) as Booking[]
+    : (bookingData ?? []) as Booking[]
+    
+  const isLoadingData = listView ? isPaginatedLoading : isLoading
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -94,11 +104,11 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Toon loader alleen als er nog helemaal geen data binnen is.
-  if (isLoading && !bookingData) {
+  if (isLoadingData && bookings.length === 0) {
     return <div className="card p-6 text-center">Afspraken laden...</div>
   }
 
-  if (!isLoading && bookings.length === 0) {
+  if (!isLoadingData && bookings.length === 0) {
     return (
       <div className="card p-6 text-center">
         <p>Geen afspraken voor deze datum.</p>
@@ -172,6 +182,24 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
           </div>
         )}
 
+        {/* Load Previous Button - Minimalistic */}
+        <div className="mb-4 text-center">
+          <button 
+            onClick={() => {
+              if (paginatedData?.pastCursor) {
+                loadMoreMutation.mutate({ 
+                  direction: 'past', 
+                  cursor: paginatedData.pastCursor 
+                })
+              }
+            }}
+            disabled={loadMoreMutation.isPending || !paginatedData?.pastHasMore}
+            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loadMoreMutation.isPending ? '...' : '↑ Laad vorige'}
+          </button>
+        </div>
+
         {/* Selection Controls */}
         {sorted.length > 0 && (
           <div className="mb-4 flex items-center gap-4">
@@ -237,6 +265,25 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
             </div>
           ))}
         </div>
+
+        {/* Load More Button for Mobile - Minimalistic */}
+        <div className="mt-4 text-center block lg:hidden">
+          <button 
+            onClick={() => {
+              if (paginatedData?.futureCursor) {
+                loadMoreMutation.mutate({ 
+                  direction: 'future', 
+                  cursor: paginatedData.futureCursor 
+                })
+              }
+            }}
+            disabled={loadMoreMutation.isPending || !paginatedData?.futureHasMore}
+            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loadMoreMutation.isPending ? '...' : '↓ Laad meer'}
+          </button>
+        </div>
+
         {/* Desktop Table View */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
@@ -314,6 +361,25 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
             </tbody>
           </table>
         </div>
+
+        {/* Load More Button - Minimalistic */}
+        <div className="mt-6 text-center">
+          <button 
+            onClick={() => {
+              if (paginatedData?.futureCursor) {
+                loadMoreMutation.mutate({ 
+                  direction: 'future', 
+                  cursor: paginatedData.futureCursor 
+                })
+              }
+            }}
+            disabled={loadMoreMutation.isPending || !paginatedData?.futureHasMore}
+            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loadMoreMutation.isPending ? '...' : '↓ Laad meer'}
+          </button>
+        </div>
+
         {isModalOpen && (
           <BookingFormModal initialDate={selectedDate} onClose={() => setIsModalOpen(false)} />
         )}

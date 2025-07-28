@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useAtom } from 'jotai'
 import { CalendarView } from './CalendarView'
 import { EnhancedCalendarView } from './EnhancedCalendarView'
 import { AssemblyCalendarView } from './AssemblyCalendarView'
-import { KiboCalendarView } from './KiboCalendarView'
+import { KiboCalendarView, viewModeAtom, currentDateAtom } from './KiboCalendarView'
 import { AppointmentsList } from './AppointmentsList'
 import { AppointmentFilters } from './AppointmentFilters'
 import { QuickStats } from './QuickStats'
@@ -13,6 +14,10 @@ import { AppointmentMetrics } from './AppointmentMetrics'
 export function AgendaContent() {
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
   const [selectedDate, setSelectedDate] = useState(new Date())
+  
+  // Read calendar view state from atoms
+  const [viewMode] = useAtom(viewModeAtom)
+  const [currentDate] = useAtom(currentDateAtom)
 
   return (
     <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
@@ -27,7 +32,7 @@ export function AgendaContent() {
       </div>
 
       {/* Key Metrics - Enhanced version with appointment metrics */}
-      <AppointmentMetrics />
+      <AppointmentMetrics viewMode={viewMode} currentDate={currentDate} />
       
       {/* View Toggle */}
       <div className="flex justify-center sm:justify-end">

@@ -16,8 +16,8 @@ interface KiboCalendarViewProps {
 }
 
 // Jotai atoms for state management
-const viewModeAtom = atom<'week' | 'month'>('month')
-const currentDateAtom = atom(new Date())
+export const viewModeAtom = atom<'week' | 'month'>('month')
+export const currentDateAtom = atom(new Date())
 const selectedBookingAtom = atom<string | null>(null)
 const draggedBookingAtom = atom<Booking | null>(null)
 const hoveredBookingAtom = atom<{ 
@@ -318,12 +318,12 @@ function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { book
         e.stopPropagation()
         onClick()
       }}
-      className={`group relative p-1 rounded border text-xs cursor-pointer transition-all ${colors.bg} ${colors.text} ${isDragging ? 'opacity-50 z-50' : ''}`}
+      className={`group relative p-1 rounded border text-xs cursor-pointer transition-all overflow-hidden ${colors.bg} ${colors.text} ${isDragging ? 'opacity-50 z-50' : ''}`}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 overflow-hidden">
         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colors.dot}`} />
-        <span className="font-medium">{time}</span>
-        <span className="truncate opacity-90">{clientName}</span>
+        <span className="font-medium flex-shrink-0">{time}</span>
+        <span className="truncate opacity-90 min-w-0" title={clientName}>{clientName}</span>
       </div>
       
       {/* Drag handle for touch devices */}
@@ -561,32 +561,32 @@ function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'm
       )}
 
       {/* Clickable content area */}
-      <div onClick={handleClick} className="flex items-start gap-1 sm:gap-2 w-full cursor-pointer relative">
+      <div onClick={handleClick} className="flex items-start gap-1 sm:gap-2 w-full cursor-pointer relative overflow-hidden">
         <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-1 sm:mt-1.5 flex-shrink-0 ${colors.dot}`} />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           {/* Compact view for 30min appointments */}
           {booking.duration_minutes && booking.duration_minutes <= 30 ? (
-            <div className="flex items-center gap-1">
-              <span className="font-medium text-xs">{time}</span>
-              <span className="text-xs opacity-75">30min</span>
-              <span className="text-xs truncate opacity-90 max-w-[80px]">{clientName}</span>
+            <div className="flex items-center gap-1 overflow-hidden">
+              <span className="font-medium text-[10px] sm:text-xs flex-shrink-0">{time}</span>
+              <span className="text-[10px] sm:text-xs opacity-75 flex-shrink-0">30min</span>
+              <span className="text-[10px] sm:text-xs truncate opacity-90 min-w-0" title={clientName}>{clientName}</span>
             </div>
           ) : (
-            <>
+            <div className="overflow-hidden">
               <div className="flex items-center gap-1 sm:gap-2">
-                <span className="font-medium text-xs sm:text-sm">{time}</span>
-                <span className="text-xs opacity-75 hidden sm:inline">
+                <span className="font-medium text-xs sm:text-sm flex-shrink-0">{time}</span>
+                <span className="text-[10px] sm:text-xs opacity-75 hidden sm:inline flex-shrink-0">
                   {booking.duration_minutes || 60}min
                 </span>
               </div>
-              <div className="text-xs mt-0.5 truncate opacity-90">{clientName}</div>
-              <div className="text-xs truncate opacity-75 hidden sm:block">{serviceName}</div>
-              {booking.duration_minutes && booking.duration_minutes > 60 && (
-                <div className="text-xs text-orange-600 font-medium">
-                  Lange behandeling ({Math.round(booking.duration_minutes / 60 * 10) / 10}u)
+              <div className="text-[11px] sm:text-xs mt-0.5 truncate opacity-90" title={clientName}>{clientName}</div>
+              <div className="text-[10px] sm:text-xs truncate opacity-75 hidden sm:block" title={serviceName}>{serviceName}</div>
+              {booking.duration_minutes && booking.duration_minutes > 90 && (
+                <div className="text-[10px] sm:text-xs text-orange-600 font-medium truncate" title={`Lange behandeling (${Math.round(booking.duration_minutes / 60 * 10) / 10} uur)`}>
+                  Lang ({Math.round(booking.duration_minutes / 60 * 10) / 10}u)
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
         
@@ -1004,7 +1004,7 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
         return (
           <div
             key={booking.id}
-            className="absolute left-1 right-1 z-10"
+            className="absolute left-1 right-1 z-10 overflow-hidden"
             style={{
               top: `${topPixels}px`,
               height: `${heightPixels}px`,

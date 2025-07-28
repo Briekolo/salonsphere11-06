@@ -137,7 +137,7 @@ export function AdminSidebar() {
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
         <h2 className="text-lg font-semibold text-sidebar-text">Admin Panel</h2>
         <Link
-          href="/dashboard"
+          href="/"
           className="text-sidebar-icon hover:text-primary-700 transition-colors"
           title="Terug naar dashboard"
         >
