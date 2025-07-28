@@ -612,7 +612,47 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
   )
 }
 
-// Individual time slot component
+// Quarter hour slot component for 15-minute intervals
+function QuarterHourSlot({ date, hour, quarter, isOver, onEmptyClick }: {
+  date: Date
+  hour: number
+  quarter: number // 0 (00min), 1 (15min), 2 (30min), 3 (45min)
+  isOver: boolean
+  onEmptyClick: () => void
+}) {
+  const minutes = quarter * 15
+  const slotDate = new Date(date)
+  slotDate.setHours(hour, minutes, 0, 0)
+  slotDate.setSeconds(0)
+  slotDate.setMilliseconds(0)
+  
+  const { setNodeRef, isOver: quarterIsOver } = useDroppable({
+    id: `${format(date, 'yyyy-MM-dd')}-${hour}-${minutes}`,
+    data: { 
+      date: slotDate.toISOString()
+    }
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative h-4 cursor-pointer transition-colors ${
+        quarterIsOver ? 'bg-blue-100 ring-1 ring-blue-400' : 'hover:bg-gray-50'
+      } ${quarter < 3 ? 'border-b border-gray-50' : ''}`}
+      onClick={onEmptyClick}
+      title={`${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`}
+    >
+      {/* Time indicator on hover */}
+      {quarterIsOver && (
+        <div className="absolute left-2 top-0 z-30 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-lg font-medium">
+          {hour.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Individual time slot component with 15-minute intervals
 function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
   date: Date
   hour: number
@@ -620,30 +660,30 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
   onEmptyClick: () => void
   onBookingClick: (bookingId: string) => void
 }) {
-  // Create a new date object to avoid mutating the original
-  const slotDate = new Date(date)
-  slotDate.setHours(hour, 0, 0, 0)
-  slotDate.setSeconds(0)
-  slotDate.setMilliseconds(0)
-  
-  const { setNodeRef, isOver } = useDroppable({
-    id: `${format(date, 'yyyy-MM-dd')}-${hour}`,
-    data: { 
-      date: slotDate.toISOString() // Convert to ISO string to ensure proper serialization
-    }
-  })
-
   // Hour slot height in pixels - using rem values
   const HOUR_HEIGHT = 64 // 4rem = 64px at default font size
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`relative h-16 border-b border-gray-100 hover:bg-gray-50 cursor-pointer overflow-visible ${
-        isOver ? 'ring-2 ring-blue-500 ring-inset bg-blue-50' : ''
-      }`}
-      onClick={onEmptyClick}
-    >
+    <div className="relative h-16 border-b border-gray-100 overflow-visible">
+      {/* Four quarter-hour slots */}
+      {[0, 1, 2, 3].map((quarter) => {
+        const minutes = quarter * 15
+        return (
+          <QuarterHourSlot
+            key={quarter}
+            date={date}
+            hour={hour}
+            quarter={quarter}
+            isOver={false}
+            onEmptyClick={() => {
+              const slotDate = new Date(date)
+              slotDate.setHours(hour, minutes, 0, 0)
+              onEmptyClick()
+            }}
+          />
+        )
+      })}
+
       {/* Appointments in this hour */}
       {bookings.map((booking) => {
         const bookingTime = new Date(booking.scheduled_at)
@@ -964,7 +1004,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
   const bookingsByDate = useMemo(() => {
     const grouped: Record<string, Booking[]> = {}
     
-    bookings.forEach((booking) => {
+    bookings.forEach((booking: Booking) => {
       // Safely parse and validate the date
       const scheduledDate = new Date(booking.scheduled_at)
       const isValidDate = scheduledDate instanceof Date && !isNaN(scheduledDate.getTime())
@@ -1041,9 +1081,9 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       activeId: active.id, 
       overId: over?.id,
       activeData: active.data,
-      overData: over.data,
+      overData: over?.data,
       hasActiveCurrent: !!active.data?.current,
-      hasOverCurrent: !!over.data?.current
+      hasOverCurrent: !!over?.data?.current
     })
 
     if (!over || !active.data) {
