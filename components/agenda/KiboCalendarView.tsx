@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, isSameDay, isToday, startOfMonth, endOfMonth, addMonths, getDay } from 'date-fns'
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, isSameDay, isToday, startOfMonth, endOfMonth, addMonths, getDay, differenceInDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useBookings, useUpdateBooking, Booking } from '@/lib/hooks/useBookings'
 import { BookingFormModal } from './BookingFormModal'
@@ -280,7 +280,7 @@ function ResizePreview({ booking, type, previewTime, previewDuration }: {
 }
 
 // Compact appointment card for month view with multiple appointments
-function CompactAppointmentCard({ booking, onClick }: { booking: Booking; onClick: () => void }) {
+function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { booking: Booking; onClick: () => void; viewMode?: 'week' | 'month' }) {
   const status = booking.status || 'scheduled'
   const colors = statusColors[status as keyof typeof statusColors]
   
@@ -290,25 +290,62 @@ function CompactAppointmentCard({ booking, onClick }: { booking: Booking; onClic
   
   const clientName = booking.clients?.first_name || 'Onbekend'
   
+  // Add drag functionality
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: booking.id,
+    data: {
+      type: 'move',
+      booking: booking
+    }
+  })
+  
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+  
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
+  
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined
+  
   return (
     <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
       onClick={(e) => {
         e.stopPropagation()
         onClick()
       }}
-      className={`group p-1 rounded border text-xs cursor-pointer transition-all ${colors.bg} ${colors.text}`}
+      className={`group relative p-1 rounded border text-xs cursor-pointer transition-all ${colors.bg} ${colors.text} ${isDragging ? 'opacity-50 z-50' : ''}`}
     >
       <div className="flex items-center gap-1">
         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colors.dot}`} />
         <span className="font-medium">{time}</span>
         <span className="truncate opacity-90">{clientName}</span>
       </div>
+      
+      {/* Drag handle for touch devices */}
+      <div 
+        {...listeners}
+        className={`absolute top-0 right-0 flex items-center justify-center cursor-move transition-opacity
+          ${isTouchDevice 
+            ? 'w-4 h-4 opacity-40' 
+            : 'w-3 h-3 opacity-0 group-hover:opacity-60 hover:!opacity-100'
+          }`}
+        style={{ touchAction: 'manipulation' }}
+        title="Sleep om te verplaatsen"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className={`${isTouchDevice ? 'w-2 h-2' : 'w-2 h-2'} text-gray-600`} />
+      </div>
     </div>
   )
 }
 
 // Draggable appointment card
-function DraggableAppointment({ booking, onClick, compact = false }: { booking: Booking; onClick: () => void; compact?: boolean }) {
+function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'month' }: { booking: Booking; onClick: () => void; compact?: boolean; viewMode?: 'week' | 'month' }) {
   const [hoveredBooking, setHoveredBooking] = useAtom(hoveredBookingAtom)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   
@@ -481,8 +518,9 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Top resize handle */}
-      <div
+      {/* Top resize handle - only show in week view */}
+      {viewMode === 'week' && (
+        <div
           ref={setTopResizeNodeRef}
           {...topResizeAttributes}
           {...topResizeListeners}
@@ -499,9 +537,11 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
             <div className="w-4 h-0.5 bg-white rounded-full"></div>
           </div>
         </div>
+      )}
 
-      {/* Bottom resize handle */}
-      <div
+      {/* Bottom resize handle - only show in week view */}
+      {viewMode === 'week' && (
+        <div
           ref={setBottomResizeNodeRef}
           {...bottomResizeAttributes}
           {...bottomResizeListeners}
@@ -518,6 +558,7 @@ function DraggableAppointment({ booking, onClick, compact = false }: { booking: 
             <div className="w-4 h-0.5 bg-white rounded-full"></div>
           </div>
         </div>
+      )}
 
       {/* Clickable content area */}
       <div onClick={handleClick} className="flex items-start gap-1 sm:gap-2 w-full cursor-pointer relative">
@@ -973,6 +1014,7 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
             <DraggableAppointment
               booking={booking}
               onClick={() => onBookingClick(booking.id)}
+              viewMode="week"
             />
           </div>
         )
@@ -1033,12 +1075,13 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
 }
 
 // Droppable calendar cell
-function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: { 
+function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, isCurrentMonth = true }: { 
   date: Date; 
   bookings: Booking[]; 
   onDrop: (date: Date) => void;
   onEmptyClick: (date: Date) => void;
   onBookingClick: (bookingId: string) => void;
+  isCurrentMonth?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: format(date, 'yyyy-MM-dd'),
@@ -1086,13 +1129,17 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: 
       }}
       className={`
         relative min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] p-1 sm:p-2 border-r border-b border-gray-200
-        ${isCurrentDay ? 'bg-blue-50/30' : 'bg-white hover:bg-gray-50'}
+        ${isCurrentDay ? 'bg-blue-50/30' : isCurrentMonth ? 'bg-white hover:bg-gray-50' : 'bg-gray-100/70 hover:bg-gray-150/80'}
         ${isOver ? 'ring-2 ring-blue-500 ring-inset bg-blue-50' : ''}
+        ${!isCurrentMonth ? 'shadow-lg shadow-gray-400/30 opacity-60' : ''}
         transition-all cursor-pointer
       `}
     >
       <div className="flex items-center justify-between mb-1 sm:mb-2">
-        <span className={`text-xs sm:text-sm font-medium ${isCurrentDay ? 'text-primary-700' : 'text-gray-700'}`}>
+        <span className={`text-xs sm:text-sm font-medium ${
+          isCurrentDay ? 'text-primary-700' : 
+          isCurrentMonth ? 'text-gray-700' : 'text-gray-400'
+        }`}>
           {dayNumber}
         </span>
         <button
@@ -1112,6 +1159,7 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: 
                 key={booking.id}
                 booking={booking}
                 onClick={() => onBookingClick(booking.id)}
+                viewMode="month"
               />
             ))}
             {hiddenCount > 0 && (
@@ -1133,6 +1181,7 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick }: 
               key={booking.id}
               booking={booking}
               onClick={() => onBookingClick(booking.id)}
+              viewMode="month"
             />
           ))
         )}
@@ -1290,9 +1339,25 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
       const end = endOfWeek(currentDate, { weekStartsOn: 1 })
       return { start, end }
     } else {
-      const start = startOfMonth(currentDate)
-      const end = endOfMonth(currentDate)
-      return { start, end }
+      // For month view, calculate adaptive grid (5-6 weeks based on month layout)
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      // Find first Monday of the calendar grid (may be in previous month)
+      const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 })
+      
+      // Find last Sunday that includes the month end
+      const lastWeekEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
+      
+      // Calculate weeks needed and cap at 6 weeks maximum
+      const daysSpanned = differenceInDays(lastWeekEnd, calendarStart) + 1
+      const weeksNeeded = Math.ceil(daysSpanned / 7)
+      const maxWeeks = Math.min(6, weeksNeeded)
+      
+      // Calculate final end date based on optimal weeks
+      const calendarEnd = new Date(calendarStart.getTime() + ((maxWeeks * 7) - 1) * 24 * 60 * 60 * 1000)
+      
+      return { start: calendarStart, end: calendarEnd }
     }
   }, [currentDate, viewMode])
 
@@ -1304,29 +1369,9 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
-    const days = eachDayOfInterval(dateRange)
-    
-    // For month view, pad with days from previous/next month
-    if (viewMode === 'month') {
-      const firstDay = days[0]
-      const lastDay = days[days.length - 1]
-      
-      // Add padding days at the start (Monday = 1, so Sunday = 0 becomes 7)
-      const startPadding = getDay(firstDay) === 0 ? 6 : getDay(firstDay) - 1
-      for (let i = startPadding - 1; i >= 0; i--) {
-        days.unshift(new Date(firstDay.getTime() - (startPadding - i) * 24 * 60 * 60 * 1000))
-      }
-      
-      // Add padding days at the end to make 6 weeks (42 days)
-      while (days.length < 42) {
-        const nextDay = new Date(days[days.length - 1])
-        nextDay.setDate(nextDay.getDate() + 1)
-        days.push(nextDay)
-      }
-    }
-    
-    return days
-  }, [dateRange, viewMode])
+    // dateRange now includes all needed days (including padding for month view)
+    return eachDayOfInterval(dateRange)
+  }, [dateRange])
 
   // Group bookings by date
   const bookingsByDate = useMemo(() => {
@@ -1813,6 +1858,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
                       onDrop={() => {}}
                       onEmptyClick={openModalForNew}
                       onBookingClick={openModalForEdit}
+                      isCurrentMonth={isCurrentMonth}
                     />
                   )
                 })}
@@ -1833,6 +1879,7 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
                 <DraggableAppointment
                   booking={draggedBooking}
                   onClick={() => {}}
+                  viewMode={viewMode}
                 />
               </div>
             )}
