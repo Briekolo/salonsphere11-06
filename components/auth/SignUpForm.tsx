@@ -23,17 +23,33 @@ export default function SignUpForm() {
     setError(null)
     setLoading(true)
 
+    // Log registration attempt
+    console.log('[SignUpForm] Starting registration:', {
+      email,
+      salonName,
+      firstName,
+      lastName,
+      timestamp: new Date().toISOString()
+    })
+
     try {
-      await signUp(email, password, {
+      const result = await signUp(email, password, {
         role: 'admin',
         pending_tenant_name: salonName,
         first_name: firstName,
-        last_name: lastName,
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        last_name: lastName
       })
+      
+      console.log('[SignUpForm] Registration successful:', result)
       setSuccess(true)
       // Supabase stuurt bevestigingsmail; laat user weten.
     } catch (err: any) {
+      console.error('[SignUpForm] Registration error:', {
+        message: err.message,
+        code: err.code,
+        status: err.status,
+        details: err
+      })
       setError(err.message)
     } finally {
       setLoading(false)

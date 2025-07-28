@@ -1,13 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User, createClient } from '@supabase/supabase-js'
+import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-
-// Create a direct client for auth operations to avoid issues with createPagesBrowserClient
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-const authClient = createClient(supabaseUrl, supabaseAnonKey)
 
 interface AuthContextType {
   user: User | null
@@ -50,64 +45,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signUp = async (email: string, password: string, userData: any) => {
-    console.log('Attempting signup with:', { email, userData })
+    console.log('[AuthProvider] SignUp attempt:', { email, userData, timestamp: new Date().toISOString() })
     
-    // First check if we can reach Supabase
     try {
-      const { data: testData, error: testError } = await authClient
-        .from('tenants')
-        .select('count')
-        .limit(1)
-      console.log('Supabase connection test:', { testData, testError })
-    } catch (connError) {
-      console.error('Cannot connect to Supabase:', connError)
-    }
-    
-    const { data, error } = await authClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: userData
-      }
-    })
-    
-    if (error) {
-      console.error('Signup error:', error)
-      console.error('Error details:', {
-        message: error.message,
-        status: error.status,
-        name: error.name,
-        stack: error.stack
-      })
-      throw error
-    }
-    
-    console.log('Signup successful:', data)
-    
-    // After signup, update tenant metadata if user was created
-    if (data.user) {
-      try {
-        // Wait a bit to ensure the trigger has run
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Get the tenant_id from the users table
-        const { data: userData, error: userError } = await authClient
-          .from('users')
-          .select('tenant_id')
-          .eq('id', data.user.id)
-          .single()
-          
-        if (userData?.tenant_id) {
-          // Update the auth metadata
-          await authClient.rpc('update_user_tenant_metadata', {
-            user_id: data.user.id,
-            tenant_id: userData.tenant_id
-          })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData,
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
-      } catch (metadataError) {
-        console.warn('Failed to update tenant metadata:', metadataError)
-        // Don't fail the signup, just log the warning
+      })
+      
+      console.log('[AuthProvider] SignUp response:', { data, error })
+      
+      if (error) {
+        console.error('[AuthProvider] SignUp error details:', {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          name: error.name
+        })
+        
+        // Provide better error messages for common issues
+        if (error.message.includes('Database error saving new user')) {
+          throw new Error('Er is een probleem opgetreden bij het aanmaken van je account. Controleer of alle velden correct zijn ingevuld en probeer het opnieuw.')
+        } else if (error.message.includes('User already registered')) {
+          throw new Error('Dit e-mailadres is al in gebruik. Probeer in te loggen of gebruik een ander e-mailadres.')
+        } else if (error.message.includes('Invalid email')) {
+          throw new Error('Voer een geldig e-mailadres in.')
+        } else if (error.message.includes('Password should be at least')) {
+          throw new Error('Het wachtwoord moet minimaal 6 karakters bevatten.')
+        } else if (error.message.includes('Signup is disabled')) {
+          throw new Error('Registratie is momenteel uitgeschakeld. Neem contact met ons op voor meer informatie.')
+        } else if (error.message.includes('Email rate limit exceeded')) {
+          throw new Error('Te veel pogingen. Wacht even voordat je opnieuw probeert.')
+        }
+        
+        throw new Error(error.message || 'Er is een onbekende fout opgetreden. Probeer het opnieuw.')
       }
+      
+      console.log('[AuthProvider] SignUp successful, user created:', data.user?.id)
+      // Signup was successful, no need for additional metadata updates 
+      // as the database trigger should handle everything
+      return data
+      
+    } catch (err: any) {
+      console.error('[AuthProvider] SignUp caught error:', err)
+      // Re-throw with better error message if needed
+      throw err
     }
   }
 

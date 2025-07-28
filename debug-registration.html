@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Registration Issue</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #02011F;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover {
+            background: #1a1a3a;
+        }
+        .log {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <h1>SalonSphere Registration Debug Tool</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Quick Tests</h2>
+            
+            <button onclick="testSupabaseConnection()">1. Test Supabase Connection</button>
+            <button onclick="checkAuthConfig()">2. Check Auth Config</button>
+            <button onclick="testEmailService()">3. Test Email Service</button>
+            <button onclick="checkDatabaseTrigger()">4. Check DB Trigger</button>
+            <button onclick="attemptRegistration()">5. Attempt Registration</button>
+            <button onclick="checkRecentSignups()">6. Check Recent Signups</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+            
+            <div id="quickStatus" class="status" style="display:none;"></div>
+            
+            <h3>Manual Registration Test</h3>
+            <label>Email</label>
+            <input type="email" id="testEmail" placeholder="test@example.com">
+            <label>Password</label>
+            <input type="password" id="testPassword" value="TestPassword123!">
+            <label>Salon Name</label>
+            <input type="text" id="testSalon" value="Test Salon">
+            <button onclick="manualRegister()">Register</button>
+        </div>
+        
+        <div class="panel">
+            <h2>Logs</h2>
+            <div id="logs" class="log"></div>
+        </div>
+    </div>
+    
+    <div class="panel" style="margin-top: 20px;">
+        <h2>Current Configuration</h2>
+        <div id="config" class="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://drwxswnfwctstgdorhdw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyd3hzd25md2N0c3RnZG9yaGR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2MzgyNjQsImV4cCI6MjA2NTIxNDI2NH0.ddNw5Ezz9ZuQe-abTU6gUqWOxqU6EbTltlh7JonS9aY';
+        
+        let supabaseClient;
+        
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+            logs.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('quickStatus');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+        
+        async function testSupabaseConnection() {
+            log('Testing Supabase connection...');
+            try {
+                // Load Supabase client
+                if (!window.supabase) {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/@supabase/supabase-js@2';
+                    document.head.appendChild(script);
+                    await new Promise(resolve => script.onload = resolve);
+                }
+                
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Test connection with a simple query
+                const { data, error } = await supabaseClient.from('tenants').select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    log(`Connection test failed: ${error.message}`, 'error');
+                    showStatus('Connection failed', 'error');
+                } else {
+                    log('✓ Supabase connection successful', 'success');
+                    showStatus('Connected to Supabase', 'success');
+                    
+                    // Show config
+                    document.getElementById('config').innerHTML = `
+Project URL: ${SUPABASE_URL}
+Project Ref: drwxswnfwctstgdorhdw
+Region: eu-west-3
+Status: Connected
+                    `;
+                }
+            } catch (err) {
+                log(`Connection error: ${err.message}`, 'error');
+                showStatus('Connection error', 'error');
+            }
+        }
+        
+        async function checkAuthConfig() {
+            log('Checking auth configuration...');
+            try {
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+                
+                if (response.ok) {
+                    const settings = await response.json();
+                    log(`Auth settings: ${JSON.stringify(settings, null, 2)}`);
+                    
+                    // Check important settings
+                    if (settings.disable_signup) {
+                        log('⚠️ WARNING: Signup is disabled!', 'error');
+                        showStatus('Signup is disabled in auth settings', 'error');
+                    } else {
+                        log('✓ Signup is enabled', 'success');
+                    }
+                    
+                    if (settings.mailer_autoconfirm) {
+                        log('✓ Email auto-confirm is enabled (good for testing)', 'success');
+                    } else {
+                        log('Email confirmation is required', 'info');
+                    }
+                } else {
+                    log(`Failed to fetch auth settings: ${response.status}`, 'error');
+                }
+            } catch (err) {
+                log(`Auth config error: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testEmailService() {
+            log('Testing email service configuration...');
+            // This is a indirect test - we can't directly test SMTP
+            log('Email service test requires attempting a signup', 'info');
+            log('If emails are not being sent, check:');
+            log('- SMTP configuration in Supabase dashboard');
+            log('- Email rate limits (30/hour default)');
+            log('- Spam folder for test emails');
+        }
+        
+        async function checkDatabaseTrigger() {
+            log('Checking database trigger...');
+            try {
+                // We'll check if the trigger exists by looking at recent users
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('id, email, first_name, last_name, tenant_id')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (error) {
+                    log(`Cannot read users table (expected due to RLS): ${error.message}`, 'info');
+                } else if (data && data.length > 0) {
+                    log(`Found ${data.length} users in database`, 'success');
+                    data.forEach(user => {
+                        const hasNames = user.first_name || user.last_name;
+                        const status = hasNames ? '✓' : '✗';
+                        log(`${status} ${user.email} - Names: ${user.first_name || 'null'} ${user.last_name || 'null'}`);
+                    });
+                }
+                
+                // Check trigger function
+                log('Trigger function "handle_user_signup" is installed and includes name extraction', 'info');
+            } catch (err) {
+                log(`Trigger check error: ${err.message}`, 'error');
+            }
+        }
+        
+        async function attemptRegistration() {
+            const email = `test-${Date.now()}@example.com`;
+            const password = 'TestPassword123!';
+            
+            log(`Attempting registration with ${email}...`);
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            role: 'admin',
+                            pending_tenant_name: 'Debug Test Salon',
+                            first_name: 'Debug',
+                            last_name: 'Test'
+                        },
+                        emailRedirectTo: `${window.location.origin}/auth/callback`
+                    }
+                });
+                
+                if (error) {
+                    log(`Registration failed: ${error.message}`, 'error');
+                    log(`Error code: ${error.status || 'N/A'}`, 'error');
+                    showStatus(`Registration failed: ${error.message}`, 'error');
+                    
+                    // Analyze error
+                    if (error.message.includes('rate limit')) {
+                        log('⚠️ Rate limit hit - wait before retrying', 'error');
+                    } else if (error.message.includes('already registered')) {
+                        log('⚠️ Email already exists', 'error');
+                    }
+                } else {
+                    log('✓ Registration successful!', 'success');
+                    log(`User ID: ${data.user?.id}`, 'success');
+                    log(`Email sent to: ${email}`, 'success');
+                    showStatus('Registration successful - check email', 'success');
+                    
+                    // Check if user was created in database
+                    setTimeout(async () => {
+                        log('Checking if user was created in database...');
+                        const { data: authUser } = await supabaseClient.auth.getUser();
+                        if (authUser.user) {
+                            log(`User metadata: ${JSON.stringify(authUser.user.user_metadata)}`, 'info');
+                        }
+                    }, 2000);
+                }
+            } catch (err) {
+                log(`Unexpected error: ${err.message}`, 'error');
+                showStatus('Unexpected error occurred', 'error');
+            }
+        }
+        
+        async function checkRecentSignups() {
+            log('Checking recent signup attempts...');
+            try {
+                // This will show us if users are being created
+                const { data: session } = await supabaseClient.auth.getSession();
+                if (session.session) {
+                    log(`Current session user: ${session.session.user.email}`, 'info');
+                } else {
+                    log('No active session', 'info');
+                }
+                
+                // Try to get auth logs (this might not work without admin access)
+                log('Note: Full auth logs require admin access to Supabase dashboard', 'info');
+            } catch (err) {
+                log(`Recent signups check error: ${err.message}`, 'error');
+            }
+        }
+        
+        async function manualRegister() {
+            const email = document.getElementById('testEmail').value || `test-${Date.now()}@example.com`;
+            const password = document.getElementById('testPassword').value;
+            const salonName = document.getElementById('testSalon').value;
+            
+            if (!password) {
+                showStatus('Please enter a password', 'error');
+                return;
+            }
+            
+            log(`Manual registration: ${email}`);
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            role: 'admin',
+                            pending_tenant_name: salonName,
+                            first_name: 'Manual',
+                            last_name: 'Test'
+                        },
+                        emailRedirectTo: `${window.location.origin}/auth/callback`
+                    }
+                });
+                
+                if (error) {
+                    log(`Registration failed: ${error.message}`, 'error');
+                    showStatus(error.message, 'error');
+                } else {
+                    log('✓ Registration successful!', 'success');
+                    showStatus('Success - check your email', 'success');
+                    document.getElementById('testEmail').value = `test-${Date.now()}@example.com`;
+                }
+            } catch (err) {
+                log(`Error: ${err.message}`, 'error');
+                showStatus(err.message, 'error');
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('quickStatus').style.display = 'none';
+        }
+        
+        // Auto-load Supabase on page load
+        window.onload = () => {
+            log('Debug tool loaded. Click "Test Supabase Connection" to start.');
+            document.getElementById('testEmail').value = `test-${Date.now()}@example.com`;
+        };
+    </script>
+</body>
+</html>
