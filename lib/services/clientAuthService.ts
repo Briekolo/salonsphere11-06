@@ -61,6 +61,17 @@ class ClientAuthService {
       // Wait for the auth user to be fully created
       await new Promise(resolve => setTimeout(resolve, 1000))
 
+      // Sign in immediately after signup to ensure proper session with claims
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password
+      })
+
+      if (signInError || !signInData.session) {
+        console.error('Failed to sign in after signup:', signInError)
+        // Continue anyway, as the auth user was created
+      }
+
       // Create new client record
       const { data: newClient, error: createError } = await supabase
         .from('clients')
