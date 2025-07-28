@@ -1,40 +1,44 @@
-import { createClient } from '@supabase/supabase-js'
+// Re-export the browser client as the default client for client components
 import { Database } from '@/types/database'
+import { supabase as browserSupabase } from './browser-client'
+
+export const supabase = browserSupabase
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
 
 // Check if environment variables are properly configured
 if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here' || !supabaseUrl.startsWith('https://')) {
-  throw new Error(
-    'Missing or invalid NEXT_PUBLIC_SUPABASE_URL. Please set this environment variable in your .env.local file with your actual Supabase project URL.'
-  )
+  console.error('Supabase URL configuration error:', {
+    url: supabaseUrl,
+    nodeEnv: process.env.NODE_ENV
+  })
+  
+  // In production, provide a more user-friendly error
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Authentication service is not properly configured. Please contact support.')
+  } else {
+    throw new Error(
+      'Missing or invalid NEXT_PUBLIC_SUPABASE_URL. Please set this environment variable in your .env.local file with your actual Supabase project URL.'
+    )
+  }
 }
 
 if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
-  throw new Error(
-    'Missing or invalid NEXT_PUBLIC_SUPABASE_ANON_KEY. Please set this environment variable in your .env.local file with your actual Supabase anon key.'
-  )
-}
-
-// Use a singleton pattern to ensure only one Supabase client instance
-let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null
-
-function getSupabaseClient() {
-  if (!supabaseInstance) {
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        storageKey: 'sb-client-auth-token',
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    })
+  console.error('Supabase anon key configuration error:', {
+    keyLength: supabaseAnonKey?.length,
+    nodeEnv: process.env.NODE_ENV
+  })
+  
+  // In production, provide a more user-friendly error
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Authentication service is not properly configured. Please contact support.')
+  } else {
+    throw new Error(
+      'Missing or invalid NEXT_PUBLIC_SUPABASE_ANON_KEY. Please set this environment variable in your .env.local file with your actual Supabase anon key.'
+    )
   }
-  return supabaseInstance
 }
-
-export const supabase = getSupabaseClient()
 
 // Helper function to get current user's tenant_id
 export async function getCurrentUserTenantId(): Promise<string | null> {

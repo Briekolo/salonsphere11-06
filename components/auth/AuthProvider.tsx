@@ -17,10 +17,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Debug mode - enable with ?debug=auth in URL
+  const debugMode = typeof window !== 'undefined' && 
+    new URLSearchParams(window.location.search).get('debug') === 'auth'
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (debugMode) {
+        console.group('🔐 Auth Provider - Initial Session')
+        console.log('Session:', session)
+        console.log('User:', session?.user)
+        console.log('Error:', error)
+        console.groupEnd()
+      }
+      
       setUser(session?.user ?? null)
       setLoading(false)
     })
@@ -28,20 +40,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (debugMode) {
+          console.group(`🔐 Auth State Change: ${event}`)
+          console.log('Session:', session)
+          console.log('User:', session?.user)
+          console.groupEnd()
+        }
+        
         setUser(session?.user ?? null)
         setLoading(false)
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [debugMode])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    if (debugMode) {
+      console.log('🔐 Attempting sign in for:', email)
+    }
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
-    if (error) throw error
+    
+    if (debugMode) {
+      console.log('🔐 Sign in result:', { data, error })
+    }
+    
+    if (error) {
+      // Add more context to auth errors
+      if (error.message === 'Invalid login credentials') {
+        throw new Error('Onjuist e-mailadres of wachtwoord')
+      }
+      throw error
+    }
+    
+    // Ensure session is properly set
+    if (data.session) {
+      setUser(data.user)
+      
+      // Force a session refresh to ensure it's properly stored
+      const { data: refreshData } = await supabase.auth.refreshSession()
+      if (refreshData.session) {
+        console.log('Session refreshed after sign in')
+      }
+    }
   }
 
   const signUp = async (email: string, password: string, userData: any) => {

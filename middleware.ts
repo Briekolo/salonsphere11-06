@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { Database } from '@/types/database'
+import { createMiddlewareSupabaseClient } from '@/lib/supabase/middleware'
 
 const authCache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_DURATION = 60000
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  
+  // Debug logging (remove in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Middleware] Processing: ${pathname}`)
+  }
 
   // Skip static assets and Next.js internal routes
   if (
@@ -25,12 +29,26 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient<Database>({ req, res })
+  // Create response that will carry cookies
+  const response = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  })
 
-  const {
-    data: { session }
-  } = await supabase.auth.getSession()
+  // Create supabase client that can set cookies on the response
+  const supabase = createMiddlewareSupabaseClient(req, response)
+  
+  // IMPORTANT: Use getUser() to refresh the session and set cookies
+  // This is critical for server-side auth to work
+  const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+  
+  // Then get the session
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (process.env.NODE_ENV === 'development' && error) {
+    console.log(`[Middleware] Session error: ${error.message}`)
+  }
 
   // Handle auth pages - redirect authenticated users to dashboard
   if (pathname.startsWith('/auth')) {
@@ -41,7 +59,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
     // Allow access to auth pages for non-authenticated users
-    return NextResponse.next()
+    return response
   }
 
   // Handle onboarding - only accessible for authenticated users without tenant_id
@@ -53,7 +71,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
     // Allow access to onboarding for authenticated users
-    return NextResponse.next()
+    return response
   }
 
   // Public client module routes
@@ -64,15 +82,22 @@ export async function middleware(req: NextRequest) {
     /^\/[^\/]+\/contact/.test(pathname) || // Contact page
     /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
   ) {
-    return NextResponse.next()
+    return response
   }
 
   // All other routes require authentication
   if (!session) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Middleware] No session found for ${pathname}, redirecting to sign-in`)
+    }
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = '/auth/sign-in'
     redirectUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(redirectUrl)
+  }
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Middleware] Session found for ${pathname}, user: ${session.user.email}`)
   }
 
   // Onboarding: als tenant_id ontbreekt, forceer redirect
@@ -107,13 +132,13 @@ export async function middleware(req: NextRequest) {
 
     if (!isAdmin) {
       const dashboardUrl = req.nextUrl.clone()
-      dashboardUrl.pathname = '/dashboard'
+      dashboardUrl.pathname = '/'
       return NextResponse.redirect(dashboardUrl)
     }
   }
 
-  // Sessieset‐cookie meegeven
-  return res
+  // Return response with updated cookies
+  return response
 }
 
 export const config = {

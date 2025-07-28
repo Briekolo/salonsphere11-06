@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { checkAuthAndRedirect } from '@/lib/utils/auth-redirect'
 
 export default function SignInForm() {
   const { signIn } = useAuth()
@@ -13,6 +15,28 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  // Test Supabase connection on mount
+  useEffect(() => {
+    async function testConnection() {
+      try {
+        const { error } = await supabase
+          .from('tenants')
+          .select('count')
+          .limit(1)
+          .single()
+        
+        if (error && error.code !== 'PGRST116') { // Ignore "not found" errors
+          setConnectionError('Kan geen verbinding maken met de server. Controleer je internetverbinding.')
+        }
+      } catch (err) {
+        setConnectionError('Kan geen verbinding maken met de server. Controleer je internetverbinding.')
+      }
+    }
+    
+    testConnection()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -21,10 +45,43 @@ export default function SignInForm() {
 
     try {
       await signIn(email, password)
-      // Volledige reload zodat Next.js middleware wordt geactiveerd
-      window.location.href = '/'
+      
+      console.log('Sign in successful, ensuring cookies are set...')
+      
+      // Get the session to ensure it's properly stored
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        console.log('Session confirmed, setting cookies...')
+        
+        // Force set the session to ensure cookies are created
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        })
+      }
+      
+      // Wait for cookies to be set
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Force redirect with full page reload
+      console.log('Redirecting to dashboard...')
+      window.location.replace('/')
     } catch (err: any) {
-      setError(err.message)
+      // Translate common error messages to Dutch
+      let errorMessage = err.message
+      
+      if (err.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Onjuist e-mailadres of wachtwoord'
+      } else if (err.message?.includes('Email not confirmed')) {
+        errorMessage = 'Je e-mailadres is nog niet bevestigd. Controleer je inbox.'
+      } else if (err.message?.includes('Network request failed') || err.message?.includes('Failed to fetch')) {
+        errorMessage = 'Geen verbinding met de server. Controleer je internetverbinding.'
+      } else if (err.message?.includes('User not found')) {
+        errorMessage = 'Geen account gevonden met dit e-mailadres'
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -32,6 +89,14 @@ export default function SignInForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Connection Error */}
+      {connectionError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800">{connectionError}</p>
+        </div>
+      )}
+      
       {/* Email Field */}
       <div className="space-y-2">
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">

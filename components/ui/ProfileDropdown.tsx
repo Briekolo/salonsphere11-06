@@ -47,14 +47,59 @@ export function ProfileDropdown({ initials, firstName, userEmail }: ProfileDropd
 
     setIsLoggingOut(true)
     try {
+      // Close dropdown immediately for better UX
+      setIsOpen(false)
+      
+      // Sign out from Supabase
       await signOut()
-      router.push('/auth/sign-in')
+      
+      // Clear all auth-related storage - be very aggressive
+      if (typeof window !== 'undefined') {
+        // Clear ALL localStorage and sessionStorage
+        console.log('Clearing all storage...')
+        
+        // Get all keys before clearing
+        const localStorageKeys = Object.keys(localStorage)
+        const sessionStorageKeys = Object.keys(sessionStorage)
+        
+        // Clear everything
+        localStorageKeys.forEach(key => {
+          console.log(`Removing localStorage: ${key}`)
+          localStorage.removeItem(key)
+        })
+        
+        sessionStorageKeys.forEach(key => {
+          console.log(`Removing sessionStorage: ${key}`)
+          sessionStorage.removeItem(key)
+        })
+        
+        // Also try to clear cookies
+        document.cookie.split(";").forEach(function(c) { 
+          const eqPos = c.indexOf("=")
+          const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim()
+          if (name.includes('supabase') || name.includes('sb-')) {
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'
+          }
+        })
+        
+        // Clear any IndexedDB
+        if ('indexedDB' in window) {
+          indexedDB.databases().then(dbs => {
+            dbs.forEach(db => {
+              if (db.name && (db.name.includes('supabase') || db.name.includes('auth'))) {
+                indexedDB.deleteDatabase(db.name)
+              }
+            })
+          })
+        }
+      }
+      
+      // Use hard navigation to ensure complete reload
+      window.location.href = '/auth/sign-in'
     } catch (error) {
       console.error('Logout error:', error)
-      // Could add toast notification here if available
-    } finally {
-      setIsLoggingOut(false)
-      setIsOpen(false)
+      // Still try to redirect even if logout partially fails
+      window.location.href = '/auth/sign-in'
     }
   }
 
