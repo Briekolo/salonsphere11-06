@@ -117,17 +117,17 @@ export function InventoryContent() {
               <InventoryFilters searchTerm={searchTerm} onSearch={setSearchTerm} />
             </div>
             
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               {/* Exporteren */}
-              <button onClick={handleExport} className="btn-outlined flex items-center gap-2 text-sm">
+              <button onClick={handleExport} className="btn-outlined flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[40px]">
                 <FileText className="w-4 h-4" />
-                <span>Exporteren</span>
+                <span className="hidden sm:inline">Exporteren</span>
               </button>
 
               {/* Importeren */}
-              <button onClick={handleImportButton} className="btn-outlined flex items-center gap-2 text-sm">
+              <button onClick={handleImportButton} className="btn-outlined flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[40px]">
                 <Upload className="w-4 h-4" />
-                <span>Importeren</span>
+                <span className="hidden sm:inline">Importeren</span>
               </button>
               <input
                 type="file"
@@ -138,7 +138,7 @@ export function InventoryContent() {
               />
 
               {/* Nieuw product */}
-              <button onClick={() => setView('form')} className="btn-primary flex items-center gap-2 text-sm">
+              <button onClick={() => setView('form')} className="btn-primary flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[40px]">
                 <PlusCircle className="w-4 h-4" />
                 <span>Nieuw product</span>
               </button>
@@ -150,7 +150,7 @@ export function InventoryContent() {
             <div className="flex bg-gray-100 rounded-full p-1">
               <button
                 onClick={() => setView('overview')}
-                className={`px-3 lg:px-4 py-2 rounded-full text-xs lg:text-sm font-medium transition-colors min-h-[44px] flex items-center ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[36px] sm:min-h-[44px] flex items-center ${
                   view === 'overview'
                     ? 'bg-[#02011F] text-white'
                     : 'text-gray-600 hover:text-gray-900'
@@ -160,7 +160,7 @@ export function InventoryContent() {
               </button>
               <button
                 onClick={() => setView('list')}
-                className={`px-3 lg:px-4 py-2 rounded-full text-xs lg:text-sm font-medium transition-colors min-h-[44px] flex items-center ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors min-h-[36px] sm:min-h-[44px] flex items-center ${
                   view === 'list'
                     ? 'bg-[#02011F] text-white'
                     : 'text-gray-600 hover:text-gray-900'

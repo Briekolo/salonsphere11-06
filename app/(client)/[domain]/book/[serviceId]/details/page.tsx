@@ -264,15 +264,15 @@ export default function ClientDetailsPage({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Form */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-              <h2 className="text-lg font-medium text-[#010009] mb-6" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
+              <h2 className="text-lg font-medium text-[#010009] mb-4 sm:mb-6" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                 Contactgegevens
               </h2>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* First Name */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
@@ -284,7 +284,7 @@ export default function ClientDetailsPage({
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     className={`
-                      w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent
+                      w-full px-3 sm:px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent min-h-[44px] text-base
                       ${errors.firstName ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="Jan"
@@ -305,7 +305,7 @@ export default function ClientDetailsPage({
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     className={`
-                      w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent
+                      w-full px-3 sm:px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent min-h-[44px] text-base
                       ${errors.lastName ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="Jansen"
@@ -326,7 +326,7 @@ export default function ClientDetailsPage({
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className={`
-                      w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent
+                      w-full px-3 sm:px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent min-h-[44px] text-base
                       ${errors.email ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="jan.jansen@email.nl"
@@ -347,7 +347,7 @@ export default function ClientDetailsPage({
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className={`
-                      w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent
+                      w-full px-3 sm:px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent min-h-[44px] text-base
                       ${errors.phone ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="06 12345678"
@@ -359,7 +359,7 @@ export default function ClientDetailsPage({
               </div>
 
               {/* Notes */}
-              <div className="mt-6">
+              <div className="mt-4 sm:mt-6">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <AlertCircle className="w-4 h-4 text-gray-400" />
                   Opmerkingen (optioneel)
@@ -368,33 +368,33 @@ export default function ClientDetailsPage({
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent min-h-[44px] text-base"
                   placeholder="Eventuele speciale verzoeken of opmerkingen..."
                 />
               </div>
 
               {/* Options */}
-              <div className="mt-6 space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer">
+              <div className="mt-4 sm:mt-6 space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-gray-50 transition-colors">
                   <input
                     type="checkbox"
                     checked={formData.marketingOptIn}
                     onChange={(e) => setFormData({ ...formData, marketingOptIn: e.target.checked })}
-                    className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F]"
+                    className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] min-h-[16px] min-w-[16px]"
                   />
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-gray-600 leading-relaxed">
                     Ik wil graag op de hoogte blijven van nieuws en aanbiedingen
                   </span>
                 </label>
 
-                <label className="flex items-start gap-3 cursor-pointer">
+                <label className="flex items-start gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-gray-50 transition-colors">
                   <input
                     type="checkbox"
                     checked={formData.createAccount}
                     onChange={(e) => setFormData({ ...formData, createAccount: e.target.checked })}
-                    className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F]"
+                    className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] min-h-[16px] min-w-[16px]"
                   />
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-gray-600 leading-relaxed">
                     Maak een account aan voor sneller boeken in de toekomst
                   </span>
                 </label>
@@ -404,7 +404,7 @@ export default function ClientDetailsPage({
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full mt-6 px-6 py-3 bg-[#02011F] text-white rounded-lg font-medium hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
+                className="w-full mt-6 px-6 py-3 bg-[#02011F] text-white rounded-lg font-medium hover:bg-opacity-90 active:bg-opacity-80 transition-all flex items-center justify-center gap-2 min-h-[48px]"
               >
                 {submitting ? (
                   <>
@@ -423,12 +423,12 @@ export default function ClientDetailsPage({
 
           {/* Booking Summary Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 sticky top-24" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-              <h3 className="text-lg font-medium text-[#010009] mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+            <div className="bg-white rounded-2xl p-4 sm:p-6 lg:sticky lg:top-24" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
+              <h3 className="text-lg font-medium text-[#010009] mb-3 sm:mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                 Uw afspraak
               </h3>
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {/* Service */}
                 <div>
                   <p className="text-sm text-gray-600">Behandeling</p>

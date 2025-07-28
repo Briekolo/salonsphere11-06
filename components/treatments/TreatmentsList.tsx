@@ -74,26 +74,93 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
   }
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-heading">Alle behandelingen</h2>
-        <div className="text-sm text-gray-600">
+    <div className="card p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+        <h2 className="text-heading text-lg sm:text-xl">Alle behandelingen</h2>
+        <div className="text-xs sm:text-sm text-gray-600">
           {filteredTreatments.length} behandelingen gevonden
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile View */}
+      <div className="sm:hidden space-y-3">
+        {filteredTreatments.map((treatment: Service) => (
+          <div 
+            key={treatment.id}
+            className={`card p-3 space-y-3 ${!treatment.active ? 'bg-gray-50' : ''}`}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className={`font-semibold text-sm ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>
+                  {treatment.name}
+                </h3>
+                <p className="text-xs text-gray-600 line-clamp-2 mt-1">{treatment.description}</p>
+                <span className={`inline-block mt-2 status-chip text-xs ${
+                  treatment.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {treatment.active ? 'Actief' : 'Inactief'}
+                </span>
+              </div>
+              <div className="flex items-start gap-1">
+                <button 
+                  onClick={() => handleToggleVisibility(treatment)}
+                  className="p-1.5 hover:bg-gray-200 rounded-full"
+                >
+                  {treatment.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => onTreatmentEdit(treatment.id)}
+                  className="p-1.5 hover:bg-gray-200 rounded-full"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-gray-600">Duur:</span>
+                <span className="font-medium ml-1">{treatment.duration_minutes}min</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Prijs:</span>
+                <span className="font-medium ml-1">€{treatment.price}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Sessies:</span>
+                <span className="font-medium ml-1">{treatment.aantal_sessies ?? 1}x</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Marge:</span>
+                <span className={`font-medium ml-1 ${
+                  overheadMetrics 
+                    ? getMarginColor(ServiceService.calculateMarginWithOverhead(treatment.price, treatment.material_cost ?? 0, overheadMetrics.overhead_per_treatment))
+                    : getMarginColor(ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0))
+                }`}>
+                  {overheadMetrics 
+                    ? ServiceService.calculateMarginWithOverhead(treatment.price, treatment.material_cost ?? 0, overheadMetrics.overhead_per_treatment).toFixed(1)
+                    : ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0).toFixed(1)
+                  }%
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden sm:block overflow-x-auto -mx-4 sm:mx-0">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Behandeling</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Duur</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Prijs</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Sessies</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Overhead</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Marge</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600 text-right">Acties</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Behandeling</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Status</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Duur</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Prijs</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 hidden md:table-cell">Sessies</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 hidden lg:table-cell">Overhead</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Marge</th>
+              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 text-right">Acties</th>
             </tr>
           </thead>
           <tbody>
@@ -102,45 +169,45 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
                 key={treatment.id} 
                 className={`border-b border-gray-100 transition-colors ${!treatment.active ? 'bg-gray-50 text-gray-500' : 'hover:bg-gray-50'}`}
               >
-                <td className="py-4 px-4">
+                <td className="py-3 sm:py-4 px-2 sm:px-4">
                   <div>
-                    <div className={`font-medium ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>{treatment.name}</div>
-                    <div className="text-sm truncate max-w-[200px]">
+                    <div className={`font-medium text-xs sm:text-sm ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>{treatment.name}</div>
+                    <div className="text-xs sm:text-sm truncate max-w-[150px] sm:max-w-[200px]">
                       {treatment.description}
                     </div>
                   </div>
                 </td>
-                <td className="py-4 px-4">
-                  <span className={`status-chip ${
+                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                  <span className={`status-chip text-xs ${
                     treatment.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}>
                     {treatment.active ? 'Actief' : 'Inactief'}
                   </span>
                 </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-1 text-sm">
-                    <Clock className="w-4 h-4" />
+                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                  <div className="flex items-center gap-1 text-xs sm:text-sm">
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                     {treatment.duration_minutes}min
                   </div>
                 </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-1 text-sm font-medium">
-                    <Euro className="w-4 h-4" />
+                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                  <div className="flex items-center gap-1 text-xs sm:text-sm font-medium">
+                    <Euro className="w-3 h-3 sm:w-4 sm:h-4" />
                     {treatment.price}
                   </div>
                 </td>
-                <td className="py-4 px-4">
+                <td className="py-3 sm:py-4 px-2 sm:px-4 hidden md:table-cell">
                   <span className="inline-block px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full">
                     {treatment.aantal_sessies ?? 1}x
                   </span>
                 </td>
-                <td className="py-4 px-4">
-                  <span className="text-sm text-gray-600">
+                <td className="py-3 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
+                  <span className="text-xs sm:text-sm text-gray-600">
                     {overheadMetrics ? `€${overheadMetrics.overhead_per_treatment.toFixed(2)}` : '--'}
                   </span>
                 </td>
-                <td className="py-4 px-4">
-                  <span className={`text-sm font-medium ${
+                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                  <span className={`text-xs sm:text-sm font-medium ${
                     overheadMetrics 
                       ? getMarginColor(ServiceService.calculateMarginWithOverhead(treatment.price, treatment.material_cost ?? 0, overheadMetrics.overhead_per_treatment))
                       : getMarginColor(ServiceService.calculateMargin(treatment.price, treatment.material_cost ?? 0))
@@ -151,44 +218,44 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
                     }%
                   </span>
                   {overheadMetrics && (
-                    <div className="text-xs text-gray-500">incl. overhead</div>
+                    <div className="text-xs text-gray-500 hidden lg:block">incl. overhead</div>
                   )}
                 </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center justify-end gap-1 relative">
+                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                  <div className="flex items-center justify-end gap-0.5 sm:gap-1 relative">
                     <button 
                       onClick={() => handleToggleVisibility(treatment)}
-                      className="p-2 hover:bg-gray-200 rounded-full"
+                      className="p-1 sm:p-1.5 lg:p-2 hover:bg-gray-200 rounded-full"
                       title={treatment.active ? 'Verbergen' : 'Zichtbaar maken'}
                     >
-                      {treatment.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      {treatment.active ? <Eye className="w-3 h-3 sm:w-4 sm:h-4" /> : <EyeOff className="w-3 h-3 sm:w-4 sm:h-4" />}
                     </button>
                     <button 
                       onClick={() => onTreatmentEdit(treatment.id)}
-                      className="p-2 hover:bg-gray-200 rounded-full"
+                      className="p-1 sm:p-1.5 lg:p-2 hover:bg-gray-200 rounded-full"
                       title="Bewerken"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                     <button
                       onClick={() => setOpenMenuId(openMenuId === treatment.id ? null : treatment.id)}
-                      className="p-2 hover:bg-gray-200 rounded-full"
+                      className="p-1 sm:p-1.5 lg:p-2 hover:bg-gray-200 rounded-full"
                     >
-                      <MoreVertical className="w-4 h-4" />
+                      <MoreVertical className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
 
                     {openMenuId === treatment.id && (
                       <div
                         ref={menuRef}
-                        className="absolute top-full right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-10"
+                        className="absolute top-full right-0 mt-2 w-32 sm:w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-10"
                       >
                         <ul>
                           <li>
                             <button
                               onClick={() => { handleDelete(treatment.id); setOpenMenuId(null); }}
-                              className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              className="w-full text-left flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:bg-red-50"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                               Verwijderen
                             </button>
                           </li>

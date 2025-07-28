@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
@@ -18,10 +17,24 @@ if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
   )
 }
 
-export const supabase =
-  typeof window === 'undefined'
-    ? createClient<Database>(supabaseUrl, supabaseAnonKey)
-    : createPagesBrowserClient<Database>()
+// Use a singleton pattern to ensure only one Supabase client instance
+let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null
+
+function getSupabaseClient() {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        storageKey: 'sb-client-auth-token',
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
+  }
+  return supabaseInstance
+}
+
+export const supabase = getSupabaseClient()
 
 // Helper function to get current user's tenant_id
 export async function getCurrentUserTenantId(): Promise<string | null> {

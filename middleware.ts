@@ -12,7 +12,15 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    /\.[a-zA-Z0-9]+$/.test(pathname) // eindigt op bestandsextensie
+    /\.[a-zA-Z0-9]+$/.test(pathname) || // eindigt op bestandsextensie
+    // Client module routes are public
+    /^\/[^\/]+\/book/.test(pathname) || // Booking flow
+    /^\/[^\/]+\/services/.test(pathname) || // Services page
+    /^\/[^\/]+\/staff/.test(pathname) || // Staff page
+    /^\/[^\/]+\/contact/.test(pathname) || // Contact page
+    /^\/[^\/]+\/auth/.test(pathname) || // Client auth pages
+    /^\/[^\/]+\/account/.test(pathname) || // Client account pages
+    /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
   ) {
     return NextResponse.next()
   }

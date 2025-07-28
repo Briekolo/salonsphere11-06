@@ -21,7 +21,7 @@ interface Staff {
   first_name: string;
   last_name: string;
   email: string;
-  image_url?: string;
+  avatar_url?: string;
   bio?: string;
   specializations?: string[];
   rating?: number;
@@ -85,7 +85,7 @@ export default function BookStaffPage({
             first_name,
             last_name,
             email,
-            image_url,
+            avatar_url,
             bio,
             specializations
           )
@@ -230,9 +230,9 @@ export default function BookStaffPage({
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">
-                      {member.image_url ? (
+                      {member.avatar_url ? (
                         <Image
-                          src={member.image_url}
+                          src={member.avatar_url}
                           alt={`${member.first_name} ${member.last_name}`}
                           width={64}
                           height={64}

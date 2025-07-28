@@ -5,17 +5,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Calendar,
-  Scissors,
   Package,
-  CreditCard,
   Mail,
   BarChart3,
   Users,
   Settings,
   HelpCircle,
-  ChevronDown,
   Sparkles,
-  PieChart,
   Menu,
   X,
   Shield,

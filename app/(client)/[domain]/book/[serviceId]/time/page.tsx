@@ -241,9 +241,9 @@ export default function BookingCalendarPage({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Calendar */}
-          <div className="bg-white rounded-2xl p-4 sm:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
+          <div className="bg-white rounded-2xl p-3 sm:p-4 lg:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
                 {format(currentMonth, 'MMMM yyyy', { locale: nl })}
@@ -266,15 +266,15 @@ export default function BookingCalendarPage({
             </div>
 
             {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
               {['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].map(day => (
-                <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+                <div key={day} className="text-center text-xs font-medium text-gray-500 py-1.5 sm:py-2">
                   {day}
                 </div>
               ))}
             </div>
             
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
               {days.map(day => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const isAvailable = monthAvailability?.[dateStr] || false;
@@ -288,11 +288,11 @@ export default function BookingCalendarPage({
                     onClick={() => handleDateSelect(day)}
                     disabled={!isAvailable || isPast || !isCurrentMonth}
                     className={`
-                      aspect-square p-2 rounded-lg text-sm transition-colors
+                      aspect-square p-1 sm:p-2 rounded-lg text-xs sm:text-sm transition-colors min-h-[44px] flex items-center justify-center
                       ${!isCurrentMonth ? 'text-gray-300' : ''}
                       ${isToday(day) ? 'bg-[#E3ECFB] text-[#7091D9]' : ''}
                       ${isSelected ? 'bg-[#02011F] text-white' : ''}
-                      ${isAvailable && !isPast && isCurrentMonth && !isSelected ? 'hover:bg-gray-100 text-[#010009]' : ''}
+                      ${isAvailable && !isPast && isCurrentMonth && !isSelected ? 'hover:bg-gray-100 text-[#010009] active:bg-gray-200' : ''}
                       ${!isAvailable || isPast ? 'text-gray-300 cursor-not-allowed' : ''}
                     `}
                     style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
@@ -304,16 +304,16 @@ export default function BookingCalendarPage({
             </div>
 
             {/* Legend */}
-            <div className="mt-4 flex flex-wrap gap-4 text-xs">
-              <div className="flex items-center gap-2">
+            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-4 text-xs">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div className="w-3 h-3 bg-[#02011F] rounded"></div>
                 <span className="text-gray-600">Geselecteerd</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div className="w-3 h-3 bg-gray-100 rounded"></div>
                 <span className="text-gray-600">Beschikbaar</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div className="w-3 h-3 bg-gray-50 rounded"></div>
                 <span className="text-gray-600">Niet beschikbaar</span>
               </div>
@@ -321,7 +321,7 @@ export default function BookingCalendarPage({
           </div>
 
           {/* Time slots */}
-          <div className="bg-white rounded-2xl p-4 sm:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
+          <div className="bg-white rounded-2xl p-3 sm:p-4 lg:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
             <h2 className="text-lg font-medium text-[#010009] mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
               {selectedDate 
                 ? `Beschikbare tijden op ${format(selectedDate, 'd MMMM', { locale: nl })}`
@@ -336,16 +336,16 @@ export default function BookingCalendarPage({
                     <Loader2 className="h-6 w-6 animate-spin text-[#7091D9]" />
                   </div>
                 ) : availableSlots && availableSlots.length > 0 ? (
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[400px] sm:max-h-[500px] overflow-y-auto">
                     {availableSlots.map((slot, index) => (
                       <button
                         key={`${slot.time}-${slot.staffId}-${index}`}
                         onClick={() => handleSlotSelect(slot)}
                         disabled={!slot.available || isHolding}
                         className={`
-                          w-full p-3 rounded-lg border transition-all
+                          w-full p-3 sm:p-4 rounded-lg border transition-all min-h-[44px]
                           ${slot.available 
-                            ? 'border-gray-200 hover:border-[#7091D9] hover:bg-gray-50' 
+                            ? 'border-gray-200 hover:border-[#7091D9] hover:bg-gray-50 active:bg-gray-100' 
                             : 'border-gray-100 bg-gray-50 cursor-not-allowed'
                           }
                         `}

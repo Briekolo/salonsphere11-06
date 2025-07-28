@@ -147,66 +147,67 @@ export function InvoicesContent() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <h1 className="text-2xl sm:text-3xl font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
             Facturen
           </h1>
           <button
             onClick={() => router.push('/invoices/new')}
-            className="px-4 py-2 bg-[#02011F] text-white rounded-lg font-medium hover:bg-opacity-90 transition-all flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-[#02011F] text-white rounded-lg font-medium hover:bg-opacity-90 transition-all flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center min-h-[40px]"
           >
-            <Plus className="w-5 h-5" />
-            Nieuwe factuur
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">Nieuwe factuur</span>
+            <span className="xs:hidden">Nieuw</span>
           </button>
         </div>
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Totaal facturen</p>
-              <p className="text-2xl font-medium text-[#010009]">{stats.total}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <p className="text-xs sm:text-sm text-gray-600">Totaal facturen</p>
+              <p className="text-xl sm:text-2xl font-medium text-[#010009]">{stats.total}</p>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Totaal bedrag</p>
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <p className="text-xs sm:text-sm text-gray-600">Totaal bedrag</p>
               <div className="flex items-center gap-1">
-                <Euro className="w-5 h-5 text-gray-600" />
-                <p className="text-2xl font-medium text-[#010009]">{stats.totalAmount.toFixed(2)}</p>
+                <Euro className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                <p className="text-lg sm:text-2xl font-medium text-[#010009]">{stats.totalAmount.toFixed(2)}</p>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Ontvangen</p>
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <p className="text-xs sm:text-sm text-gray-600">Ontvangen</p>
               <div className="flex items-center gap-1">
-                <Euro className="w-5 h-5 text-green-600" />
-                <p className="text-2xl font-medium text-green-600">{stats.paidAmount.toFixed(2)}</p>
+                <Euro className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                <p className="text-lg sm:text-2xl font-medium text-green-600">{stats.paidAmount.toFixed(2)}</p>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Openstaand</p>
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <p className="text-xs sm:text-sm text-gray-600">Openstaand</p>
               <div className="flex items-center gap-1">
-                <Euro className="w-5 h-5 text-red-600" />
-                <p className="text-2xl font-medium text-red-600">{stats.outstandingAmount.toFixed(2)}</p>
+                <Euro className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+                <p className="text-lg sm:text-2xl font-medium text-red-600">{stats.outstandingAmount.toFixed(2)}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-4">
-          <div className="flex flex-wrap gap-4">
+        <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
             {/* Search */}
-            <div className="flex-1 min-w-[200px]">
+            <div className="w-full sm:flex-1 sm:min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Zoek op nummer of klant..."
+                  placeholder="Zoek..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent"
+                  className="pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent text-sm sm:text-base min-h-[40px]"
                 />
               </div>
             </div>
@@ -215,7 +216,7 @@ export function InvoicesContent() {
             <select
               value={selectedStatus.join(',')}
               onChange={(e) => setSelectedStatus(e.target.value ? e.target.value.split(',') as InvoiceStatus[] : [])}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent"
+              className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent text-sm sm:text-base min-h-[40px] w-full sm:w-auto"
             >
               <option value="">Alle statussen</option>
               <option value="draft">Concept</option>
@@ -228,18 +229,20 @@ export function InvoicesContent() {
             </select>
 
             {/* Date range */}
-            <input
-              type="date"
-              value={dateRange.from}
-              onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent"
-            />
-            <input
-              type="date"
-              value={dateRange.to}
-              onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent"
-            />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <input
+                type="date"
+                value={dateRange.from}
+                onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent text-sm sm:text-base min-h-[40px] flex-1"
+              />
+              <input
+                type="date"
+                value={dateRange.to}
+                onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#02011F] focus:border-transparent text-sm sm:text-base min-h-[40px] flex-1"
+              />
+            </div>
           </div>
 
           {/* Bulk actions */}
@@ -270,8 +273,8 @@ export function InvoicesContent() {
         </div>
       </div>
 
-      {/* Invoice table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      {/* Invoice table - Desktop */}
+      <div className="hidden lg:block bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -397,6 +400,82 @@ export function InvoicesContent() {
           </div>
         )}
       </div>
+
+      {/* Invoice cards - Mobile/Tablet */}
+      <div className="lg:hidden space-y-3">
+        {invoices.map((invoice) => (
+          <div
+            key={invoice.id}
+            className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => router.push(`/invoices/${invoice.id}`)}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-[#010009]">{invoice.invoice_number}</span>
+                  <div className="flex items-center gap-1">
+                    {getStatusIcon(invoice.status)}
+                    <span className="text-xs sm:text-sm">{getStatusLabel(invoice.status)}</span>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-[#010009]">
+                  {invoice.client?.first_name} {invoice.client?.last_name}
+                </p>
+                <p className="text-xs text-gray-600">{invoice.client?.email}</p>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-1">
+                  <Euro className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" />
+                  <span className="font-medium text-sm sm:text-base">{invoice.total_amount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600">
+              <span>{format(new Date(invoice.issue_date), 'd MMM yyyy', { locale: nl })}</span>
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selectedInvoices.includes(invoice.id)}
+                  onChange={() => toggleInvoiceSelection(invoice.id)}
+                  className="rounded border-gray-300"
+                />
+                <button
+                  className="p-1.5 hover:bg-gray-100 rounded"
+                  title="Download PDF"
+                >
+                  <Download className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination - Mobile */}
+      {totalPages > 1 && (
+        <div className="lg:hidden flex items-center justify-between mt-4 px-2">
+          <p className="text-xs sm:text-sm text-gray-600">
+            Pagina {currentPage}/{totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Empty state */}
       {invoices.length === 0 && !loading && (

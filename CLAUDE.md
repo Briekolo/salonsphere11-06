@@ -78,7 +78,7 @@ useTenantMetrics() // Dashboard analytics
 - **Onboarding Flow**: Enforced for users without tenant_id
 
 ### Supabase Project
-- **Project ID**: dxukhzudksacgfukpmqs
+- **Project ID**: drwxswnfwctstgdorhdw
 - **URL**: Configured in `.env.local` (NEXT_PUBLIC_SUPABASE_URL)
 - **Anon Key**: Configured in `.env.local` (NEXT_PUBLIC_SUPABASE_ANON_KEY)
 

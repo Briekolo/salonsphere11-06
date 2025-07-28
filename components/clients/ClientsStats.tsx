@@ -88,17 +88,17 @@ export function ClientsStats() {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
       {stats.map((stat, index) => (
-        <div key={index} className="metric-card">
+        <div key={index} className="metric-card p-3 sm:p-4">
           <div className="flex items-start justify-between">
-            <div className={`metric-icon ${stat.iconBgColor}`}>
+            <div className={`metric-icon w-10 h-10 sm:w-12 sm:h-12 ${stat.iconBgColor}`}>
               <div className={stat.iconColor}>{stat.icon}</div>
             </div>
           </div>
-          <div className="mt-4">
-            <p className="metric-title">{stat.title}</p>
-            <p className="metric-value">{stat.value}</p>
+          <div className="mt-3 sm:mt-4">
+            <p className="metric-title text-xs sm:text-sm">{stat.title}</p>
+            <p className="metric-value text-lg sm:text-2xl">{stat.value}</p>
           </div>
         </div>
       ))}

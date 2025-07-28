@@ -150,39 +150,39 @@ export function BusinessInfoTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Bedrijfsinformatie</h2>
-        <p className="text-gray-600 mt-1">
+        <h2 className="text-base sm:text-lg lg:text-xl font-semibold">Bedrijfsinformatie</h2>
+        <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">
           Beheer de basisgegevens van uw salon
         </p>
       </div>
 
       {message && (
-        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`p-3 sm:p-4 rounded-lg text-xs sm:text-sm ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {message.text}
         </div>
       )}
 
       {!isAdmin && (
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-blue-800 text-sm">
+        <div className="p-3 sm:p-4 bg-blue-50 rounded-lg">
+          <p className="text-blue-800 text-xs sm:text-sm">
             <strong>Alleen-lezen:</strong> U heeft geen beheerrechten om deze gegevens te wijzigen.
           </p>
         </div>
       )}
 
       {/* Salon Profile */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <Building2 className="h-5 w-5" />
-          <h3 className="text-lg font-medium">Salon Profiel</h3>
+      <div className="card p-3 sm:p-4 lg:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+          <h3 className="text-sm sm:text-base lg:text-lg font-medium">Salon Profiel</h3>
         </div>
         
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Salon Naam *
               </label>
               <input
@@ -190,22 +190,22 @@ export function BusinessInfoTab() {
                 value={profile.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 disabled={!isAdmin}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                 placeholder="Uw salon naam"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Email *
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="email"
                   value={profile.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   disabled={!isAdmin}
-                  className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                  className="w-full pl-8 sm:pl-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                   placeholder="info@uwsalon.nl"
                 />
               </div>
@@ -213,7 +213,7 @@ export function BusinessInfoTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Beschrijving
             </label>
             <textarea
@@ -221,40 +221,40 @@ export function BusinessInfoTab() {
               onChange={(e) => handleInputChange('description', e.target.value)}
               disabled={!isAdmin}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
               placeholder="Korte beschrijving van uw salon"
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Telefoon
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Phone className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
                   value={profile.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   disabled={!isAdmin}
-                  className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                  className="w-full pl-8 sm:pl-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                   placeholder="+31 6 12345678"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Website
               </label>
               <div className="relative">
-                <Globe className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Globe className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
                   value={profile.website}
                   onChange={(e) => handleInputChange('website', e.target.value)}
                   disabled={!isAdmin}
-                  className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                  className="w-full pl-8 sm:pl-10 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                   placeholder="www.uwsalon.nl"
                 />
               </div>
@@ -264,15 +264,15 @@ export function BusinessInfoTab() {
       </div>
 
       {/* Address */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <MapPin className="h-5 w-5" />
-          <h3 className="text-lg font-medium">Adresgegevens</h3>
+      <div className="card p-3 sm:p-4 lg:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
+          <h3 className="text-sm sm:text-base lg:text-lg font-medium">Adresgegevens</h3>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Straat en Huisnummer
             </label>
             <input
@@ -280,14 +280,14 @@ export function BusinessInfoTab() {
               value={profile.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
               disabled={!isAdmin}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
               placeholder="Hoofdstraat 123"
             />
           </div>
           
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Postcode
               </label>
               <input
@@ -295,12 +295,12 @@ export function BusinessInfoTab() {
                 value={profile.postal_code}
                 onChange={(e) => handleInputChange('postal_code', e.target.value)}
                 disabled={!isAdmin}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                 placeholder="1234 AB"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Plaats
               </label>
               <input
@@ -308,12 +308,12 @@ export function BusinessInfoTab() {
                 value={profile.city}
                 onChange={(e) => handleInputChange('city', e.target.value)}
                 disabled={!isAdmin}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                 placeholder="Amsterdam"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="sm:col-span-2 md:col-span-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Land
               </label>
               <input
@@ -321,7 +321,7 @@ export function BusinessInfoTab() {
                 value={profile.country}
                 onChange={(e) => handleInputChange('country', e.target.value)}
                 disabled={!isAdmin}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
                 placeholder="Nederland"
               />
             </div>
@@ -330,12 +330,12 @@ export function BusinessInfoTab() {
       </div>
 
       {/* Business Details */}
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">Zakelijke Gegevens</h3>
+      <div className="card p-3 sm:p-4 lg:p-6">
+        <h3 className="text-sm sm:text-base lg:text-lg font-medium mb-3 sm:mb-4">Zakelijke Gegevens</h3>
         
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               BTW Nummer
             </label>
             <input
@@ -343,12 +343,12 @@ export function BusinessInfoTab() {
               value={profile.vat_number}
               onChange={(e) => handleInputChange('vat_number', e.target.value)}
               disabled={!isAdmin}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
               placeholder="NL123456789B01"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               KvK Nummer
             </label>
             <input
@@ -356,7 +356,7 @@ export function BusinessInfoTab() {
               value={profile.chamber_of_commerce}
               onChange={(e) => handleInputChange('chamber_of_commerce', e.target.value)}
               disabled={!isAdmin}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500 text-xs sm:text-sm"
               placeholder="12345678"
             />
           </div>
@@ -369,16 +369,16 @@ export function BusinessInfoTab() {
           <button
             onClick={handleSave}
             disabled={saving || !profile.name || !profile.email}
-            className="btn-primary"
+            className="btn-primary text-xs sm:text-sm w-full sm:w-auto"
           >
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 Opslaan...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4" />
+                <Save className="h-3 w-3 sm:h-4 sm:w-4" />
                 Wijzigingen Opslaan
               </>
             )}
