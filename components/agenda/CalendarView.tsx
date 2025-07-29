@@ -31,14 +31,10 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
   const updateMutation = useUpdateBooking()
 
   // ---------- UI helpers ----------
-  const statusClasses = (status:string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-50 border-green-400 hover:bg-green-100'
-      case 'completed': return 'bg-gray-50 border-gray-400 hover:bg-gray-100'
-      case 'cancelled': return 'bg-red-50 border-red-400 hover:bg-red-100'
-      default: // scheduled
-        return 'bg-blue-50 border-blue-400 hover:bg-blue-100'
-    }
+  const paymentClasses = (isPaid: boolean) => {
+    return isPaid 
+      ? 'bg-green-50 border-green-400 hover:bg-green-100'
+      : 'bg-gray-50 border-gray-400 hover:bg-gray-100'
   }
 
   const openModalForNew = (date: Date) => {
@@ -259,7 +255,7 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
                         return (
                           <td key={idx} className="py-0.5 px-1">
                             {booking ? (
-                              <button onClick={()=>openModalForEdit(booking.id)} className={`w-full text-left text-xs rounded px-1 ${statusClasses(booking.status)}`}>
+                              <button onClick={()=>openModalForEdit(booking.id)} className={`w-full text-left text-xs rounded px-1 ${paymentClasses(booking.is_paid || false)}`}>
                                 {booking.clients?.first_name}
                               </button>
                             ) : (
@@ -333,7 +329,7 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
                       onDragEnd={()=> setDraggedBookingId(null)}
                       className={`
                         w-full text-left flex-1 p-2 lg:p-3 rounded-lg border-l-4 cursor-grab active:cursor-grabbing relative
-                        ${statusClasses(booking.status)}
+                        ${paymentClasses(booking.is_paid || false)}
                       `}
                       onClick={()=>openModalForEdit(booking.id)}
                       >

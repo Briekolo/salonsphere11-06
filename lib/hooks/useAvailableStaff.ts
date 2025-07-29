@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { useStaffWithServices } from './useStaffServices'
 import { StaffMember, StaffService } from '@/types/staff'
 
@@ -23,10 +23,10 @@ export function useAvailableStaff(serviceId: string | null) {
     )
   }, [serviceId, staffData])
 
-  const getStaffServiceAssignment = (staffId: string, serviceId: string): StaffService | undefined => {
+  const getStaffServiceAssignment = useCallback((staffId: string, serviceId: string): StaffService | undefined => {
     const staffMember = staffData.find((s: StaffMember) => s.id === staffId)
     return staffMember?.services.find((s: StaffService) => s.service_id === serviceId)
-  }
+  }, [staffData])
 
   return {
     availableStaff,

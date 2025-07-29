@@ -200,11 +200,13 @@ export type Database = {
           duration_minutes: number
           id: string
           internal_notes: string | null
+          is_paid: boolean
           notes: string | null
+          payment_confirmed_at: string | null
+          payment_method: string | null
           scheduled_at: string
           service_id: string
           staff_id: string | null
-          status: string
           tenant_id: string
           updated_at: string | null
         }
@@ -214,11 +216,13 @@ export type Database = {
           duration_minutes: number
           id?: string
           internal_notes?: string | null
+          is_paid?: boolean
           notes?: string | null
+          payment_confirmed_at?: string | null
+          payment_method?: string | null
           scheduled_at: string
           service_id: string
           staff_id?: string | null
-          status?: string
           tenant_id: string
           updated_at?: string | null
         }
@@ -228,11 +232,13 @@ export type Database = {
           duration_minutes?: number
           id?: string
           internal_notes?: string | null
+          is_paid?: boolean
           notes?: string | null
+          payment_confirmed_at?: string | null
+          payment_method?: string | null
           scheduled_at?: string
           service_id?: string
           staff_id?: string | null
-          status?: string
           tenant_id?: string
           updated_at?: string | null
         }

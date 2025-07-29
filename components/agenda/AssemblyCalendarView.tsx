@@ -17,7 +17,7 @@ interface AssemblyCalendarViewProps {
 }
 
 type ViewDuration = '1week' | '2weeks' | '1month'
-type FilterType = 'all' | 'confirmed' | 'pending' | 'cancelled'
+type FilterType = 'all' | 'paid' | 'unpaid'
 
 export function AssemblyCalendarView({ selectedDate, onDateSelect }: AssemblyCalendarViewProps) {
   const [currentStartDate, setCurrentStartDate] = useState(startOfWeek(selectedDate, { weekStartsOn: 0 }))
@@ -63,12 +63,10 @@ export function AssemblyCalendarView({ selectedDate, onDateSelect }: AssemblyCal
     
     return allBookings.filter(booking => {
       switch (filterType) {
-        case 'confirmed':
-          return booking.status === 'confirmed'
-        case 'pending':
-          return booking.status === 'scheduled'
-        case 'cancelled':
-          return booking.status === 'cancelled'
+        case 'paid':
+          return booking.is_paid === true
+        case 'unpaid':
+          return booking.is_paid === false || booking.is_paid === null
         default:
           return true
       }

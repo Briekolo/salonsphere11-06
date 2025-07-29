@@ -9,7 +9,7 @@ export interface TodaysAppointment {
   scheduled_at: string
   service_name: string
   client_name: string
-  status: string
+  is_paid: boolean
 }
 
 export function useTodaysAppointments() {
@@ -27,7 +27,7 @@ export function useTodaysAppointments() {
         .select(`
           id,
           scheduled_at,
-          status,
+          is_paid,
           services!inner(name),
           clients!inner(first_name, last_name)
         `)
@@ -46,7 +46,7 @@ export function useTodaysAppointments() {
         scheduled_at: booking.scheduled_at,
         service_name: (booking.services as any)?.name || 'Onbekende service',
         client_name: `${(booking.clients as any)?.first_name || ''} ${(booking.clients as any)?.last_name || ''}`.trim() || 'Onbekende klant',
-        status: booking.status
+        is_paid: booking.is_paid || false
       }))
     },
   })

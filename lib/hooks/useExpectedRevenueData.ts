@@ -34,12 +34,11 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
         endDate: endDate.toISOString()
       })
 
-      // First get bookings (include confirmed, scheduled, and pending)
+      // Get all bookings in the date range
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('id, scheduled_at, service_id')
         .eq('tenant_id', tenantId)
-        .in('status', ['confirmed', 'scheduled', 'pending'])
         .gte('scheduled_at', startDate.toISOString())
         .lte('scheduled_at', endDate.toISOString())
 

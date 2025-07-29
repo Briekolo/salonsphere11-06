@@ -71,34 +71,14 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
     
   const isLoadingData = listView ? isPaginatedLoading : isLoading
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800'
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800'
-      case 'completed':
-        return 'bg-gray-100 text-gray-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
+  const getPaymentColor = (isPaid: boolean) => {
+    return isPaid 
+      ? 'bg-green-100 text-green-800'
+      : 'bg-gray-100 text-gray-800'
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'Bevestigd'
-      case 'scheduled':
-        return 'Ingepland'
-      case 'completed':
-        return 'Afgerond'
-      case 'cancelled':
-        return 'Geannuleerd'
-      default:
-        return status
-    }
+  const getPaymentText = (isPaid: boolean) => {
+    return isPaid ? 'Betaald' : 'Nog niet betaald'
   }
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -239,7 +219,7 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
                     <div className="text-sm text-gray-600">{booking.services?.name}</div>
                   </div>
                 </div>
-                <span className={`status-chip ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
+                <span className={`status-chip ${getPaymentColor(booking.is_paid || false)}`}>{getPaymentText(booking.is_paid || false)}</span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
                 <div className="flex items-center gap-1">
@@ -343,7 +323,7 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
                     <span className="text-gray-600">{booking.duration_minutes || booking.services?.duration_minutes || 60}min</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className={`status-chip ${getStatusColor(booking.status)}`}>{getStatusText(booking.status)}</span>
+                    <span className={`status-chip ${getPaymentColor(booking.is_paid || false)}`}>{getPaymentText(booking.is_paid || false)}</span>
                   </td>
                   <td className="py-4 px-4">
                     <div className="text-sm text-gray-600 space-y-1">
