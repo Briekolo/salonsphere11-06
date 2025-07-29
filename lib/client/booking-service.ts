@@ -12,7 +12,8 @@ export interface CreateBookingData {
   durationMinutes: number;
   notes?: string;
   internalNotes?: string;
-  status?: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+  isPaid?: boolean;
+  paymentMethod?: string;
   createInvoice?: boolean;
   sendConfirmationEmail?: boolean;
 }
@@ -88,7 +89,9 @@ export class BookingService {
         staff_id: data.staffId || null,
         scheduled_at: data.scheduledAt,
         duration_minutes: data.durationMinutes,
-        status: data.status || 'confirmed',
+        is_paid: data.isPaid || false,
+        payment_method: data.paymentMethod,
+        payment_confirmed_at: data.isPaid ? new Date().toISOString() : null,
         notes: data.notes,
         internal_notes: data.internalNotes
       })
@@ -167,7 +170,6 @@ export class BookingService {
     const { data, error } = await supabase
       .from('bookings')
       .update({
-        status: 'cancelled',
         internal_notes: reason ? `Cancelled: ${reason}` : 'Cancelled by client',
         updated_at: new Date().toISOString()
       })
@@ -237,7 +239,7 @@ export class BookingService {
   }
 
   // Get client bookings
-  static async getClientBookings(clientId: string, status?: string[]) {
+  static async getClientBookings(clientId: string, isPaid?: boolean) {
     let query = supabase
       .from('bookings')
       .select(`
@@ -256,8 +258,8 @@ export class BookingService {
       .eq('client_id', clientId)
       .order('scheduled_at', { ascending: false });
 
-    if (status && status.length > 0) {
-      query = query.in('status', status);
+    if (isPaid !== undefined) {
+      query = query.eq('is_paid', isPaid);
     }
 
     const { data, error } = await query;

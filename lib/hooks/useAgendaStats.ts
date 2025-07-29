@@ -10,20 +10,18 @@ export function useAgendaStats() {
   const bookings = (rawBookings ?? []) as Booking[]
 
   const stats = useMemo(() => {
-    const active = bookings.filter(b => b.status !== 'cancelled')
+    const countToday = bookings.length
 
-    const countToday = active.length
-
-    const totalMinutes = active.reduce((sum, b) => {
+    const totalMinutes = bookings.reduce((sum, b) => {
       const duration = b.services?.duration_minutes ?? (b.duration_minutes as number | null) ?? 0
       return sum + duration
     }, 0)
 
-    const uniqueClients = new Set(active.map(b => b.client_id)).size
+    const uniqueClients = new Set(bookings.map(b => b.client_id)).size
 
-    const completedCount = active.filter(b => b.status === 'completed').length
+    const paidCount = bookings.filter(b => b.is_paid).length
 
-    return { countToday, totalMinutes, uniqueClients, completedCount }
+    return { countToday, totalMinutes, uniqueClients, paidCount }
   }, [bookings])
 
   return { ...stats, isLoading }

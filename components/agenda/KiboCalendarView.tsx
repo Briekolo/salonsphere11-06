@@ -44,9 +44,9 @@ const resizePreviewAtom = atom<{
   type: 'resize-top' | 'resize-bottom';
 } | null>(null)
 
-// Color mapping for appointment status
-const statusColors = {
-  confirmed: {
+// Color mapping for payment status
+const paymentColors = {
+  paid: {
     bg: 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200',
     text: 'text-emerald-700',
     dot: 'bg-emerald-500',
@@ -55,32 +55,14 @@ const statusColors = {
     headerBorder: 'border-emerald-200',
     accent: 'text-emerald-700'
   },
-  scheduled: {
-    bg: 'bg-amber-50 hover:bg-amber-100 border-amber-200',
-    text: 'text-amber-700',
-    dot: 'bg-amber-500',
-    modalBorder: 'border-amber-300',
-    headerBg: 'bg-amber-50',
-    headerBorder: 'border-amber-200',
-    accent: 'text-amber-700'
-  },
-  cancelled: {
-    bg: 'bg-red-50 hover:bg-red-100 border-red-200',
-    text: 'text-red-700',
-    dot: 'bg-red-500',
-    modalBorder: 'border-red-300',
-    headerBg: 'bg-red-50',
-    headerBorder: 'border-red-200',
-    accent: 'text-red-700'
-  },
-  completed: {
-    bg: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
-    text: 'text-blue-700',
-    dot: 'bg-blue-500',
-    modalBorder: 'border-blue-300',
-    headerBg: 'bg-blue-50',
-    headerBorder: 'border-blue-200',
-    accent: 'text-blue-700'
+  unpaid: {
+    bg: 'bg-gray-50 hover:bg-gray-100 border-gray-200',
+    text: 'text-gray-700',
+    dot: 'bg-gray-400',
+    modalBorder: 'border-gray-300',
+    headerBg: 'bg-gray-50',
+    headerBorder: 'border-gray-200',
+    accent: 'text-gray-700'
   }
 }
 
@@ -102,8 +84,8 @@ function AppointmentHoverPreview({ booking, position }: {
     }
   } 
 }) {
-  const status = booking.status || 'scheduled'
-  const colors = statusColors[status as keyof typeof statusColors]
+  const paymentStatus = booking.is_paid ? 'paid' : 'unpaid'
+  const colors = paymentColors[paymentStatus]
   
   // Safely parse and validate the date
   const scheduledDate = new Date(booking.scheduled_at)
@@ -170,10 +152,7 @@ function AppointmentHoverPreview({ booking, position }: {
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${colors.dot}`} />
               <span className={`font-semibold ${colors.accent}`}>
-                {status === 'confirmed' ? 'Bevestigd' : 
-                 status === 'scheduled' ? 'Ingepland' :
-                 status === 'completed' ? 'Voltooid' :
-                 status === 'cancelled' ? 'Geannuleerd' : 'Onbekend'}
+                {paymentStatus === 'paid' ? 'Betaald' : 'Nog niet betaald'}
               </span>
             </div>
             <div className="flex items-center gap-1 text-sm text-gray-600">
@@ -281,8 +260,8 @@ function ResizePreview({ booking, type, previewTime, previewDuration }: {
 
 // Compact appointment card for month view with multiple appointments
 function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { booking: Booking; onClick: () => void; viewMode?: 'week' | 'month' }) {
-  const status = booking.status || 'scheduled'
-  const colors = statusColors[status as keyof typeof statusColors]
+  const paymentStatus = booking.is_paid ? 'paid' : 'unpaid'
+  const colors = paymentColors[paymentStatus]
   
   const scheduledDate = new Date(booking.scheduled_at)
   const isValidDate = scheduledDate instanceof Date && !isNaN(scheduledDate.getTime())
@@ -406,8 +385,8 @@ function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'm
     transition: 'none' // Disable transitions during resize
   } : {}
 
-  const status = booking.status || 'scheduled'
-  const colors = statusColors[status as keyof typeof statusColors]
+  const paymentStatus = booking.is_paid ? 'paid' : 'unpaid'
+  const colors = paymentColors[paymentStatus]
   
   // Safely parse and validate the date
   const scheduledDate = new Date(booking.scheduled_at)

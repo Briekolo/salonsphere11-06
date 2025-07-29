@@ -138,11 +138,10 @@ export class AvailabilityService {
       // Get existing bookings for the date
       const { data: existingBookings } = await supabase
         .from('bookings')
-        .select('staff_id, scheduled_at, duration_minutes, status')
+        .select('staff_id, scheduled_at, duration_minutes')
         .eq('tenant_id', tenantId)
         .gte('scheduled_at', `${date}T00:00:00`)
         .lt('scheduled_at', `${date}T23:59:59`)
-        .in('status', ['scheduled', 'confirmed'])
         .in('staff_id', staffMembers.map(s => s.id));
 
       console.log('Existing bookings for', date, ':', existingBookings);
@@ -204,8 +203,7 @@ export class AvailabilityService {
                 slotStart: slotDateTime,
                 slotEnd: slotEndDateTime,
                 bookingStart: bookingTime,
-                bookingEnd: bookingEndTime,
-                bookingStatus: booking.status
+                bookingEnd: bookingEndTime
               });
             }
             
@@ -387,8 +385,8 @@ export class AvailabilityService {
           staff_id: hold.staff_id,
           scheduled_at: scheduledAt.toISOString(),
           duration_minutes: hold.duration_minutes,
-          status: 'confirmed',
-          notes: clientData.notes
+          notes: clientData.notes,
+          is_paid: false
         })
         .select()
         .single();

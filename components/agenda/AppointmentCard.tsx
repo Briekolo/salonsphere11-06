@@ -22,45 +22,24 @@ export function AppointmentCard({
   const [showDragHandle, setShowDragHandle] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   
-  const statusStyles = {
-    confirmed: {
+  const paymentStyles = {
+    paid: {
       bg: 'bg-green-50',
       border: 'border-green-400',
       hover: 'hover:bg-green-100',
       text: 'text-green-900',
       icon: 'text-green-600'
     },
-    scheduled: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-400',
-      hover: 'hover:bg-blue-100',
-      text: 'text-blue-900',
-      icon: 'text-blue-600'
-    },
-    completed: {
+    unpaid: {
       bg: 'bg-gray-50',
       border: 'border-gray-400',
       hover: 'hover:bg-gray-100',
       text: 'text-gray-900',
       icon: 'text-gray-600'
-    },
-    cancelled: {
-      bg: 'bg-red-50',
-      border: 'border-red-400',
-      hover: 'hover:bg-red-100',
-      text: 'text-red-900',
-      icon: 'text-red-600'
-    },
-    no_show: {
-      bg: 'bg-orange-50',
-      border: 'border-orange-400',
-      hover: 'hover:bg-orange-100',
-      text: 'text-orange-900',
-      icon: 'text-orange-600'
     }
   }
   
-  const style = statusStyles[booking.status as keyof typeof statusStyles] || statusStyles.scheduled
+  const style = paymentStyles[booking.is_paid ? 'paid' : 'unpaid']
   
   return (
     <div

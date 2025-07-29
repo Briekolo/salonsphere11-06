@@ -35,10 +35,13 @@ export function BookingCompletionFlow({
 
   const completeBooking = async () => {
     try {
-      // Update booking status to completed
+      // Mark booking as paid
       await updateBooking.mutateAsync({
         id: bookingId,
-        status: 'completed'
+        updates: {
+          is_paid: true,
+          payment_confirmed_at: new Date().toISOString()
+        }
       })
 
       // Wait a moment for the trigger to create the invoice

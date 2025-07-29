@@ -122,7 +122,18 @@ export function useUpdateBooking() {
       queryClient.invalidateQueries({ queryKey: ['booking', tenantId, variables.id] })
     },
     onError: (error, variables, context) => {
-      debugError('Mutation error:', { error, variables })
+      // Extract meaningful error information
+      const errorDetails = {
+        message: error?.message || 'Unknown error',
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        variables: variables
+      }
+      
+      debugError('Mutation error:', errorDetails)
+      debugError('Full error object:', error)
+      
       // Rollback the optimistic updates
       if (context?.previousBookings) {
         context.previousBookings.forEach(([queryKey, data]) => {

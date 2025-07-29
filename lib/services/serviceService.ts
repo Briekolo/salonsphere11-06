@@ -172,9 +172,9 @@ export class ServiceService {
       .from('bookings')
       .select('*', { count: 'exact' })
       .eq('tenant_id', tenantId)
-      .eq('status', 'completed')
-      .gte('start_time', startDate.toISOString())
-      .lte('start_time', endDate.toISOString())
+      .eq('is_paid', true)
+      .gte('scheduled_at', startDate.toISOString())
+      .lte('scheduled_at', endDate.toISOString())
 
     if (error) throw error
     return count || 0
@@ -190,18 +190,17 @@ export class ServiceService {
 
     const { data, error } = await supabase
       .from('bookings')
-      .select('total_price')
+      .select('services!inner(price)')
       .eq('tenant_id', tenantId)
-      .eq('status', 'completed')
-      .gte('start_time', startDate.toISOString())
-      .lte('start_time', endDate.toISOString())
-      .gt('total_price', 0)
+      .eq('is_paid', true)
+      .gte('scheduled_at', startDate.toISOString())
+      .lte('scheduled_at', endDate.toISOString())
 
     if (error) throw error
     
     if (!data || data.length === 0) return 0
     
-    const sum = data.reduce((acc, booking) => acc + (booking.total_price || 0), 0)
+    const sum = data.reduce((acc, booking) => acc + ((booking.services as any)?.price || 0), 0)
     return sum / data.length
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users, ExternalLink, Euro } from 'lucide-react'
 import Link from 'next/link'
 import { useCreateBooking, useUpdateBooking, useDeleteBooking, useBooking } from '@/lib/hooks/useBookings'
 import { useClients } from '@/lib/hooks/useClients'
@@ -34,10 +34,14 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
     service_id: '',
     user_id: '', // staff member
     scheduled_at: initialDate ? roundToQuarterHour(initialDate).toISOString() : roundToQuarterHour(new Date()).toISOString(),
-    status: 'scheduled', // Default to scheduled for new appointments
     notes: '',
     duration_minutes: 60, // Default duration
   })
+  
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  
+  const hasInitialized = useRef(false)
+  const isInitializingRef = useRef(false)
   
   // Debug log to check if initialDate has the right time
   useEffect(() => {
@@ -61,56 +65,69 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
     allStaff
   } = useAvailableStaff(formData.service_id)
 
-  // Update duration when service changes (only for new bookings)
+  // Update duration when service changes (only for new bookings, not during initialization)
   useEffect(() => {
-    if (!bookingId) {
+    if (!bookingId && !isInitializingRef.current && formData.service_id) {
       const selectedService = services.find(s => s.id === formData.service_id)
-      if (selectedService && selectedService.duration_minutes) {
+      if (selectedService && selectedService.duration_minutes && selectedService.duration_minutes !== formData.duration_minutes) {
         setFormData(p => ({ ...p, duration_minutes: selectedService.duration_minutes as number }))
       }
     }
-  }, [formData.service_id, services, bookingId])
+  }, [formData.service_id, formData.duration_minutes, services, bookingId])
 
-  // Update duration and price when staff member changes
+  // Update duration and price when staff member changes (only for manual changes, not during initialization)
   useEffect(() => {
-    if (formData.service_id && formData.user_id) {
-      const serviceAssignment = getStaffServiceAssignment(formData.user_id, formData.service_id)
-      const selectedService = services.find(s => s.id === formData.service_id)
+    // Skip during initialization to prevent cascading effects
+    if (isInitializingRef.current || !formData.service_id || !formData.user_id) {
+      return
+    }
+
+    const serviceAssignment = getStaffServiceAssignment(formData.user_id, formData.service_id)
+    const selectedService = services.find(s => s.id === formData.service_id)
+    
+    if (serviceAssignment && selectedService) {
+      const newDuration = serviceAssignment.custom_duration_minutes || selectedService.duration_minutes
       
-      if (serviceAssignment && selectedService) {
-        const updates: Partial<typeof formData> = {}
-        
-        // Use custom duration if set, otherwise use service default
-        if (serviceAssignment.custom_duration_minutes) {
-          updates.duration_minutes = serviceAssignment.custom_duration_minutes
-        } else if (selectedService.duration_minutes) {
-          updates.duration_minutes = selectedService.duration_minutes
-        }
-        
-        // Update form if there are changes
-        if (Object.keys(updates).length > 0) {
-          setFormData(p => ({ ...p, ...updates }))
-        }
+      // Only update if duration actually changed
+      if (newDuration && newDuration !== formData.duration_minutes) {
+        setFormData(p => ({ ...p, duration_minutes: newDuration as number }))
       }
     }
-  }, [formData.service_id, formData.user_id, getStaffServiceAssignment, services])
+  }, [formData.service_id, formData.user_id, formData.duration_minutes, getStaffServiceAssignment, services])
 
   // Populate form when editing an existing booking
   useEffect(() => {
-    if (isEditing && existingBooking) {
+    if (isEditing && existingBooking && !isLoadingBooking && !hasInitialized.current) {
       debugLog('Editing booking data:', existingBooking)
+      
+      // Set initialization flag to prevent other effects from running
+      isInitializingRef.current = true
+      
       const scheduledDate = existingBooking.scheduled_at ? roundToQuarterHour(new Date(existingBooking.scheduled_at)) : ''
       setFormData({
         client_id: existingBooking.client_id || '',
         service_id: existingBooking.service_id || '',
         user_id: existingBooking.staff_id || existingBooking.user_id || '', // Check both staff_id and user_id
         scheduled_at: scheduledDate ? scheduledDate.toISOString() : '',
-        status: existingBooking.status || 'scheduled',
         notes: existingBooking.notes || '',
         duration_minutes: existingBooking.duration_minutes || 60,
       })
+      
+      // Initialize payment data
+      setPaymentData({
+        is_paid: existingBooking.is_paid || false,
+        payment_method: existingBooking.payment_method || '',
+        payment_confirmed_at: existingBooking.payment_confirmed_at || null
+      })
+      
+      hasInitialized.current = true
+      
+      // Clear initialization flag after a brief delay to allow state to settle
+      setTimeout(() => {
+        isInitializingRef.current = false
+      }, 100)
     }
-  }, [isEditing, existingBooking])
+  }, [isEditing, existingBooking?.id, isLoadingBooking]) // Only re-run when booking ID changes
 
   // Mutation hooks
   const createMutation = useCreateBooking()
@@ -119,15 +136,21 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage(null) // Clear any previous errors
+    
     try {
       // Prepare payload - include all fields for update
       const payload: Record<string, any> = {
         client_id: formData.client_id,
         service_id: formData.service_id,
         scheduled_at: formData.scheduled_at,
-        status: formData.status,
         notes: formData.notes,
-        duration_minutes: formData.duration_minutes
+        duration_minutes: formData.duration_minutes,
+        is_paid: paymentData.is_paid,
+        payment_method: paymentData.payment_method || null,
+        payment_confirmed_at: paymentData.is_paid && !paymentData.payment_confirmed_at 
+          ? new Date().toISOString() 
+          : paymentData.payment_confirmed_at
       }
 
       // Add staff_id if a staff member is selected
@@ -144,9 +167,23 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         await createMutation.mutateAsync(payload)
       }
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       debugError('Failed to save booking:', error)
-      // Optionally show a user-facing error message
+      
+      // Extract user-friendly error message
+      let userMessage = 'Er is een fout opgetreden bij het opslaan van de afspraak.'
+      
+      if (error?.message) {
+        userMessage = error.message
+      } else if (error?.code === 'PGRST116') {
+        userMessage = 'U heeft geen toestemming om deze afspraak te wijzigen.'
+      } else if (error?.code === '23505') {
+        userMessage = 'Deze afspraak bestaat al op het geselecteerde tijdstip.'
+      } else if (error?.code === '23503') {
+        userMessage = 'Een van de geselecteerde opties is niet meer geldig. Ververs de pagina en probeer opnieuw.'
+      }
+      
+      setErrorMessage(userMessage)
     }
   }
   
@@ -164,48 +201,21 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   
   const isLoading = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending || isLoadingBooking;
 
-  // Dynamic color theming based on appointment status
-  const getStatusTheme = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return {
-          headerBg: 'bg-gradient-to-r from-emerald-50 to-emerald-100',
-          headerBorder: 'border-emerald-200',
-          accent: 'text-emerald-700',
-          modalBorder: 'ring-2 ring-emerald-100'
-        }
-      case 'scheduled':
-        return {
-          headerBg: 'bg-gradient-to-r from-amber-50 to-amber-100',
-          headerBorder: 'border-amber-200',
-          accent: 'text-amber-700',
-          modalBorder: 'ring-2 ring-amber-100'
-        }
-      case 'completed':
-        return {
-          headerBg: 'bg-gradient-to-r from-blue-50 to-blue-100',
-          headerBorder: 'border-blue-200',
-          accent: 'text-blue-700',
-          modalBorder: 'ring-2 ring-blue-100'
-        }
-      case 'cancelled':
-        return {
-          headerBg: 'bg-gradient-to-r from-red-50 to-red-100',
-          headerBorder: 'border-red-200',
-          accent: 'text-red-700',
-          modalBorder: 'ring-2 ring-red-100'
-        }
-      default:
-        return {
-          headerBg: 'bg-gradient-to-r from-white to-gray-50',
-          headerBorder: 'border-gray-100',
-          accent: 'text-gray-700',
-          modalBorder: 'ring-2 ring-gray-100'
-        }
-    }
-  }
 
-  const statusTheme = getStatusTheme(formData.status)
+  // Payment form state
+  const [paymentData, setPaymentData] = useState({
+    is_paid: false,
+    payment_method: '',
+    payment_confirmed_at: null as string | null
+  })
+
+  // Neutral theme for all appointments
+  const neutralTheme = {
+    headerBg: 'bg-gradient-to-r from-blue-50 to-blue-100',
+    headerBorder: 'border-blue-200',
+    accent: 'text-blue-700',
+    modalBorder: 'ring-2 ring-blue-100'
+  }
 
   if (isLoadingBooking) {
     return (
@@ -217,11 +227,11 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] overflow-hidden ${statusTheme.modalBorder}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] overflow-hidden ${neutralTheme.modalBorder}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between px-8 py-6 border-b ${statusTheme.headerBorder} flex-shrink-0 ${statusTheme.headerBg}`}>
+        <div className={`flex items-center justify-between px-8 py-6 border-b ${neutralTheme.headerBorder} flex-shrink-0 ${neutralTheme.headerBg}`}>
           <div>
-            <h2 className={`text-2xl font-semibold ${statusTheme.accent}`}>{isEditing ? 'Afspraak bewerken' : 'Nieuwe afspraak'}</h2>
+            <h2 className={`text-2xl font-semibold ${neutralTheme.accent}`}>{isEditing ? 'Afspraak bewerken' : 'Nieuwe afspraak'}</h2>
             <p className="text-sm text-gray-600 mt-1">{isEditing ? 'Pas de details van de afspraak aan' : 'Plan een nieuwe afspraak in'}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
@@ -233,6 +243,13 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         <form onSubmit={handleSubmit} className="contents">
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+            {/* Error Message Display */}
+            {errorMessage && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800 font-medium">{errorMessage}</p>
+              </div>
+            )}
+            
             {/* Client and Service Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -423,32 +440,67 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
               </div>
             </div>
             
-            {/* Status */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { value: 'confirmed', label: 'Bevestigd', color: 'bg-green-100 text-green-800 border-green-200' },
-                  { value: 'scheduled', label: 'Ingepland', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-                  { value: 'completed', label: 'Voltooid', color: 'bg-gray-100 text-gray-800 border-gray-200' },
-                  { value: 'cancelled', label: 'Geannuleerd', color: 'bg-red-100 text-red-800 border-red-200' }
-                ].map(status => (
-                  <button
-                    key={status.value}
-                    type="button"
-                    onClick={() => setFormData(p => ({...p, status: status.value}))}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
-                      formData.status === status.value 
-                        ? status.color 
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
+            {/* Payment Status */}
+            <div className="space-y-4 p-4 bg-gray-50 rounded-xl">
+              <h3 className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Euro className="w-4 h-4 text-gray-400" />
+                Betaling
+              </h3>
+              
+              {/* Payment Status Toggle */}
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={paymentData.is_paid}
+                    onChange={(e) => {
+                      const isPaid = e.target.checked
+                      setPaymentData(prev => ({
+                        ...prev,
+                        is_paid: isPaid,
+                        payment_confirmed_at: isPaid && !prev.payment_confirmed_at 
+                          ? new Date().toISOString() 
+                          : prev.payment_confirmed_at
+                      }))
+                    }}
+                    className="w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] focus:ring-2"
+                    disabled={isLoading}
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {paymentData.is_paid ? 'Betaald' : 'Nog niet betaald'}
+                  </span>
+                </label>
+                
+                {paymentData.is_paid && paymentData.payment_confirmed_at && (
+                  <span className="text-xs text-gray-500">
+                    Bevestigd op {new Date(paymentData.payment_confirmed_at).toLocaleDateString('nl-NL')}
+                  </span>
+                )}
+              </div>
+
+              {/* Payment Method - only show if paid */}
+              {paymentData.is_paid && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Betaalmethode
+                  </label>
+                  <select
+                    value={paymentData.payment_method}
+                    onChange={(e) => setPaymentData(prev => ({...prev, payment_method: e.target.value}))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
                     disabled={isLoading}
                   >
-                    {status.label}
-                  </button>
-                ))}
-              </div>
+                    <option value="">Selecteer betaalmethode</option>
+                    <option value="cash">Contant</option>
+                    <option value="card">Pinpas</option>
+                    <option value="bank_transfer">Overschrijving</option>
+                    <option value="sepa">SEPA</option>
+                    <option value="other">Anders</option>
+                  </select>
+                </div>
+              )}
             </div>
+
             {/* Notes */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">

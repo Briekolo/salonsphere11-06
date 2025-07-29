@@ -83,23 +83,63 @@ export class BookingService {
   static async update(id: string, updates: Omit<BookingUpdate, 'tenant_id'>): Promise<Booking> {
     console.log('BookingService.update called:', { id, updates })
     
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
+    try {
+      const tenantId = await getCurrentUserTenantId()
+      if (!tenantId) {
+        const error = new Error('No tenant found - user may not be authenticated properly')
+        console.error('Tenant ID error in update:', error)
+        throw error
+      }
 
-    console.log('Tenant ID:', tenantId)
+      console.log('Tenant ID:', tenantId)
+      
+      // Log the exact updates being sent
+      console.log('Updates being sent to Supabase:', JSON.stringify(updates, null, 2))
+      console.log('Update object keys:', Object.keys(updates))
 
-    const { data, error } = await supabase
-      .from('bookings')
-      .update(updates)
-      .eq('id', id)
-      .eq('tenant_id', tenantId)
-      .select()
-      .single()
+      const { data, error } = await supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single()
 
-    console.log('Supabase response:', { data, error })
+      console.log('Supabase response:', { data, error })
 
-    if (error) throw error
-    return data
+      if (error) {
+        console.error('Supabase update error - Full details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          rawError: error
+        })
+        
+        // Create a more informative error
+        const detailedError = new Error(
+          `Failed to update booking: ${error.message || 'Unknown error'}`
+        )
+        // Attach the original error details
+        Object.assign(detailedError, {
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          originalError: error
+        })
+        
+        throw detailedError
+      }
+      
+      if (!data) {
+        throw new Error('No data returned from update - booking may not exist or you may not have permission')
+      }
+      
+      return data
+    } catch (error) {
+      console.error('BookingService.update error caught:', error)
+      throw error
+    }
   }
 
   static async delete(id: string): Promise<void> {
@@ -129,7 +169,6 @@ export class BookingService {
       `)
       .eq('tenant_id', tenantId)
       .gte('scheduled_at', new Date().toISOString())
-      .in('status', ['scheduled', 'confirmed'])
       .order('scheduled_at', { ascending: true })
       .limit(limit)
 

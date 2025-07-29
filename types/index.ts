@@ -42,7 +42,9 @@ export interface Appointment {
   staff_id?: string
   scheduled_at: string
   duration_minutes: number
-  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+  is_paid: boolean
+  payment_confirmed_at?: string
+  payment_method?: string
   notes?: string
   created_at: string
   updated_at: string

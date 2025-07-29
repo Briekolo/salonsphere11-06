@@ -84,12 +84,7 @@ export function AppointmentsList() {
               booking.start_time ?? '',
               booking.end_time ?? ''
             )
-            const status =
-              booking.status === 'confirmed'
-                ? 'confirmed'
-                : booking.status === 'scheduled'
-                ? 'new'
-                : 'confirmed'
+            const paymentStatus = booking.is_paid ? 'paid' : 'unpaid'
 
             return (
               <div
@@ -112,9 +107,9 @@ export function AppointmentsList() {
                 </div>
 
                 <span
-                  className={`status-chip ${status} flex-shrink-0 ml-2`}
+                  className={`status-chip ${paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'} flex-shrink-0 ml-2`}
                 >
-                  {status === 'confirmed' ? 'Bevestigd' : 'Nieuw'}
+                  {paymentStatus === 'paid' ? 'Betaald' : 'Nog niet betaald'}
                 </span>
               </div>
             )

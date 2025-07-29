@@ -138,14 +138,11 @@ export default function ClientDashboardPage({ params }: { params: Promise<{ doma
                         </div>
                         <div className="text-right">
                           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            booking.status === 'confirmed' 
+                            booking.is_paid 
                               ? 'bg-green-100 text-green-800'
-                              : booking.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {booking.status === 'confirmed' ? 'Bevestigd' : 
-                             booking.status === 'pending' ? 'In behandeling' : 'Onbekend'}
+                            {booking.is_paid ? 'Betaald' : 'Nog niet betaald'}
                           </span>
                         </div>
                       </div>

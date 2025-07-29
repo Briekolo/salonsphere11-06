@@ -42,24 +42,15 @@ export function EventCard({ booking, onClick, isMobile = false, onDragStart, onD
     }
   }
   
-  // Get status styling - using inventory-style colors
-  const getStatusStyling = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'border-green-200 hover:border-green-400 hover:shadow-sm bg-green-50'
-      case 'scheduled':
-        return 'border-yellow-200 hover:border-yellow-400 hover:shadow-sm bg-yellow-50'
-      case 'cancelled':
-        return 'border-red-200 hover:border-red-400 hover:shadow-sm bg-red-50 opacity-60'
-      case 'completed':
-        return 'border-gray-200 hover:border-gray-400 hover:shadow-sm bg-gray-50'
-      default:
-        return 'border-gray-200 hover:border-gray-400 hover:shadow-sm bg-white'
-    }
+  // Get payment styling - using payment-based colors
+  const getPaymentStyling = (isPaid: boolean) => {
+    return isPaid
+      ? 'border-green-200 hover:border-green-400 hover:shadow-sm bg-green-50'
+      : 'border-gray-200 hover:border-gray-400 hover:shadow-sm bg-gray-50'
   }
   
   const serviceTag = getServiceTag(booking.services?.name || '')
-  const statusStyle = getStatusStyling(booking.status)
+  const paymentStyle = getPaymentStyling(booking.is_paid || false)
   
   // Get client initials for avatar
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -91,7 +82,7 @@ export function EventCard({ booking, onClick, isMobile = false, onDragStart, onD
       draggable={!isMobile && !!onDragStart}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`event-card-assembly w-full text-left transition-all hover:shadow-md ${statusStyle} ${isMobile ? 'p-3' : ''} ${
+      className={`event-card-assembly w-full text-left transition-all hover:shadow-md ${paymentStyle} ${isMobile ? 'p-3' : ''} ${
         isDragging ? 'opacity-50 rotate-1 scale-105' : ''
       } ${!isMobile && onDragStart ? 'cursor-move' : 'cursor-pointer'}`}
     >
