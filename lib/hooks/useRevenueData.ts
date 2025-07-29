@@ -21,8 +21,10 @@ export function useRevenueData({ startDate, endDate, previousStartDate }: UseRev
   const { tenantId } = useTenant()
 
   return useQuery<RevenueDataPoint[]>({
-    queryKey: ['revenue-data', tenantId, startDate, endDate, previousStartDate],
+    queryKey: ['revenue-data', tenantId, startDate.toISOString(), endDate.toISOString(), previousStartDate.toISOString()],
     enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    cacheTime: 10 * 60 * 1000, // 10 minutes in memory
     queryFn: async () => {
       if (!tenantId) return []
 

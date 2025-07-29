@@ -14,6 +14,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 
 const PRESET_COLORS = [
   { bg: 'bg-pink-100', text: 'text-pink-800', value: 'pink' },
@@ -65,11 +66,14 @@ function SortableItem({ category, onEdit, onDelete }: SortableItemProps) {
         <GripVertical className="w-5 h-5 text-gray-400" />
       </div>
 
-      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-        PRESET_COLORS.find(c => c.value === category.color)?.bg || 'bg-gray-100'
-      } ${
-        PRESET_COLORS.find(c => c.value === category.color)?.text || 'text-gray-800'
-      }`}>
+      <div 
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          category.color.startsWith('#') 
+            ? 'text-white' 
+            : PRESET_COLORS.find(c => c.value === category.color)?.bg + ' ' + PRESET_COLORS.find(c => c.value === category.color)?.text || 'bg-gray-100 text-gray-800'
+        }`}
+        style={category.color.startsWith('#') ? { backgroundColor: category.color } : {}}
+      >
         {category.name}
       </div>
 
@@ -171,22 +175,15 @@ function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Kleur
         </label>
-        <div className="grid grid-cols-4 gap-2">
-          {PRESET_COLORS.map((colorOption) => (
-            <button
-              key={colorOption.value}
-              type="button"
-              onClick={() => setFormData({ ...formData, color: colorOption.value })}
-              className={`px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                formData.color === colorOption.value 
-                  ? 'border-gray-900 ' + colorOption.bg + ' ' + colorOption.text
-                  : 'border-gray-200 ' + colorOption.bg + ' ' + colorOption.text + ' hover:border-gray-300'
-              }`}
-            >
-              {colorOption.value.charAt(0).toUpperCase() + colorOption.value.slice(1)}
-            </button>
-          ))}
-        </div>
+        <ColorPicker
+          selectedColor={formData.color}
+          onColorChange={(color) => {
+            setFormData({ 
+              ...formData, 
+              color
+            })
+          }}
+        />
       </div>
 
       <div className="flex items-center gap-3">
@@ -259,21 +256,34 @@ export function CategoryManagement() {
 
   const handleSave = async (data: any) => {
     try {
+      // Ensure all required fields are present
+      const categoryData = {
+        name: data.name,
+        description: data.description || null,
+        color: data.color,
+        active: data.active ?? true,
+        icon: null, // Add icon field as required by the type
+        display_order: editingCategory?.display_order ?? categories.length,
+      }
+
       if (editingCategory) {
         await updateMutation.mutateAsync({
           id: editingCategory.id,
-          updates: data,
+          updates: categoryData,
         })
       } else {
-        await createMutation.mutateAsync({
-          ...data,
-          display_order: categories.length,
-        })
+        await createMutation.mutateAsync(categoryData)
       }
       setShowForm(false)
       setEditingCategory(null)
     } catch (error) {
       console.error('Error saving category:', error)
+      // Show more detailed error information
+      if (error instanceof Error) {
+        alert(`Fout bij opslaan: ${error.message}`)
+      } else {
+        alert('Er is een fout opgetreden bij het opslaan van de categorie')
+      }
     }
   }
 

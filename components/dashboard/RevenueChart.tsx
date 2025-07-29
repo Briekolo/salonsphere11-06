@@ -30,15 +30,24 @@ export function RevenueChart() {
   const [period, setPeriod] = useState<Period>('30d')
   const [showExpected, setShowExpected] = useState(true)
   
-  // Calculate date ranges
-  const today = new Date()
-  const endDate = period === 'future' 
-    ? endOfDay(addDays(today, 30)) 
-    : endOfDay(today)
-  const startDate = period === 'future'
-    ? startOfDay(today)
-    : startOfDay(subDays(endDate, parseInt(period)))
-  const previousStartDate = startOfDay(subDays(startDate, parseInt(period)))
+  // Calculate date ranges - memoized to prevent unnecessary re-renders
+  const dateRanges = useMemo(() => {
+    const today = new Date()
+    const endDate = period === 'future' 
+      ? endOfDay(addDays(today, 30)) 
+      : endOfDay(today)
+    const startDate = period === 'future'
+      ? startOfDay(today)
+      : startOfDay(subDays(endDate, parseInt(period)))
+    
+    // For future period, use 30 days ago as previous start date, otherwise use parsed period
+    const daysDiff = period === 'future' ? 30 : parseInt(period)
+    const previousStartDate = startOfDay(subDays(startDate, daysDiff))
+    
+    return { today, endDate, startDate, previousStartDate }
+  }, [period])
+  
+  const { today, endDate, startDate, previousStartDate } = dateRanges
   
   const { data: revenueData = [], isLoading } = useRevenueData({
     startDate,

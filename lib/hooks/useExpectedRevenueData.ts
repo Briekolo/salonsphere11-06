@@ -1,10 +1,9 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { eachDayOfInterval, format } from 'date-fns'
-import { Database } from '@/types/database'
 
 interface UseExpectedRevenueDataParams {
   startDate: Date
@@ -20,22 +19,34 @@ interface ExpectedRevenueDataPoint {
 
 export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenueDataParams) {
   const { tenantId } = useTenant()
-  const supabase = createPagesBrowserClient<Database>()
 
   return useQuery<ExpectedRevenueDataPoint[]>({
-    queryKey: ['expected-revenue-data-simple', tenantId, startDate, endDate],
+    queryKey: ['expected-revenue-data-simple', tenantId, startDate.toISOString(), endDate.toISOString()],
     enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    cacheTime: 10 * 60 * 1000, // 10 minutes in memory
     queryFn: async () => {
       if (!tenantId) return []
 
-      // First get bookings
+      console.log('[useExpectedRevenueData] Fetching data for:', {
+        tenantId,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      })
+
+      // First get bookings (include confirmed, scheduled, and pending)
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('id, scheduled_at, service_id')
         .eq('tenant_id', tenantId)
-        .in('status', ['scheduled', 'confirmed'])
+        .in('status', ['confirmed', 'scheduled', 'pending'])
         .gte('scheduled_at', startDate.toISOString())
         .lte('scheduled_at', endDate.toISOString())
+
+      console.log('[useExpectedRevenueData] Bookings query result:', { 
+        bookings: bookings?.length || 0, 
+        error: bookingsError 
+      })
 
       if (bookingsError || !bookings) {
         console.error('Error fetching bookings:', bookingsError)
@@ -102,7 +113,7 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
       // Generate data points for each day in the range
       const days = eachDayOfInterval({ start: startDate, end: endDate })
       
-      return days.map(day => {
+      const result = days.map(day => {
         const dateStr = format(day, 'yyyy-MM-dd')
         const expected = expectedByDate.get(dateStr) || { revenue: 0, count: 0 }
         
@@ -113,6 +124,14 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
           bookingsCount: expected.count
         }
       })
+
+      console.log('[useExpectedRevenueData] Final result:', {
+        totalDays: result.length,
+        daysWithRevenue: result.filter(d => d.expectedRevenue > 0).length,
+        totalExpectedRevenue: result.reduce((sum, d) => sum + d.expectedRevenue, 0)
+      })
+
+      return result
     }
   })
 }

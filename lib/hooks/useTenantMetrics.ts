@@ -10,6 +10,7 @@ export interface TenantMetrics {
   new_clients_last30: number
   low_stock_items: number
   avg_spend_per_client: number
+  expected_revenue_current_month: number
 }
 
 export function useTenantMetrics() {
@@ -52,7 +53,8 @@ export function useTenantMetrics() {
           appointments_last30: 0,
           new_clients_last30: 0,
           low_stock_items: 0,
-          avg_spend_per_client: 0
+          avg_spend_per_client: 0,
+          expected_revenue_current_month: 0
         }
       }
 
