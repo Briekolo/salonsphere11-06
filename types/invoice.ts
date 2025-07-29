@@ -154,6 +154,7 @@ export interface AddPaymentData {
 }
 
 export interface InvoiceFilters {
+  tenant_id?: string;
   status?: InvoiceStatus[];
   client_id?: string;
   date_from?: string;

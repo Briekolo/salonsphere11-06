@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { InvoiceService } from '@/lib/services/invoiceService';
 import { AvailabilityService } from '@/lib/services/availabilityService';
+import { EmailService } from '@/lib/services/emailService';
 
 export interface CreateBookingData {
   tenantId: string;
@@ -13,6 +14,7 @@ export interface CreateBookingData {
   internalNotes?: string;
   status?: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
   createInvoice?: boolean;
+  sendConfirmationEmail?: boolean;
 }
 
 export interface ClientData {
@@ -119,6 +121,25 @@ export class BookingService {
         await InvoiceService.createInvoiceFromBooking(booking.id);
       } catch (invoiceError) {
         console.error('Error creating invoice:', invoiceError);
+        // Don't throw - booking is still created successfully
+      }
+    }
+
+    // Send booking confirmation email if requested
+    if (data.sendConfirmationEmail) {
+      try {
+        // Fetch tenant information for email
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', data.tenantId)
+          .single();
+
+        if (!tenantError && tenant) {
+          await EmailService.sendBookingConfirmation(booking, tenant);
+        }
+      } catch (emailError) {
+        console.error('Error sending booking confirmation email:', emailError);
         // Don't throw - booking is still created successfully
       }
     }

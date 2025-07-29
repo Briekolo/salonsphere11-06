@@ -8,6 +8,7 @@ import { useTenant } from '@/lib/hooks/useTenant';
 import { InvoiceFilters, InvoiceStatus } from '@/types/invoice';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { supabase } from '@/lib/supabase';
 import {
   FileText,
   Plus,
@@ -32,7 +33,7 @@ const ITEMS_PER_PAGE = 10;
 
 export function InvoicesContent() {
   const router = useRouter();
-  const { tenant } = useTenant();
+  const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [sendingInvoices, setSendingInvoices] = useState(false);
@@ -46,7 +47,7 @@ export function InvoicesContent() {
   const [selectedStatus, setSelectedStatus] = useState<InvoiceStatus[]>([]);
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   
-  const { invoices, loading, totalCount, refetch } = useInvoices({
+  const invoiceFilters = {
     ...filters,
     search: searchTerm,
     status: selectedStatus.length > 0 ? selectedStatus : undefined,
@@ -54,7 +55,33 @@ export function InvoicesContent() {
     date_to: dateRange.to,
     limit: ITEMS_PER_PAGE,
     offset: (currentPage - 1) * ITEMS_PER_PAGE
-  });
+  };
+
+  console.log('[InvoicesContent] tenantId:', tenantId);
+  console.log('[InvoicesContent] invoiceFilters:', invoiceFilters);
+  
+  const { invoices, loading, totalCount, refetch } = useInvoices(invoiceFilters);
+  
+  console.log('[InvoicesContent] invoices loaded:', invoices?.length || 0);
+  console.log('[InvoicesContent] loading:', loading);
+  console.log('[InvoicesContent] totalCount:', totalCount);
+
+  // Debug: Direct database query
+  useEffect(() => {
+    const checkInvoicesDirectly = async () => {
+      if (!tenantId) return;
+      
+      console.log('[InvoicesContent] Direct DB check for tenant:', tenantId);
+      const { data, error, count } = await supabase
+        .from('invoices')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId);
+      
+      console.log('[InvoicesContent] Direct DB result:', { data: data?.length, error, count });
+    };
+    
+    checkInvoicesDirectly();
+  }, [tenantId]);
   
   const { stats } = useInvoiceStats(dateRange.from && dateRange.to ? dateRange : undefined);
   
@@ -95,11 +122,11 @@ export function InvoicesContent() {
   };
 
   const handleBatchSend = async () => {
-    if (!tenant || selectedInvoices.length === 0) return;
+    if (!tenantId || selectedInvoices.length === 0) return;
     
     setSendingInvoices(true);
     try {
-      const results = await EmailService.batchSendInvoices(selectedInvoices, tenant);
+      const results = await EmailService.batchSendInvoices(selectedInvoices, { id: tenantId });
       
       if (results.success.length > 0) {
         alert(`${results.success.length} facturen succesvol verzonden`);

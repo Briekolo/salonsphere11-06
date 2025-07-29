@@ -185,6 +185,11 @@ export class InvoiceService {
         )
       `, { count: 'exact' });
 
+    // Apply tenant filter (required for multi-tenancy)
+    if (filters.tenant_id) {
+      query = query.eq('tenant_id', filters.tenant_id);
+    }
+
     // Apply filters
     if (filters.status && filters.status.length > 0) {
       query = query.in('status', filters.status);

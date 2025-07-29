@@ -4,36 +4,35 @@ import { Invoice, InvoiceFilters, CreateInvoiceData, UpdateInvoiceData, AddPayme
 import { useTenant } from '@/lib/hooks/useTenant';
 
 export function useInvoices(filters?: InvoiceFilters) {
-  const { tenant } = useTenant();
+  const { tenantId } = useTenant();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    console.log('[useInvoices] Effect triggered - tenant:', tenant);
-    console.log('[useInvoices] tenant?.id:', tenant?.id);
-    if (tenant?.id) {
+    console.log('[useInvoices] Effect triggered - tenantId:', tenantId);
+    if (tenantId) {
       fetchInvoices();
     } else {
       setLoading(false); // Stop loading if no tenant
     }
-  }, [tenant?.id, JSON.stringify(filters)]);
+  }, [tenantId, JSON.stringify(filters)]);
 
   const fetchInvoices = async () => {
-    if (!tenant?.id) {
+    if (!tenantId) {
       console.log('[useInvoices] No tenant ID, returning');
       return;
     }
     
-    console.log('[useInvoices] Fetching invoices for tenant:', tenant.id);
+    console.log('[useInvoices] Fetching invoices for tenant:', tenantId);
     setLoading(true);
     setError(null);
     
     try {
       const { data, count } = await InvoiceService.listInvoices({
         ...filters,
-        tenant_id: tenant.id
+        tenant_id: tenantId
       } as any);
       
       console.log('[useInvoices] Fetched invoices:', data?.length || 0, 'count:', count);
@@ -48,11 +47,11 @@ export function useInvoices(filters?: InvoiceFilters) {
   };
 
   const createInvoice = async (data: Omit<CreateInvoiceData, 'tenant_id'>) => {
-    if (!tenant?.id) throw new Error('No tenant context');
+    if (!tenantId) throw new Error('No tenant context');
     
     const invoice = await InvoiceService.createInvoice({
       ...data,
-      tenant_id: tenant.id
+      tenant_id: tenantId
     });
     
     // Refresh list
@@ -175,23 +174,23 @@ export function useInvoice(invoiceId: string) {
 }
 
 export function useInvoiceStats(dateRange?: { from: string; to: string }) {
-  const { tenant } = useTenant();
+  const { tenantId } = useTenant();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (tenant?.id) {
+    if (tenantId) {
       fetchStats();
     }
-  }, [tenant?.id, JSON.stringify(dateRange)]);
+  }, [tenantId, JSON.stringify(dateRange)]);
 
   const fetchStats = async () => {
-    if (!tenant?.id) return;
+    if (!tenantId) return;
     
     setLoading(true);
     
     try {
-      const data = await InvoiceService.getInvoiceStats(tenant.id, dateRange);
+      const data = await InvoiceService.getInvoiceStats(tenantId, dateRange);
       setStats(data);
     } catch (err) {
       console.error('Error fetching invoice stats:', err);

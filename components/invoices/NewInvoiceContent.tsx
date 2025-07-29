@@ -7,6 +7,7 @@ import { useClients } from '@/lib/hooks/useClients';
 import { InvoiceService } from '@/lib/services/invoiceService';
 import { CreateInvoiceData } from '@/types/invoice';
 import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Plus,
@@ -29,8 +30,9 @@ interface InvoiceItem {
 
 export function NewInvoiceContent() {
   const router = useRouter();
-  const { tenant } = useTenant();
-  const { clients, loading: clientsLoading } = useClients();
+  const { tenantId } = useTenant();
+  const { data: clients, isLoading: clientsLoading } = useClients();
+  const queryClient = useQueryClient();
   
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<any[]>([]);
@@ -57,18 +59,18 @@ export function NewInvoiceContent() {
   );
 
   useEffect(() => {
-    if (tenant?.id) {
+    if (tenantId) {
       fetchServices();
     }
-  }, [tenant]);
+  }, [tenantId]);
 
   const fetchServices = async () => {
-    if (!tenant?.id) return;
+    if (!tenantId) return;
     
     const { data } = await supabase
       .from('services')
       .select('*')
-      .eq('tenant_id', tenant.id)
+      .eq('tenant_id', tenantId)
       .order('name');
     
     setServices(data || []);
@@ -118,26 +120,45 @@ export function NewInvoiceContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!tenant?.id || !selectedClient || items.length === 0) return;
+    if (!tenantId) {
+      alert('Geen tenant gevonden. Probeer opnieuw in te loggen.');
+      return;
+    }
+    
+    if (!selectedClient) {
+      alert('Selecteer eerst een klant.');
+      return;
+    }
+    
+    const validItems = items.filter(item => item.description && item.unit_price > 0);
+    if (validItems.length === 0) {
+      alert('Voeg minimaal één geldig item toe (met beschrijving en prijs).');
+      return;
+    }
     
     setLoading(true);
     
     try {
       const invoiceData: CreateInvoiceData = {
-        tenant_id: tenant.id,
+        tenant_id: tenantId,
         client_id: selectedClient,
         due_date: dueDate,
         notes,
-        items: items.filter(item => item.description && item.unit_price > 0),
+        items: validItems,
         discount_amount: discountAmount,
         tax_rate: taxRate
       };
       
       const invoice = await InvoiceService.createInvoice(invoiceData);
-      router.push(`/invoices/${invoice.id}`);
+      
+      // Invalidate invoices cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      
+      // Redirect to invoices overview
+      router.push('/invoices');
     } catch (error) {
       console.error('Error creating invoice:', error);
-      alert('Er is een fout opgetreden bij het maken van de factuur');
+      alert(`Er is een fout opgetreden bij het maken van de factuur: ${error instanceof Error ? error.message : 'Onbekende fout'}`);
     } finally {
       setLoading(false);
     }
@@ -376,6 +397,23 @@ export function NewInvoiceContent() {
           </div>
         </div>
 
+        {/* Debug info */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-yellow-800 mb-2">Debug Info:</h3>
+            <div className="text-sm text-yellow-700 space-y-1">
+              <p>Loading: {loading ? 'true' : 'false'}</p>
+              <p>Clients Loading: {clientsLoading ? 'true' : 'false'}</p>
+              <p>Clients Count: {clients?.length || 0}</p>
+              <p>Filtered Clients: {filteredClients.length}</p>
+              <p>Selected Client: {selectedClient || 'GEEN'}</p>
+              <p>Items Count: {items.length}</p>
+              <p>Valid Items: {items.filter(item => item.description && item.unit_price > 0).length}</p>
+              <p>Button Disabled: {(loading || !selectedClient || items.filter(item => item.description && item.unit_price > 0).length === 0) ? 'true' : 'false'}</p>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3">
           <button
@@ -387,7 +425,7 @@ export function NewInvoiceContent() {
           </button>
           <button
             type="submit"
-            disabled={loading || !selectedClient || items.length === 0}
+            disabled={loading || !selectedClient || items.filter(item => item.description && item.unit_price > 0).length === 0}
             className="flex-1 px-6 py-3 bg-[#02011F] text-white rounded-lg font-medium hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
