@@ -11,6 +11,7 @@ export interface TenantMetrics {
   low_stock_items: number
   avg_spend_per_client: number
   expected_revenue_current_month: number
+  avg_transaction_value: number
 }
 
 export function useTenantMetrics() {
@@ -54,7 +55,8 @@ export function useTenantMetrics() {
           new_clients_last30: 0,
           low_stock_items: 0,
           avg_spend_per_client: 0,
-          expected_revenue_current_month: 0
+          expected_revenue_current_month: 0,
+          avg_transaction_value: 0
         }
       }
 

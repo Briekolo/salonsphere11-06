@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X, User, Award, Clock, Euro, Search, Filter, ChevronDown, UserPlus, ExternalLink } from 'lucide-react'
+import { Check, X, User, Clock, Euro, Search, Filter, ChevronDown, UserPlus, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useServices } from '@/lib/hooks/useServices'
 import { useTreatmentCategories } from '@/lib/hooks/useTreatmentCategories'
@@ -13,12 +13,6 @@ import {
   type StaffService 
 } from '@/lib/hooks/useStaffServices'
 
-const PROFICIENCY_LEVELS = [
-  { value: 'junior', label: 'Junior', color: 'bg-blue-100 text-blue-800' },
-  { value: 'standard', label: 'Standaard', color: 'bg-gray-100 text-gray-800' },
-  { value: 'senior', label: 'Senior', color: 'bg-purple-100 text-purple-800' },
-  { value: 'expert', label: 'Expert', color: 'bg-green-100 text-green-800' },
-]
 
 interface ServiceCellProps {
   staffId: string
@@ -31,7 +25,6 @@ interface ServiceCellProps {
 function ServiceCell({ staffId, serviceId, assignment, onToggle, onUpdate }: ServiceCellProps) {
   const [showDetails, setShowDetails] = useState(false)
 
-  const proficiencyLevel = PROFICIENCY_LEVELS.find(p => p.value === assignment?.proficiency_level)
 
   return (
     <div className="relative">
@@ -44,12 +37,7 @@ function ServiceCell({ staffId, serviceId, assignment, onToggle, onUpdate }: Ser
         }`}
       >
         {assignment ? (
-          <>
-            <Check className="w-5 h-5 text-green-600 mb-1" />
-            <span className={`text-xs px-2 py-0.5 rounded-full ${proficiencyLevel?.color || ''}`}>
-              {proficiencyLevel?.label}
-            </span>
-          </>
+          <Check className="w-5 h-5 text-green-600" />
         ) : (
           <div className="w-5 h-5 border-2 border-gray-300 rounded" />
         )}
@@ -70,28 +58,24 @@ function ServiceCell({ staffId, serviceId, assignment, onToggle, onUpdate }: Ser
       {showDetails && assignment && (
         <div className="absolute top-full left-0 right-0 z-10 mt-1 p-3 bg-white border rounded-lg shadow-lg">
           <div className="space-y-2">
-            <div>
-              <label className="text-xs font-medium text-gray-700">Niveau</label>
-              <select
-                value={assignment.proficiency_level}
-                onChange={(e) => onUpdate({ proficiency_level: e.target.value as StaffService['proficiency_level'] })}
-                className="w-full mt-1 text-xs px-2 py-1 border rounded"
-              >
-                {PROFICIENCY_LEVELS.map(level => (
-                  <option key={level.value} value={level.value}>{level.label}</option>
-                ))}
-              </select>
-            </div>
 
             <div>
               <label className="text-xs font-medium text-gray-700">Aangepaste duur (min)</label>
               <input
                 type="number"
                 value={assignment.custom_duration_minutes || ''}
-                onChange={(e) => onUpdate({ custom_duration_minutes: e.target.value ? parseInt(e.target.value) : null })}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value) : null
+                  // Round to nearest 15 minutes if value is provided
+                  const roundedValue = value ? Math.round(value / 15) * 15 : null
+                  onUpdate({ custom_duration_minutes: roundedValue })
+                }}
                 placeholder="Standaard"
                 className="w-full mt-1 text-xs px-2 py-1 border rounded"
+                min="15"
+                step="15"
               />
+              <p className="text-xs text-gray-400 mt-1">Veelvouden van 15 min</p>
             </div>
 
             <div>
@@ -326,13 +310,6 @@ export function StaffAssignments() {
           <div className="w-4 h-4 bg-gray-50 border-2 border-gray-200 rounded" />
           <span>Niet toegewezen</span>
         </div>
-        {PROFICIENCY_LEVELS.map(level => (
-          <div key={level.value} className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 text-xs rounded-full ${level.color}`}>
-              {level.label}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   )

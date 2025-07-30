@@ -42,7 +42,10 @@ export function DashboardContent() {
   // Use actual metrics data from Briek's Salon or fallback values
   const expectedRevenue = metrics?.expected_revenue_current_month ?? 385.00
   const appointments = metrics?.appointments_last30 ?? 8
-  const avgValue = appointments > 0 ? Math.round(expectedRevenue / appointments) : 48
+  const avgValue = metrics?.avg_transaction_value ?? 0
+  
+  console.log('[Dashboard] Metrics data:', metrics)
+  console.log('[Dashboard] Average transaction value:', avgValue)
 
   const fetchRecentActivities = async (showRefreshIndicator = false) => {
     const correctTenantId = tenantId || '7aa448b8-3166-4693-a13d-e833748292db';

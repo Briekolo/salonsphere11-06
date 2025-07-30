@@ -35,7 +35,7 @@ After detailed code analysis and testing, Phase 1 of the client booking system i
 
 ### What's Already Built ✅
 - [x] Service Selection Page - ✅ TESTED: Fully implemented with categories, search, filtering, responsive design
-- [x] Staff Selection Page - ✅ TESTED: Complete with staff filtering, proficiency levels, "any available" option
+- [x] Staff Selection Page - ✅ TESTED: Complete with staff filtering, "any available" option
 - [x] Time Selection & Availability Page - ✅ TESTED: Comprehensive calendar with real-time availability, booking holds, countdown timers
 - [x] Client Details & Confirmation Page - Complete form with validation, booking summary sidebar, marketing opt-in
 - [x] Booking Confirmation Flow - Full implementation with booking creation, email confirmation, calendar export

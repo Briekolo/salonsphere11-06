@@ -34,7 +34,7 @@ const navigationItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { isAdmin } = useIsAdmin()
+  const { isAdmin, isLoading } = useIsAdmin()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -101,7 +101,14 @@ export function Sidebar() {
 
         {/* Bottom Section */}
         <div className="p-3 lg:p-4 border-t border-sidebar-border space-y-1 lg:space-y-2">
-          {isAdmin && (
+          {/* Admin Panel Link - Always render but control visibility */}
+          <div 
+            className={clsx(
+              'transition-all duration-200 ease-in-out',
+              isAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none',
+              !isLoading && !isAdmin && 'hidden' // Only hide after loading completes
+            )}
+          >
             <Link 
               href="/admin" 
               className={clsx(
@@ -109,11 +116,12 @@ export function Sidebar() {
                 pathname.startsWith('/admin') && 'active'
               )}
               onClick={closeMobileMenu}
+              tabIndex={isAdmin ? 0 : -1} // Prevent keyboard navigation when hidden
             >
               <Shield className="w-5 h-5 flex-shrink-0" />
               <span className="truncate">Admin Panel</span>
             </Link>
-          )}
+          </div>
           <Link 
             href={isAdmin ? "/admin/settings" : "/settings"} 
             className="sidebar-item min-h-[44px]"
