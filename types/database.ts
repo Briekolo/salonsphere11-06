@@ -942,68 +942,6 @@ export type Database = {
           },
         ]
       }
-      klant_behandeling_trajecten: {
-        Row: {
-          behandeling_id: string | null
-          id: string
-          klant_id: string | null
-          laatste_update: string | null
-          start_datum: string | null
-          tenant_id: string | null
-          totaal_sessies: number
-          voltooide_sessies: number | null
-        }
-        Insert: {
-          behandeling_id?: string | null
-          id?: string
-          klant_id?: string | null
-          laatste_update?: string | null
-          start_datum?: string | null
-          tenant_id?: string | null
-          totaal_sessies: number
-          voltooide_sessies?: number | null
-        }
-        Update: {
-          behandeling_id?: string | null
-          id?: string
-          klant_id?: string | null
-          laatste_update?: string | null
-          start_datum?: string | null
-          tenant_id?: string | null
-          totaal_sessies?: number
-          voltooide_sessies?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "klant_behandeling_trajecten_behandeling_id_fkey"
-            columns: ["behandeling_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "klant_behandeling_trajecten_klant_id_fkey"
-            columns: ["klant_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "klant_behandeling_trajecten_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenant_metrics_view"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "klant_behandeling_trajecten_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payments: {
         Row: {
           amount: number
@@ -1318,7 +1256,6 @@ export type Database = {
       }
       services: {
         Row: {
-          aantal_sessies: number | null
           active: boolean | null
           aftercare_info: string | null
           buffer_time_after: number | null
@@ -1347,7 +1284,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          aantal_sessies?: number | null
           active?: boolean | null
           aftercare_info?: string | null
           buffer_time_after?: number | null
@@ -1376,7 +1312,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          aantal_sessies?: number | null
           active?: boolean | null
           aftercare_info?: string | null
           buffer_time_after?: number | null

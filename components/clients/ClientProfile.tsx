@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
-import { useClientById, useTreatmentProgress } from '@/lib/hooks/useClients';
+import { useClientById } from '@/lib/hooks/useClients';
 
 interface ClientProfileProps {
   clientId: string
@@ -112,11 +112,10 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 };
 
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents' | 'trajecten'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents'>('overview')
   const [isEditing, setIsEditing] = useState(false)
 
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
-  const { data: treatmentProgress, isLoading: progressLoading, error: progressError } = useTreatmentProgress(clientId);
 
   if (clientLoading) return <div>Laden...</div>
   if (clientError) return <div>Fout bij het laden van de klant.</div>
@@ -259,7 +258,6 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           {[
             { id: 'overview', label: 'Overzicht', icon: FileText },
             { id: 'appointments', label: 'Afspraken', icon: Calendar },
-            { id: 'trajecten', label: 'Trajecten', icon: Activity },
             { id: 'communications', label: 'Communicatie', icon: MessageSquare },
             { id: 'documents', label: 'Documenten', icon: FileText }
           ].map((tab) => {
@@ -448,30 +446,6 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           </div>
         )}
 
-        {activeTab === 'trajecten' && (
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Behandelingstrajecten</h3>
-            {progressLoading && <p>Trajecten laden...</p>}
-            {progressError && <p>Fout bij het laden van trajecten.</p>}
-            {treatmentProgress && treatmentProgress.length > 0 ? (
-              <div className="space-y-4">
-                {treatmentProgress.map((traject: any) => (
-                  <div key={traject.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold">{traject.service.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {traject.voltooide_sessies} / {traject.totaal_sessies} sessies
-                      </p>
-                    </div>
-                    <ProgressBar value={traject.voltooide_sessies} max={traject.totaal_sessies} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p>Deze klant heeft geen actieve behandeltrajecten.</p>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

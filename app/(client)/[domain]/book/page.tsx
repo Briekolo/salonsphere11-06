@@ -32,13 +32,12 @@ interface Service {
   duration_minutes: number;
   price: number;
   image_url?: string | null;
-  treatments_needed?: number;
-  treatment_interval_weeks?: number;
+  treatments_needed?: number | null;
+  treatment_interval_weeks?: number | null;
   min_advance_hours?: number;
   max_advance_days?: number;
   popular?: boolean;
   // Additional fields from database schema
-  aantal_sessies?: number | null;
   active?: boolean | null;
   aftercare_info?: string | null;
   certifications?: string[] | null;

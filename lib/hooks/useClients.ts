@@ -73,19 +73,4 @@ export function useDeleteClient() {
     mutationFn: (id: string) => ClientService.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] }),
   })
-}
-
-export function useTreatmentProgress(clientId: string) {
-  const { tenantId } = useTenant()
-
-  const queryKey = ['treatmentProgress', tenantId, clientId]
-
-  const query = useQuery({
-    queryKey,
-    queryFn: () => ClientService.getTreatmentProgress(clientId),
-    enabled: !!tenantId && !!clientId,
-    staleTime: 1000 * 60, // 1 min
-  })
-
-  return query
 } 

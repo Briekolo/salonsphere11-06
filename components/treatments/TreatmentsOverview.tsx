@@ -141,35 +141,22 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
               <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">{treatment.description}</p>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 py-2 sm:py-3 border-t border-gray-100">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-medium text-gray-900">
-                    <Clock className="w-3 h-3" />
-                    <span>{treatment.duration_minutes}min</span>
-                  </div>
-                  <div className="text-xs text-gray-600">Duur</div>
+              <div className="flex items-center justify-between py-2 sm:py-3 border-t border-gray-100">
+                <div className="flex items-center gap-0.5 sm:gap-1">
+                  <Clock className="w-3 h-3 text-gray-600" />
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{treatment.duration_minutes}min</span>
                 </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-medium text-gray-900">
-                    <Euro className="w-3 h-3" />
-                    <span>{treatment.price}</span>
-                  </div>
-                  <div className="text-xs text-gray-600">Prijs</div>
+                <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-lg sm:text-xl font-bold text-gray-900">€{treatment.price}</span>
                 </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-medium text-gray-900">
-                    <Users className="w-3 h-3" />
-                    <span>{treatment.aantal_sessies ?? 1}</span>
-                  </div>
-                  <div className="text-xs text-gray-600">Sessies</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-medium text-gray-900">
-                    <Calendar className="w-3 h-3" />
-                    <span>{overheadMetrics ? `€${(overheadMetrics.overhead_per_treatment).toFixed(2)}` : '--'}</span>
-                  </div>
-                  <div className="text-xs text-gray-600">Overhead</div>
-                </div>
+              </div>
+              
+              {/* Overhead */}
+              <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 pb-2">
+                <span>Overhead per behandeling:</span>
+                <span className="font-medium">
+                  {overheadMetrics ? `€${(overheadMetrics.overhead_per_treatment).toFixed(2)}` : '--'}
+                </span>
               </div>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-2 sm:pt-3 border-t border-gray-100 gap-2">

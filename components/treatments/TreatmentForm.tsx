@@ -22,7 +22,6 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
     duration: 60,
     price: 0,
     materialCost: 0,
-    aantal_sessies: 1,
     preparationInfo: '',
     aftercareInfo: '',
     active: true,
@@ -55,7 +54,6 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
             duration: existing.duration_minutes ?? 60,
             price: existing.price,
             materialCost: existing.material_cost,
-            aantal_sessies: existing.aantal_sessies ?? 1,
             preparationInfo: existing.preparation_info ?? '',
             aftercareInfo: existing.aftercare_info ?? '',
             active: existing.active,
@@ -109,7 +107,6 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
             duration_minutes: formData.duration,
             price: formData.price,
             material_cost: formData.materialCost,
-            aantal_sessies: formData.aantal_sessies,
             active: formData.active,
             preparation_info: formData.preparationInfo,
             aftercare_info: formData.aftercareInfo,
@@ -125,7 +122,6 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
           duration_minutes: formData.duration,
           price: formData.price,
           material_cost: formData.materialCost,
-          aantal_sessies: formData.aantal_sessies,
           active: formData.active,
           preparation_info: formData.preparationInfo,
           aftercare_info: formData.aftercareInfo,
@@ -271,7 +267,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Prijzen & Duur</h2>
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Duur (minuten) *
@@ -309,21 +305,6 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   min="0"
                   step="0.01"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Aantal sessies
-                </label>
-                <input
-                  type="number"
-                  value={formData.aantal_sessies}
-                  onChange={(e) => setFormData(prev => ({ ...prev, aantal_sessies: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  min="1"
-                  step="1"
                   required
                 />
               </div>

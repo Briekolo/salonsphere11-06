@@ -31,12 +31,11 @@ interface Service {
   duration_minutes: number;
   price: number;
   image_url?: string | null;
-  treatments_needed?: number;
-  treatment_interval_weeks?: number;
+  treatments_needed?: number | null;
+  treatment_interval_weeks?: number | null;
   popular?: boolean;
   certifications?: string[] | null;
   // Additional fields from database schema
-  aantal_sessies?: number | null;
   active?: boolean | null;
   aftercare_info?: string | null;
   created_at?: string | null;
