@@ -7,6 +7,7 @@ import { useActiveTreatmentCategories } from '@/lib/hooks/useTreatmentCategories
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 import { ServiceService } from '@/lib/services/serviceService'
+import { roundToNearest15, validateDuration, getDurationValidationMessage } from '@/lib/utils/duration'
 
 interface TreatmentFormProps {
   treatmentId: string | null
@@ -37,6 +38,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
   const updateMutation = useUpdateService()
   const [submitting, setSubmitting] = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(false)
+  const [durationError, setDurationError] = useState<string | null>(null)
 
   // fetch existing treatment when editing
   useEffect(() => {
@@ -68,6 +70,24 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
     }
     fetchExisting()
   }, [isEditing, treatmentId])
+
+  const handleDurationChange = (value: string) => {
+    const numValue = parseInt(value) || 0
+    setFormData(prev => ({ ...prev, duration: numValue }))
+    
+    // Validate duration
+    const errorMessage = getDurationValidationMessage(numValue)
+    setDurationError(errorMessage)
+  }
+
+  const handleDurationBlur = () => {
+    // Auto-correct to nearest 15-minute increment on blur
+    if (formData.duration > 0 && !validateDuration(formData.duration)) {
+      const roundedDuration = roundToNearest15(formData.duration)
+      setFormData(prev => ({ ...prev, duration: roundedDuration }))
+      setDurationError(null)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -259,12 +279,23 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                 <input
                   type="number"
                   value={formData.duration}
-                  onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  onChange={(e) => handleDurationChange(e.target.value)}
+                  onBlur={handleDurationBlur}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
+                    durationError 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-primary-500'
+                  }`}
                   min="15"
                   step="15"
                   required
                 />
+                {durationError && (
+                  <p className="mt-1 text-sm text-red-600">{durationError}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Duur moet een veelvoud van 15 minuten zijn (15, 30, 45, etc.)
+                </p>
               </div>
 
               <div>

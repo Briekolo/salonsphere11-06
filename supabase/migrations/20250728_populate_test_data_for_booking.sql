@@ -15,12 +15,11 @@ WHERE u.role = 'staff' OR u.role = 'admin'
 ON CONFLICT (tenant_id, staff_id, day_of_week) DO NOTHING;
 
 -- Insert staff-service assignments (assign all staff to all services in their tenant)
-INSERT INTO staff_services (tenant_id, staff_id, service_id, proficiency_level, active)
+INSERT INTO staff_services (tenant_id, staff_id, service_id, active)
 SELECT 
   s.tenant_id,
   u.id as staff_id,
   s.id as service_id,
-  'standard' as proficiency_level,
   true as active
 FROM users u
 CROSS JOIN services s
