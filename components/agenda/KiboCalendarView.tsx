@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, Plus, MoreHor
 import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { atom, useAtom } from 'jotai'
 import { useQueryClient } from '@tanstack/react-query'
+import { calculateAppointmentPositions, AppointmentWithOverlap } from '@/lib/utils/appointment-overlap'
 
 interface KiboCalendarViewProps {
   selectedDate: Date
@@ -331,7 +332,7 @@ function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { book
 }
 
 // Draggable appointment card
-function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'month' }: { booking: Booking; onClick: () => void; compact?: boolean; viewMode?: 'week' | 'month' }) {
+function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'month', isOverlapping = false }: { booking: Booking; onClick: () => void; compact?: boolean; viewMode?: 'week' | 'month'; isOverlapping?: boolean }) {
   const [hoveredBooking, setHoveredBooking] = useAtom(hoveredBookingAtom)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   
@@ -500,7 +501,7 @@ function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'm
       ref={setNodeRef}
       style={{...style, ...resizeStyles}}
       {...attributes}
-      className={`group relative p-1 sm:p-2 rounded-lg border transition-all h-full ${colors.bg} ${colors.text} ${isResizing ? 'ring-2 ring-blue-500' : ''}`}
+      className={`group relative ${isOverlapping ? 'p-0.5 sm:p-1' : 'p-1 sm:p-2'} rounded-lg border transition-all h-full ${colors.bg} ${colors.text} ${isResizing ? 'ring-2 ring-blue-500' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -550,12 +551,12 @@ function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'm
       <div onClick={handleClick} className="flex items-start gap-1 sm:gap-2 w-full cursor-pointer relative overflow-hidden">
         <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-1 sm:mt-1.5 flex-shrink-0 ${colors.dot}`} />
         <div className="flex-1 min-w-0 overflow-hidden">
-          {/* Compact view for 30min appointments */}
-          {booking.duration_minutes && booking.duration_minutes <= 30 ? (
+          {/* Compact view for 30min appointments or overlapping */}
+          {(booking.duration_minutes && booking.duration_minutes <= 30) || isOverlapping ? (
             <div className="flex items-center gap-1 overflow-hidden">
-              <span className="font-medium text-[10px] sm:text-xs flex-shrink-0">{time}</span>
-              <span className="text-[10px] sm:text-xs opacity-75 flex-shrink-0">30min</span>
-              <span className="text-[10px] sm:text-xs truncate opacity-90 min-w-0" title={clientName}>{clientName}</span>
+              <span className={`font-medium ${isOverlapping ? 'text-[9px] sm:text-[10px]' : 'text-[10px] sm:text-xs'} flex-shrink-0`}>{time}</span>
+              <span className={`${isOverlapping ? 'text-[9px] sm:text-[10px]' : 'text-[10px] sm:text-xs'} opacity-75 flex-shrink-0`}>{booking.duration_minutes || 60}min</span>
+              <span className={`${isOverlapping ? 'text-[9px] sm:text-[10px]' : 'text-[10px] sm:text-xs'} truncate opacity-90 min-w-0`} title={clientName}>{clientName}</span>
             </div>
           ) : (
             <div className="overflow-hidden">
@@ -945,6 +946,22 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
   // Hour slot height in pixels - using rem values
   const HOUR_HEIGHT = 64 // 4rem = 64px at default font size
   const [resizePreview] = useAtom(resizePreviewAtom)
+  
+  // Calculate overlapping positions for bookings in this hour
+  const bookingsWithPositions = useMemo(() => {
+    if (bookings.length === 0) return []
+    
+    // Convert bookings to AppointmentWithOverlap format
+    const appointmentsData: AppointmentWithOverlap[] = bookings.map(booking => ({
+      id: booking.id,
+      scheduled_at: booking.scheduled_at,
+      duration_minutes: booking.duration_minutes || 60,
+      booking
+    }))
+    
+    // Calculate positions for overlapping appointments
+    return calculateAppointmentPositions(appointmentsData)
+  }, [bookings])
 
   return (
     <div className="relative h-16 border-b border-gray-100 overflow-visible">
@@ -968,7 +985,9 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
       })}
 
       {/* Appointments in this hour */}
-      {bookings.map((booking) => {
+      {bookingsWithPositions.map((appointment) => {
+        const booking = (appointment as any).booking as Booking
+        const position = appointment.position!
         const bookingTime = new Date(booking.scheduled_at)
         const isValidDate = bookingTime instanceof Date && !isNaN(bookingTime.getTime())
         
@@ -984,16 +1003,23 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
         const topPixels = (minutes / 60) * HOUR_HEIGHT
         const heightPixels = (duration / 60) * HOUR_HEIGHT
         
+        // Calculate horizontal position based on overlap
+        const leftPercent = position.left
+        const widthPercent = position.width
+        
         // Check if this booking is being resized
         const isBeingResized = resizePreview && resizePreview.booking.id === booking.id
         
         return (
           <div
             key={booking.id}
-            className="absolute left-1 right-1 z-10 overflow-hidden"
+            className="absolute z-10 overflow-hidden"
             style={{
               top: `${topPixels}px`,
               height: `${heightPixels}px`,
+              left: `${leftPercent}%`,
+              width: `${widthPercent}%`,
+              paddingRight: position.totalColumns > 1 ? '2px' : '0',
               opacity: isBeingResized ? 0.3 : 1 // Make original appointment semi-transparent during resize
             }}
           >
@@ -1001,6 +1027,7 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
               booking={booking}
               onClick={() => onBookingClick(booking.id)}
               viewMode="week"
+              isOverlapping={position.totalColumns > 1}
             />
           </div>
         )

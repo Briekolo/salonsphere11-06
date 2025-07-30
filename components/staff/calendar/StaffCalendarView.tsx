@@ -24,6 +24,7 @@ import { ChevronLeft, ChevronRight, Calendar, Users, Clock, Plus } from 'lucide-
 import { useStaffBookings, useStaffTodaysBookings, useStaffPermission } from '@/lib/hooks/useStaffBookings'
 import { useStaffAuth } from '@/lib/hooks/useStaffAuth'
 import { StaffBookingWithRelations } from '@/lib/services/staffBookingService'
+import { getAppointmentsForTimeSlot, AppointmentWithOverlap } from '@/lib/utils/appointment-overlap'
 
 // Atoms for managing calendar state (reusing pattern from KiboCalendarView)
 export const staffViewModeAtom = atomWithStorage<'week' | 'month'>('staffCalendarViewMode', 'week')
@@ -257,15 +258,47 @@ export function StaffCalendarView({
                 {/* Day content - simplified view showing bookings in time slots */}
                 <div className="relative">
                   {Array.from({ length: 24 }, (_, hour) => {
-                    const hourBookings = dayBookings.filter(booking => {
-                      if (!booking.scheduled_at) return false
-                      const bookingHour = new Date(booking.scheduled_at).getHours()
-                      return bookingHour === hour
-                    })
+                    // Convert day bookings to appointment format
+                    const dayAppointments: AppointmentWithOverlap[] = dayBookings.map(booking => ({
+                      id: booking.id,
+                      scheduled_at: booking.scheduled_at,
+                      duration_minutes: booking.duration_minutes || 60,
+                      booking
+                    }))
+                    
+                    // Get hour slot date
+                    const hourSlotDate = new Date(day)
+                    hourSlotDate.setHours(hour, 0, 0, 0)
+                    
+                    // Get appointments for this hour slot with overlap detection
+                    const hourAppointments = getAppointmentsForTimeSlot(dayAppointments, hourSlotDate, 60)
 
                     return (
                       <div key={hour} className="h-16 border-b border-gray-100 p-1">
-                        {hourBookings.map((booking) => renderBooking(booking))}
+                        {hourAppointments.length > 0 && (
+                          <div className="grid gap-1 h-full" style={{
+                            gridTemplateColumns: hourAppointments.length === 1 
+                              ? '1fr' 
+                              : `repeat(${Math.min(hourAppointments.length, 2)}, 1fr)`
+                          }}>
+                            {hourAppointments.slice(0, 2).map((appointment) => {
+                              const booking = (appointment as any).booking as StaffBookingWithRelations
+                              
+                              return (
+                                <div key={appointment.id} className="min-w-0">
+                                  {renderBooking(booking)}
+                                </div>
+                              )
+                            })}
+                            
+                            {/* Overflow indicator for more than 2 appointments */}
+                            {hourAppointments.length > 2 && (
+                              <div className="flex items-center justify-center text-xs text-gray-500 bg-gray-100 rounded px-1">
+                                +{hourAppointments.length - 2}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })}

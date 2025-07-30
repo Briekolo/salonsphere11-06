@@ -9,6 +9,7 @@ import {
 import { nl } from 'date-fns/locale'
 import { useBookings, useUpdateBooking, Booking } from '@/lib/hooks/useBookings'
 import { BookingFormModal } from './BookingFormModal'
+import { getAppointmentsForTimeSlot, AppointmentWithOverlap, getOverflowCount, calculateAppointmentPositions } from '@/lib/utils/appointment-overlap'
 
 interface CalendarViewProps {
   selectedDate: Date
@@ -114,11 +115,33 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
     return { hour, minute, timeLabel }
   })
 
-  const dayViewSlots = timeSlots.map(({ hour, minute, timeLabel }) => {
-    const date = setMinutes(setHours(new Date(selectedDate), hour), minute)
-    const booking = bookings.find((b: Booking) => isSameDay(new Date(b.scheduled_at), selectedDate) && format(new Date(b.scheduled_at), 'HH:mm') === timeLabel)
-    return { date, timeLabel, booking }
-  })
+  const dayViewSlots = useMemo(() => {
+    // Get all bookings for this day
+    const dayBookings = bookings.filter((b: Booking) => 
+      isSameDay(new Date(b.scheduled_at), selectedDate)
+    ).map((b: Booking) => ({
+      id: b.id,
+      scheduled_at: b.scheduled_at,
+      duration_minutes: b.duration_minutes || 60,
+      booking: b
+    }))
+    
+    // Calculate positions for ALL appointments in the day
+    const appointmentsWithPositions = calculateAppointmentPositions(dayBookings)
+    
+    
+    return timeSlots.map(({ hour, minute, timeLabel }) => {
+      const date = setMinutes(setHours(new Date(selectedDate), hour), minute)
+      
+      // Find appointments that START in this time slot
+      const slotAppointments = appointmentsWithPositions.filter(apt => {
+        const aptDate = new Date(apt.scheduled_at)
+        return aptDate.getHours() === hour && aptDate.getMinutes() === minute
+      })
+      
+      return { date, timeLabel, appointments: slotAppointments }
+    })
+  }, [timeSlots, selectedDate, bookings])
 
   // Resize global listeners
   useEffect(() => {
@@ -316,47 +339,108 @@ export function CalendarView({ selectedDate, onDateSelect }: CalendarViewProps) 
             </div>
             
             <div className="space-y-2 max-h-60 lg:max-h-80 overflow-y-auto">
-              {dayViewSlots.map(({ date, timeLabel, booking }, index) => (
-                <div key={index} className="flex items-center gap-2 lg:gap-3">
-                  <div className="text-xs lg:text-sm text-gray-500 w-10 lg:w-12 flex-shrink-0">
+              {dayViewSlots.map(({ date, timeLabel, appointments }, index) => (
+                <div key={index} className="flex items-start gap-2 lg:gap-3 min-h-[44px]">
+                  <div className="text-xs lg:text-sm text-gray-500 w-10 lg:w-12 flex-shrink-0 pt-2">
                     {timeLabel}
                   </div>
                   
-                  {booking ? (
-                    <div
-                      draggable
-                      onDragStart={(e)=>{ setDraggedBookingId(booking.id); e.dataTransfer.effectAllowed='move' }}
-                      onDragEnd={()=> setDraggedBookingId(null)}
-                      className={`
-                        w-full text-left flex-1 p-2 lg:p-3 rounded-lg border-l-4 cursor-grab active:cursor-grabbing relative
-                        ${paymentClasses(booking.is_paid || false)}
-                      `}
-                      onClick={()=>openModalForEdit(booking.id)}
-                      >
-                      <div className="font-medium text-xs lg:text-sm">
-                        {booking.clients?.first_name} {booking.clients?.last_name}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {booking.services?.name} • {booking.duration_minutes}min
-                      </div>
-                      {/* Resize handle */}
-                      <div
-                        onMouseDown={(e)=>{
-                          e.stopPropagation()
-                          resizeState.current = { id: booking.id, startY: e.clientY, initialDuration: booking.duration_minutes }
+                  <div className="flex-1 relative">
+                    {appointments.length > 0 ? (
+                      appointments.length === 1 ? (
+                        // Single appointment - full width
+                        <div
+                          draggable
+                          onDragStart={(e) => {
+                            const booking = (appointments[0] as any).booking as Booking
+                            setDraggedBookingId(booking.id)
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragEnd={() => setDraggedBookingId(null)}
+                          className={`
+                            w-full text-left p-2 lg:p-3 rounded-lg border-l-4 cursor-grab active:cursor-grabbing relative
+                            ${paymentClasses((appointments[0] as any).booking.is_paid || false)}
+                          `}
+                          onClick={() => openModalForEdit((appointments[0] as any).booking.id)}
+                        >
+                          <div className="font-medium text-xs lg:text-sm">
+                            {(appointments[0] as any).booking.clients?.first_name} {(appointments[0] as any).booking.clients?.last_name}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {(appointments[0] as any).booking.services?.name} • {(appointments[0] as any).booking.duration_minutes}min
+                          </div>
+                          {/* Resize handle */}
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                              resizeState.current = { 
+                                id: (appointments[0] as any).booking.id, 
+                                startY: e.clientY, 
+                                initialDuration: (appointments[0] as any).booking.duration_minutes 
+                              }
+                            }}
+                            className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize bg-transparent"
+                          />
+                        </div>
+                      ) : (
+                        // Multiple overlapping appointments
+                        <div className="grid gap-1" style={{ 
+                          gridTemplateColumns: `repeat(${Math.min(appointments.length, 3)}, 1fr)`,
+                          minHeight: '44px' 
+                        }}>
+                          {appointments.slice(0, 3).map((appointment, idx) => {
+                            const booking = (appointment as any).booking as Booking
+                            
+                            return (
+                              <div
+                                key={appointment.id}
+                                draggable
+                                onDragStart={(e) => {
+                                  setDraggedBookingId(booking.id)
+                                  e.dataTransfer.effectAllowed = 'move'
+                                }}
+                                onDragEnd={() => setDraggedBookingId(null)}
+                                className={`
+                                  text-left p-1 lg:p-2 rounded-lg border-l-4 cursor-grab active:cursor-grabbing
+                                  appointment-overlap-item overflow-hidden
+                                  ${paymentClasses(booking.is_paid || false)}
+                                `}
+                                onClick={() => openModalForEdit(booking.id)}
+                              >
+                                <div className="font-medium text-xs truncate">
+                                  {booking.clients?.first_name} {booking.clients?.last_name}
+                                </div>
+                                <div className="text-[10px] text-gray-600 truncate">
+                                  {booking.services?.name}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          
+                          {/* Overflow indicator */}
+                          {appointments.length > 3 && (
+                            <div className="flex items-center justify-center p-1 text-xs text-gray-500 bg-gray-100 rounded border border-gray-300">
+                              +{appointments.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <button 
+                        onClick={() => openModalForNew(date)} 
+                        className="w-full p-2 lg:p-3 border-2 border-dashed border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors text-xs lg:text-sm text-gray-500 min-h-[44px] flex items-center justify-center" 
+                        onDragOver={(e) => e.preventDefault()} 
+                        onDrop={(e) => {
+                          if (draggedBookingId) {
+                            updateMutation.mutate({ id: draggedBookingId, updates: { scheduled_at: date.toISOString() } as any })
+                            setDraggedBookingId(null)
+                          }
                         }}
-                        className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize bg-transparent"/>
-                    </div>
-                  ) : (
-                    <button onClick={() => openModalForNew(date)} className="flex-1 p-2 lg:p-3 border-2 border-dashed border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors text-xs lg:text-sm text-gray-500 min-h-[44px] flex items-center justify-center" onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{
-                      if(draggedBookingId){
-                        updateMutation.mutate({ id: draggedBookingId, updates: { scheduled_at: date.toISOString() } as any })
-                        setDraggedBookingId(null)
-                      }
-                    }}>
-                      + Afspraak toevoegen
-                    </button>
-                  )}
+                      >
+                        + Afspraak toevoegen
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

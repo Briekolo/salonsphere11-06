@@ -545,6 +545,43 @@
 .event-card-assembly:hover {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transform: translateY(-1px);
+  z-index: 10;
+  position: relative;
+}
+
+/* Overlapping appointment styles */
+.appointment-overlap-item {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.appointment-overlap-item:hover {
+  z-index: 20;
+  transform: scale(1.02);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Compact styling for overlapping appointments */
+.appointment-overlap-item .truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mobile responsive overlapping appointments */
+@media (max-width: 640px) {
+  .appointment-overlap-item {
+    min-width: 100px !important;
+    padding: 8px 10px;
+  }
+  
+  .appointment-overlap-item .font-medium {
+    font-size: 11px;
+  }
+  
+  .appointment-overlap-item .text-xs {
+    font-size: 10px;
+  }
 }
 
 /* Category Tags */
