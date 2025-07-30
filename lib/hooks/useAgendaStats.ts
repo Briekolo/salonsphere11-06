@@ -13,7 +13,8 @@ export function useAgendaStats() {
     const countToday = bookings.length
 
     const totalMinutes = bookings.reduce((sum, b) => {
-      const duration = b.services?.duration_minutes ?? (b.duration_minutes as number | null) ?? 0
+      // Prioritize booking's duration_minutes over services.duration_minutes for custom durations
+      const duration = (b.duration_minutes as number | null) ?? b.services?.duration_minutes ?? 0
       return sum + duration
     }, 0)
 

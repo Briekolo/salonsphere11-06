@@ -9,9 +9,16 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInDays } fr
 import { useMemo } from 'react'
 
 function formatDuration(minutes: number) {
+  // Handle invalid inputs
+  if (!minutes || minutes === 0 || isNaN(minutes)) return '0u 0m'
+  
   const hrs = Math.floor(minutes / 60)
   const mins = minutes % 60
-  return `${hrs > 0 ? `${hrs}u` : ''}${mins > 0 ? ` ${mins}m` : ''}`.trim() || '0m'
+  
+  // Handle edge cases for better readability
+  if (hrs === 0) return `${mins}m`
+  if (mins === 0) return `${hrs}u`
+  return `${hrs}u ${mins}m`
 }
 
 interface AppointmentMetricsProps {
