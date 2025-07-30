@@ -9,6 +9,7 @@ export function useIsAdmin() {
   const { tenantId } = useTenant();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasChecked, setHasChecked] = useState(false);
 
   useEffect(() => {
     if (loading) {
@@ -18,11 +19,20 @@ export function useIsAdmin() {
     if (!user || !tenantId) {
       setIsAdmin(false);
       setIsLoading(false);
+      setHasChecked(true);
+      return;
+    }
+
+    // Check user metadata first for cached role
+    const roleFromMetadata = user.user_metadata?.role;
+    if (roleFromMetadata !== undefined && hasChecked) {
+      setIsAdmin(roleFromMetadata === 'admin');
+      setIsLoading(false);
       return;
     }
 
     checkAdminStatus();
-  }, [user, tenantId, loading]);
+  }, [user, tenantId, loading, hasChecked]);
 
   const checkAdminStatus = async () => {
     if (!user || !tenantId) return;
@@ -35,14 +45,26 @@ export function useIsAdmin() {
         .eq('id', user.id)
         .single();
 
-      if (!error && data && data.role === 'admin') {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
+      const isUserAdmin = !error && data && data.role === 'admin';
+      
+      setIsAdmin(isUserAdmin);
+      setHasChecked(true);
+
+      // Cache the role in user metadata to prevent future queries
+      try {
+        await supabase.auth.updateUser({
+          data: { 
+            ...user.user_metadata, 
+            role: data?.role || 'user'
+          }
+        });
+      } catch (metadataError) {
+        console.warn('Failed to cache role in metadata:', metadataError);
       }
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
+      setHasChecked(true);
     } finally {
       setIsLoading(false);
     }

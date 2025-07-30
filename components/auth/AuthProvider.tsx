@@ -85,6 +85,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: refreshData } = await supabase.auth.refreshSession()
       if (refreshData.session) {
         console.log('Session refreshed after sign in')
+        
+        // Cache user role in metadata to prevent admin panel flickering
+        try {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (userData?.role) {
+            await supabase.auth.updateUser({
+              data: { 
+                ...data.user.user_metadata, 
+                role: userData.role
+              }
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to cache user role during sign-in:', error);
+        }
       }
     }
   }
