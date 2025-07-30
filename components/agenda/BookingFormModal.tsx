@@ -39,6 +39,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   })
   
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isCustomDuration, setIsCustomDuration] = useState(false) // Track if user wants custom duration
   
   const hasInitialized = useRef(false)
   const isInitializingRef = useRef(false)
@@ -65,20 +66,20 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
     allStaff
   } = useAvailableStaff(formData.service_id)
 
-  // Update duration when service changes (only for new bookings, not during initialization)
+  // Update duration when service changes (only for new bookings, not during initialization, and not when custom duration is set)
   useEffect(() => {
-    if (!bookingId && !isInitializingRef.current && formData.service_id) {
+    if (!bookingId && !isInitializingRef.current && !isCustomDuration && formData.service_id) {
       const selectedService = services.find(s => s.id === formData.service_id)
       if (selectedService && selectedService.duration_minutes && selectedService.duration_minutes !== formData.duration_minutes) {
         setFormData(p => ({ ...p, duration_minutes: selectedService.duration_minutes as number }))
       }
     }
-  }, [formData.service_id, formData.duration_minutes, services, bookingId])
+  }, [formData.service_id, formData.duration_minutes, services, bookingId, isCustomDuration])
 
-  // Update duration and price when staff member changes (only for manual changes, not during initialization)
+  // Update duration and price when staff member changes (only for manual changes, not during initialization, and not when custom duration is set)
   useEffect(() => {
-    // Skip during initialization to prevent cascading effects
-    if (isInitializingRef.current || !formData.service_id || !formData.user_id) {
+    // Skip during initialization or when custom duration is set
+    if (isInitializingRef.current || isCustomDuration || !formData.service_id || !formData.user_id) {
       return
     }
 
@@ -93,7 +94,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         setFormData(p => ({ ...p, duration_minutes: newDuration as number }))
       }
     }
-  }, [formData.service_id, formData.user_id, formData.duration_minutes, getStaffServiceAssignment, services])
+  }, [formData.service_id, formData.user_id, formData.duration_minutes, getStaffServiceAssignment, services, isCustomDuration])
 
   // Populate form when editing an existing booking
   useEffect(() => {
@@ -120,6 +121,12 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         payment_confirmed_at: existingBooking.payment_confirmed_at || null
       })
       
+      // Check if the existing booking has a custom duration
+      const service = services.find(s => s.id === existingBooking.service_id)
+      if (service && existingBooking.duration_minutes !== service.duration_minutes) {
+        setIsCustomDuration(true)
+      }
+      
       hasInitialized.current = true
       
       // Clear initialization flag after a brief delay to allow state to settle
@@ -127,7 +134,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         isInitializingRef.current = false
       }, 100)
     }
-  }, [isEditing, existingBooking?.id, isLoadingBooking]) // Only re-run when booking ID changes
+  }, [isEditing, existingBooking?.id, isLoadingBooking, services]) // Only re-run when booking ID changes
 
   // Mutation hooks
   const createMutation = useCreateBooking()
@@ -407,10 +414,31 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
             
             {/* Duration */}
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Clock className="w-4 h-4 text-gray-400" />
-                Duur
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  Duur
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isCustomDuration}
+                    onChange={(e) => {
+                      setIsCustomDuration(e.target.checked)
+                      if (!e.target.checked && formData.service_id) {
+                        // Reset to default duration when unchecking
+                        const selectedService = services.find(s => s.id === formData.service_id)
+                        if (selectedService?.duration_minutes) {
+                          setFormData(p => ({ ...p, duration_minutes: selectedService.duration_minutes as number }))
+                        }
+                      }
+                    }}
+                    className="w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] focus:ring-2"
+                    disabled={isLoading}
+                  />
+                  <span className="text-gray-700">Aangepaste duur</span>
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative">
                   <input 
@@ -419,8 +447,20 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                     max="480"
                     step="15"
                     value={formData.duration_minutes}
-                    onChange={(e) => setFormData(p => ({...p, duration_minutes: parseInt(e.target.value) || 60}))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
+                    onChange={(e) => {
+                      const newDuration = parseInt(e.target.value) || 60
+                      setFormData(p => ({...p, duration_minutes: newDuration}))
+                      // Automatically enable custom duration when user manually changes it
+                      if (!isCustomDuration) {
+                        const selectedService = services.find(s => s.id === formData.service_id)
+                        if (selectedService && newDuration !== selectedService.duration_minutes) {
+                          setIsCustomDuration(true)
+                        }
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all ${
+                      isCustomDuration ? 'border-[#02011F] bg-blue-50' : 'border-gray-200'
+                    }`}
                     disabled={isLoading}
                   />
                   <span className="absolute right-4 top-3.5 text-sm text-gray-500 pointer-events-none">min</span>
@@ -435,8 +475,15 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                   </span>
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
-                Standaard duur: {services.find(s => s.id === formData.service_id)?.duration_minutes || '--'} minuten
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">
+                  Standaard duur: {services.find(s => s.id === formData.service_id)?.duration_minutes || '--'} minuten
+                </span>
+                {isCustomDuration && formData.service_id && (
+                  <span className="text-amber-600 font-medium">
+                    ⚠️ Aangepaste duur actief
+                  </span>
+                )}
               </div>
             </div>
             
