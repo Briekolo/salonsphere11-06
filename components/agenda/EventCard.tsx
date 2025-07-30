@@ -12,9 +12,10 @@ interface EventCardProps {
   onDragStart?: (booking: Booking) => void
   onDragEnd?: () => void
   isDragging?: boolean
+  isOverlapping?: boolean
 }
 
-export function EventCard({ booking, onClick, isMobile = false, onDragStart, onDragEnd, isDragging = false }: EventCardProps) {
+export function EventCard({ booking, onClick, isMobile = false, onDragStart, onDragEnd, isDragging = false, isOverlapping = false }: EventCardProps) {
   // Get service type for tag - using inventory-style colors
   const getServiceTag = (serviceName: string) => {
     const name = serviceName.toLowerCase()
@@ -84,7 +85,9 @@ export function EventCard({ booking, onClick, isMobile = false, onDragStart, onD
       onDragEnd={handleDragEnd}
       className={`event-card-assembly w-full text-left transition-all hover:shadow-md ${paymentStyle} ${isMobile ? 'p-3' : ''} ${
         isDragging ? 'opacity-50 rotate-1 scale-105' : ''
-      } ${!isMobile && onDragStart ? 'cursor-move' : 'cursor-pointer'}`}
+      } ${!isMobile && onDragStart ? 'cursor-move' : 'cursor-pointer'} ${
+        isOverlapping ? 'appointment-overlap-item' : ''
+      }`}
     >
       {/* Mobile Layout */}
       {isMobile ? (

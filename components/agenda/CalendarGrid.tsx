@@ -8,6 +8,7 @@ import { useSwipeGesture } from '@/lib/hooks/useSwipeGesture'
 import { EventCard } from './EventCard'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { Loader2, Plus } from 'lucide-react'
+import { getAppointmentsForTimeSlot, AppointmentWithOverlap } from '@/lib/utils/appointment-overlap'
 
 interface CalendarGridProps {
   startDate: Date
@@ -79,42 +80,48 @@ export function CalendarGrid({
     return { slotIndex, position: positionInSlot }
   }
   
-  // Group bookings by date and time slot
+  // Group bookings by date and time slot with overlap detection
   const bookingsByDate = useMemo(() => {
     const grouped: Record<string, { 
       allBookings: Booking[], 
-      byTimeSlot: Record<number, Booking[]> 
+      byTimeSlot: Record<number, AppointmentWithOverlap[]> 
     }> = {}
     
     bookings.forEach(booking => {
       const dateKey = format(new Date(booking.scheduled_at), 'yyyy-MM-dd')
-      const { slotIndex } = getAppointmentPosition(booking.scheduled_at)
       
       if (!grouped[dateKey]) {
         grouped[dateKey] = { allBookings: [], byTimeSlot: {} }
       }
       
       grouped[dateKey].allBookings.push(booking)
-      
-      // Group by time slot (only for appointments within business hours)
-      if (slotIndex !== -1) {
-        if (!grouped[dateKey].byTimeSlot[slotIndex]) {
-          grouped[dateKey].byTimeSlot[slotIndex] = []
-        }
-        grouped[dateKey].byTimeSlot[slotIndex].push(booking)
-      }
     })
     
-    // Sort bookings within each day and time slot by time
+    // Process each day to calculate overlaps
     Object.keys(grouped).forEach(dateKey => {
-      grouped[dateKey].allBookings.sort((a, b) => 
+      const dayBookings = grouped[dateKey].allBookings
+      
+      // Convert to AppointmentWithOverlap format
+      const dayAppointments: AppointmentWithOverlap[] = dayBookings.map(booking => ({
+        id: booking.id,
+        scheduled_at: booking.scheduled_at,
+        duration_minutes: booking.duration_minutes || 60,
+        booking
+      }))
+      
+      // Sort by time
+      dayAppointments.sort((a, b) => 
         new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
       )
       
-      Object.keys(grouped[dateKey].byTimeSlot).forEach(slotIndex => {
-        grouped[dateKey].byTimeSlot[parseInt(slotIndex)].sort((a, b) => 
-          new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
-        )
+      // Group by time slots with overlap detection
+      timeSlots.forEach((slot, slotIndex) => {
+        const slotDate = new Date(dateKey + 'T' + slot.time + ':00')
+        const slotAppointments = getAppointmentsForTimeSlot(dayAppointments, slotDate, 60)
+        
+        if (slotAppointments.length > 0) {
+          grouped[dateKey].byTimeSlot[slotIndex] = slotAppointments
+        }
       })
     })
     
@@ -261,28 +268,34 @@ export function CalendarGrid({
                           {/* Slot content */}
                           <div className="ml-12 pt-1 pb-1 min-h-[58px] relative">
                             {slotBookings.length > 0 && (
-                              <div className="space-y-1">
-                                {slotBookings.map(booking => {
-                                  const { position } = getAppointmentPosition(booking.scheduled_at)
+                              <div className="grid gap-1" style={{
+                                gridTemplateColumns: slotBookings.length === 1 
+                                  ? '1fr' 
+                                  : `repeat(${Math.min(slotBookings.length, 3)}, 1fr)`
+                              }}>
+                                {slotBookings.slice(0, 3).map(appointment => {
+                                  const booking = (appointment as any).booking as Booking
+                                  
                                   return (
-                                    <div
-                                      key={booking.id}
-                                      className="relative"
-                                      style={{ 
-                                        paddingTop: `${position * 0.6}px` // Scale position within slot
-                                      }}
-                                    >
-                                      <EventCard
-                                        booking={booking}
-                                        onClick={() => onBookingSelect(booking.id)}
-                                        isMobile={false}
-                                        onDragStart={onDragStart}
-                                        onDragEnd={onDragEnd}
-                                        isDragging={draggedBooking?.id === booking.id}
-                                      />
-                                    </div>
+                                    <EventCard
+                                      key={appointment.id}
+                                      booking={booking}
+                                      onClick={() => onBookingSelect(booking.id)}
+                                      isMobile={false}
+                                      onDragStart={onDragStart}
+                                      onDragEnd={onDragEnd}
+                                      isDragging={draggedBooking?.id === booking.id}
+                                      isOverlapping={slotBookings.length > 1}
+                                    />
                                   )
                                 })}
+                                
+                                {/* Overflow indicator for desktop */}
+                                {slotBookings.length > 3 && (
+                                  <div className="flex items-center justify-center px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded border border-gray-300">
+                                    +{slotBookings.length - 3}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

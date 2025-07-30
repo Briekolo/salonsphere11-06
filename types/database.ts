@@ -838,6 +838,72 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          id: string
+          tenant_id: string
+          user_id: string | null
+          title: string
+          message: string
+          type: 'appointment' | 'client' | 'payment' | 'inventory' | 'system' | 'staff'
+          severity: 'info' | 'warning' | 'error' | 'success'
+          action_url: string | null
+          action_label: string | null
+          metadata: Json
+          read_at: string | null
+          dismissed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          user_id?: string | null
+          title: string
+          message: string
+          type: 'appointment' | 'client' | 'payment' | 'inventory' | 'system' | 'staff'
+          severity?: 'info' | 'warning' | 'error' | 'success'
+          action_url?: string | null
+          action_label?: string | null
+          metadata?: Json
+          read_at?: string | null
+          dismissed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          user_id?: string | null
+          title?: string
+          message?: string
+          type?: 'appointment' | 'client' | 'payment' | 'inventory' | 'system' | 'staff'
+          severity?: 'info' | 'warning' | 'error' | 'success'
+          action_url?: string | null
+          action_label?: string | null
+          metadata?: Json
+          read_at?: string | null
+          dismissed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           booking_id: string | null
