@@ -13,6 +13,13 @@ import { useQueryClient } from '@tanstack/react-query'
 interface KiboCalendarViewProps {
   selectedDate: Date
   onDateSelect: (date: Date) => void
+  filters?: {
+    searchTerm: string
+    status: string
+    service: string
+    staff: string
+    date: string
+  }
 }
 
 // Jotai atoms for state management
@@ -1282,7 +1289,7 @@ function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate }:
   )
 }
 
-export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarViewProps) {
+export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCalendarViewProps) {
   const [viewMode, setViewMode] = useAtom(viewModeAtom)
   const [currentDate, setCurrentDate] = useAtom(currentDateAtom)
   const [draggedBooking, setDraggedBooking] = useAtom(draggedBookingAtom)
@@ -1340,10 +1347,11 @@ export function KiboCalendarView({ selectedDate, onDateSelect }: KiboCalendarVie
     }
   }, [currentDate, viewMode])
 
-  // Fetch bookings
+  // Fetch bookings with filters
   const { data: bookings = [], isLoading } = useBookings(
     dateRange.start.toISOString(),
-    dateRange.end.toISOString()
+    dateRange.end.toISOString(),
+    filters
   )
 
   // Generate calendar days

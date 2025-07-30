@@ -1,14 +1,46 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, Filter, Search } from 'lucide-react'
+import { useUsers } from '@/lib/hooks/useUsers'
+import { useServices } from '@/lib/hooks/useServices'
 
-export function AppointmentFilters() {
+interface AppointmentFiltersProps {
+  onFiltersChange?: (filters: {
+    searchTerm: string
+    status: string
+    service: string
+    staff: string
+    date: string
+  }) => void
+}
+
+export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [serviceFilter, setServiceFilter] = useState('all')
   const [staffFilter, setStaffFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('today')
+  
+  // Load staff members and services dynamically
+  const { data: users } = useUsers()
+  const { data: services } = useServices()
+  
+  // Filter for staff members only
+  const staffMembers = users?.filter(user => user.role === 'staff') || []
+
+  // Call onFiltersChange when filters change
+  useEffect(() => {
+    if (onFiltersChange) {
+      onFiltersChange({
+        searchTerm,
+        status: statusFilter,
+        service: serviceFilter,
+        staff: staffFilter,
+        date: dateFilter
+      })
+    }
+  }, [searchTerm, statusFilter, serviceFilter, staffFilter, dateFilter, onFiltersChange])
 
   return (
     <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-4">
@@ -57,7 +89,7 @@ export function AppointmentFilters() {
           <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
         </div>
 
-        {/* Staff Filter */}
+        {/* Staff Filter - Now Dynamic */}
         <div className="relative">
           <select
             value={staffFilter}
@@ -65,15 +97,16 @@ export function AppointmentFilters() {
             className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
           >
             <option value="all">Alle medewerkers</option>
-            <option value="sarah">Sarah van der Berg</option>
-            <option value="emma">Emma Jansen</option>
-            <option value="lisa">Lisa Vermeulen</option>
-            <option value="anna">Anna de Vries</option>
+            {staffMembers.map((staff) => (
+              <option key={staff.id} value={staff.id}>
+                {staff.first_name} {staff.last_name}
+              </option>
+            ))}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
         </div>
 
-        {/* Service Filter */}
+        {/* Service Filter - Now Dynamic */}
         <div className="relative">
           <select
             value={serviceFilter}
@@ -81,10 +114,11 @@ export function AppointmentFilters() {
             className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
           >
             <option value="all">Alle behandelingen</option>
-            <option value="pedicure">Pedicure</option>
-            <option value="manicure">Manicure</option>
-            <option value="massage">Massage</option>
-            <option value="facial">Gezichtsbehandeling</option>
+            {services?.map((service) => (
+              <option key={service.id} value={service.id}>
+                {service.name}
+              </option>
+            ))}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
         </div>

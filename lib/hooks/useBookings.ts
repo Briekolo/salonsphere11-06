@@ -26,12 +26,17 @@ export type Booking = Database['public']['Tables']['bookings']['Row'] & {
   user_id?: string | null
 }
 
-export function useBookings(startDate?: string, endDate?: string, enabled: boolean = true) {
+export function useBookings(startDate?: string, endDate?: string, filters?: {
+  searchTerm?: string
+  status?: string
+  service?: string
+  staff?: string
+}, enabled: boolean = true) {
   const { tenantId } = useTenant()
 
   const queryKey = useMemo(
-    () => ['bookings', tenantId, startDate, endDate],
-    [tenantId, startDate, endDate]
+    () => ['bookings', tenantId, startDate, endDate, filters],
+    [tenantId, startDate, endDate, filters]
   )
 
   const query = useQuery<Booking[]>({
@@ -39,7 +44,7 @@ export function useBookings(startDate?: string, endDate?: string, enabled: boole
     enabled: !!tenantId && enabled,
     queryFn: () => {
       if (!tenantId) return Promise.resolve([])
-      if (startDate && endDate) return BookingService.getByDateRange(startDate, endDate)
+      if (startDate && endDate) return BookingService.getByDateRange(startDate, endDate, filters)
       return BookingService.getAll()
     },
     staleTime: 1000 * 60, // 1 min: considered fresh for 1 minuut

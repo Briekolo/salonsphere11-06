@@ -110,6 +110,34 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(onboardingUrl)
   }
 
+  // Role-based redirection for root path
+  if (pathname === '/') {
+    const cacheKey = `role_${user.id}_${tenantId}`
+    const cached = authCache.get(cacheKey)
+    
+    let userRole = null
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      userRole = cached.data.role
+    } else {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .eq('tenant_id', tenantId)
+        .single()
+      
+      userRole = userData?.role
+      authCache.set(cacheKey, { data: { role: userRole }, timestamp: Date.now() })
+    }
+
+    // Redirect staff users to staff portal
+    if (userRole === 'staff') {
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/staff'
+      return NextResponse.redirect(redirectUrl)
+    }
+  }
+
   // Admin route protection
   if (pathname.startsWith('/admin')) {
     const cacheKey = `admin_${user.id}_${tenantId}`
@@ -134,6 +162,39 @@ export async function middleware(req: NextRequest) {
       const dashboardUrl = req.nextUrl.clone()
       dashboardUrl.pathname = '/'
       return NextResponse.redirect(dashboardUrl)
+    }
+  }
+
+  // Staff route protection
+  if (pathname.startsWith('/staff')) {
+    const cacheKey = `staff_${user.id}_${tenantId}`
+    const cached = authCache.get(cacheKey)
+    
+    let userRole = null
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      userRole = cached.data.role
+    } else {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .eq('tenant_id', tenantId)
+        .single()
+      
+      userRole = userData?.role
+      authCache.set(cacheKey, { data: { role: userRole }, timestamp: Date.now() })
+    }
+
+    // Only staff members can access staff routes
+    if (userRole !== 'staff') {
+      // Redirect based on role
+      const redirectUrl = req.nextUrl.clone()
+      if (userRole === 'admin' || userRole === 'owner') {
+        redirectUrl.pathname = '/admin'
+      } else {
+        redirectUrl.pathname = '/'
+      }
+      return NextResponse.redirect(redirectUrl)
     }
   }
 

@@ -18,6 +18,15 @@ export function AgendaContent() {
   // Read calendar view state from atoms
   const [viewMode] = useAtom(viewModeAtom)
   const [currentDate] = useAtom(currentDateAtom)
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    searchTerm: '',
+    status: 'all',
+    service: 'all',
+    staff: 'all',
+    date: 'today'
+  })
 
   return (
     <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
@@ -33,6 +42,9 @@ export function AgendaContent() {
 
       {/* Key Metrics - Enhanced version with appointment metrics */}
       <AppointmentMetrics viewMode={viewMode} currentDate={currentDate} />
+      
+      {/* Appointment Filters */}
+      <AppointmentFilters onFiltersChange={setFilters} />
       
       {/* View Toggle */}
       <div className="flex justify-center sm:justify-end">
@@ -62,9 +74,9 @@ export function AgendaContent() {
       
       {/* Main Content - Direct Kibo Calendar */}
       {view === 'calendar' ? (
-        <KiboCalendarView selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+        <KiboCalendarView selectedDate={selectedDate} onDateSelect={setSelectedDate} filters={filters} />
       ) : (
-        <AppointmentsList selectedDate={selectedDate} listView />
+        <AppointmentsList selectedDate={selectedDate} listView filters={filters} />
       )}
     </div>
   )
