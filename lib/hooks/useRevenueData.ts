@@ -24,11 +24,11 @@ export function useRevenueData({ startDate, endDate, previousStartDate }: UseRev
     queryKey: ['revenue-data', tenantId, startDate.toISOString(), endDate.toISOString(), previousStartDate.toISOString()],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
-    cacheTime: 10 * 60 * 1000, // 10 minutes in memory
+    gcTime: 10 * 60 * 1000, // 10 minutes in memory (renamed from cacheTime)
     queryFn: async () => {
       if (!tenantId) return []
 
-      // Fetch current period data
+      // Fetch current period data - use status field with 'paid' value
       const { data: currentData, error: currentError } = await supabase
         .from('invoices')
         .select('total_amount, paid_at')
