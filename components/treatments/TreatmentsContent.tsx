@@ -9,6 +9,7 @@ import { TreatmentsFilters } from './TreatmentsFilters'
 import { PricingCalculator } from './PricingCalculator'
 import { CategoryManagement } from './CategoryManagement'
 import { StaffAssignments } from './StaffAssignments'
+import { StaffAssignmentsV2 } from './StaffAssignmentsV2'
 import { Calculator, Upload, Plus, Settings, Users, Package, Tag } from 'lucide-react'
 import { useServices } from '@/lib/hooks/useServices'
 
@@ -220,7 +221,7 @@ export function TreatmentsContent() {
 
       {activeTab === 'categories' && <CategoryManagement />}
       
-      {activeTab === 'staff' && <StaffAssignments />}
+      {activeTab === 'staff' && <StaffAssignmentsV2 />}
       
       {activeTab === 'packages' && (
         <div className="text-center py-12">

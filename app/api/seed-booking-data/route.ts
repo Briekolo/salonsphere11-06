@@ -78,7 +78,6 @@ export async function POST() {
               tenant_id: tenant.id,
               staff_id: user.id,
               service_id: service.id,
-              proficiency_level: 'standard',
               active: true
             }, {
               onConflict: 'staff_id,service_id'

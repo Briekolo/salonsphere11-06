@@ -9,7 +9,6 @@ export type StaffService = {
   staff_id: string
   service_id: string
   tenant_id: string
-  proficiency_level: 'junior' | 'standard' | 'senior' | 'expert'
   custom_duration_minutes: number | null
   custom_price: number | null
   active: boolean
@@ -108,13 +107,11 @@ export function useAssignServiceToStaff() {
     mutationFn: async ({ 
       staff_id, 
       service_id, 
-      proficiency_level = 'standard',
       custom_duration_minutes,
       custom_price 
     }: {
       staff_id: string
       service_id: string
-      proficiency_level?: StaffService['proficiency_level']
       custom_duration_minutes?: number | null
       custom_price?: number | null
     }) => {
@@ -126,7 +123,6 @@ export function useAssignServiceToStaff() {
           staff_id,
           service_id,
           tenant_id: tenantId,
-          proficiency_level,
           custom_duration_minutes,
           custom_price,
           active: true
