@@ -17,7 +17,7 @@ import { TrendingUp, TrendingDown, Euro, Eye, EyeOff } from 'lucide-react'
 import { format, subDays, startOfDay, endOfDay, addDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
 
-type Period = '7d' | '30d' | '90d' | 'future'
+type Period = '7d' | '30d' | '90d'
 
 interface ChartDataPoint {
   date: string
@@ -33,58 +33,58 @@ export function RevenueChart() {
   // Calculate date ranges - memoized to prevent unnecessary re-renders
   const dateRanges = useMemo(() => {
     const today = new Date()
-    const endDate = period === 'future' 
-      ? endOfDay(addDays(today, 30)) 
-      : endOfDay(today)
-    const startDate = period === 'future'
-      ? startOfDay(today)
-      : startOfDay(subDays(endDate, parseInt(period)))
-    
-    // For future period, use 30 days ago as previous start date, otherwise use parsed period
-    const daysDiff = period === 'future' ? 30 : parseInt(period)
-    const previousStartDate = startOfDay(subDays(startDate, daysDiff))
+    const endDate = endOfDay(today)
+    const startDate = startOfDay(subDays(endDate, parseInt(period)))
+    const previousStartDate = startOfDay(subDays(startDate, parseInt(period)))
     
     return { today, endDate, startDate, previousStartDate }
   }, [period])
   
   const { today, endDate, startDate, previousStartDate } = dateRanges
   
-  const { data: revenueData = [], isLoading } = useRevenueData({
+  const { data: revenueData = [], isLoading, error: revenueError } = useRevenueData({
     startDate,
     endDate,
     previousStartDate
   })
 
-  const { data: expectedData = [] } = useExpectedRevenueData({
-    startDate: period === 'future' ? startDate : today,
-    endDate: period === 'future' ? endDate : addDays(endDate, 7)
+  const { data: expectedData = [], error: expectedError } = useExpectedRevenueData({
+    startDate: today,
+    endDate: addDays(today, 30) // Show expected revenue for next 30 days
   })
 
-  // Combine revenue and expected data
+  // Combine revenue and expected data with validation
   const chartData = useMemo(() => {
     const dataMap = new Map<string, ChartDataPoint>()
     
-    // Add actual revenue data
+    // Add actual revenue data with validation
     revenueData.forEach(item => {
+      // Validate data - ensure revenue is a valid number
+      const revenue = typeof item.revenue === 'number' && !isNaN(item.revenue) ? Math.max(0, item.revenue) : 0
+      const previousRevenue = typeof item.previousRevenue === 'number' && !isNaN(item.previousRevenue) ? Math.max(0, item.previousRevenue) : 0
+      
       dataMap.set(item.date, {
         date: item.date,
-        revenue: item.revenue,
-        previousRevenue: item.previousRevenue,
+        revenue,
+        previousRevenue,
         expectedRevenue: 0
       })
     })
     
-    // Add expected revenue data
+    // Add expected revenue data with validation
     expectedData.forEach(item => {
+      const expectedRevenue = typeof item.expectedRevenue === 'number' && !isNaN(item.expectedRevenue) ? Math.max(0, item.expectedRevenue) : 0
+      const actualRevenue = typeof item.actualRevenue === 'number' && !isNaN(item.actualRevenue) ? Math.max(0, item.actualRevenue) : 0
+      
       const existing = dataMap.get(item.date)
       if (existing) {
-        existing.expectedRevenue = item.expectedRevenue
+        existing.expectedRevenue = expectedRevenue
       } else {
         dataMap.set(item.date, {
           date: item.date,
-          revenue: item.actualRevenue || 0,
+          revenue: actualRevenue,
           previousRevenue: 0,
-          expectedRevenue: item.expectedRevenue
+          expectedRevenue
         })
       }
     })
@@ -147,6 +147,29 @@ export function RevenueChart() {
     }
   }, [chartData])
 
+  // Show error state if there are errors
+  if (revenueError || expectedError) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="text-center py-8">
+          <div className="text-red-500 text-lg font-semibold mb-2">
+            Fout bij het laden van omzetgegevens
+          </div>
+          <p className="text-gray-600 text-sm mb-4">
+            Er is een probleem opgetreden bij het ophalen van de omzetgegevens. 
+            Controleer uw internetverbinding en probeer het opnieuw.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Probeer opnieuw
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-pulse">
@@ -187,7 +210,7 @@ export function RevenueChart() {
         <div className="flex items-center gap-3">
           {/* Period Selector */}
           <div className="flex bg-gray-100 rounded-lg p-1">
-            {(['7d', '30d', '90d', 'future'] as Period[]).map((p) => (
+            {(['7d', '30d', '90d'] as Period[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
@@ -197,7 +220,7 @@ export function RevenueChart() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {p === '7d' ? '7 dagen' : p === '30d' ? '30 dagen' : p === '90d' ? '90 dagen' : 'Toekomst'}
+                {p === '7d' ? '7 dagen' : p === '30d' ? '30 dagen' : '90 dagen'}
               </button>
             ))}
           </div>

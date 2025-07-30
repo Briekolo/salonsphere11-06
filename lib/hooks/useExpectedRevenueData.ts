@@ -24,7 +24,7 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
     queryKey: ['expected-revenue-data-simple', tenantId, startDate.toISOString(), endDate.toISOString()],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
-    cacheTime: 10 * 60 * 1000, // 10 minutes in memory
+    gcTime: 10 * 60 * 1000, // 10 minutes in memory (renamed from cacheTime)
     queryFn: async () => {
       if (!tenantId) return []
 
@@ -34,10 +34,10 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
         endDate: endDate.toISOString()
       })
 
-      // Get all bookings in the date range
+      // Get all bookings in the date range (both paid and unpaid for future dates)
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id, scheduled_at, service_id')
+        .select('id, scheduled_at, service_id, is_paid')
         .eq('tenant_id', tenantId)
         .gte('scheduled_at', startDate.toISOString())
         .lte('scheduled_at', endDate.toISOString())
@@ -75,18 +75,27 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
         services.map(s => [s.id, Number(s.price) || 0])
       )
 
-      // Group expected revenue by date
+      // Group revenue by date - separate paid and unpaid bookings
       const expectedByDate = new Map<string, { revenue: number; count: number }>()
+      const actualFutureByDate = new Map<string, number>()
       
       bookings.forEach(booking => {
         if (booking.service_id && booking.scheduled_at) {
           const date = format(new Date(booking.scheduled_at), 'yyyy-MM-dd')
           const price = servicePriceMap.get(booking.service_id) || 0
-          const current = expectedByDate.get(date) || { revenue: 0, count: 0 }
-          expectedByDate.set(date, {
-            revenue: current.revenue + price,
-            count: current.count + 1
-          })
+          
+          if (booking.is_paid) {
+            // This is actual revenue from paid future bookings
+            const current = actualFutureByDate.get(date) || 0
+            actualFutureByDate.set(date, current + price)
+          } else {
+            // This is expected revenue from unpaid bookings
+            const current = expectedByDate.get(date) || { revenue: 0, count: 0 }
+            expectedByDate.set(date, {
+              revenue: current.revenue + price,
+              count: current.count + 1
+            })
+          }
         }
       })
 
@@ -115,11 +124,13 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
       const result = days.map(day => {
         const dateStr = format(day, 'yyyy-MM-dd')
         const expected = expectedByDate.get(dateStr) || { revenue: 0, count: 0 }
+        const invoiceRevenue = actualByDate.get(dateStr) || 0
+        const futureBookingRevenue = actualFutureByDate.get(dateStr) || 0
         
         return {
           date: dateStr,
           expectedRevenue: expected.revenue,
-          actualRevenue: actualByDate.get(dateStr) || 0,
+          actualRevenue: invoiceRevenue + futureBookingRevenue, // Combine invoice revenue with paid future bookings
           bookingsCount: expected.count
         }
       })
