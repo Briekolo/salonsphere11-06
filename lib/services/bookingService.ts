@@ -25,11 +25,16 @@ export class BookingService {
     return data || []
   }
 
-  static async getByDateRange(startDate: string, endDate: string): Promise<Booking[]> {
+  static async getByDateRange(startDate: string, endDate: string, filters?: {
+    searchTerm?: string
+    status?: string
+    service?: string
+    staff?: string
+  }): Promise<Booking[]> {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('bookings')
       .select(`
         *,
@@ -40,10 +45,46 @@ export class BookingService {
       .eq('tenant_id', tenantId)
       .gte('scheduled_at', startDate)
       .lte('scheduled_at', endDate)
-      .order('scheduled_at', { ascending: true })
+
+    // Apply filters
+    if (filters) {
+      // Staff filter
+      if (filters.staff && filters.staff !== 'all') {
+        query = query.eq('staff_id', filters.staff)
+      }
+
+      // Service filter
+      if (filters.service && filters.service !== 'all') {
+        query = query.eq('service_id', filters.service)
+      }
+
+      // Search term (searches in client names)
+      if (filters.searchTerm) {
+        // For now, we'll need to filter this client-side since Supabase doesn't support
+        // searching in joined tables directly
+        // This is a limitation that could be improved with a custom RPC function
+      }
+    }
+
+    query = query.order('scheduled_at', { ascending: true })
+
+    const { data, error } = await query
 
     if (error) throw error
-    return data || []
+    
+    let results = data || []
+
+    // Client-side filtering for search term
+    if (filters?.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase()
+      results = results.filter(booking => {
+        const clientName = `${booking.clients?.first_name || ''} ${booking.clients?.last_name || ''}`.toLowerCase()
+        const serviceName = (booking.services?.name || '').toLowerCase()
+        return clientName.includes(searchLower) || serviceName.includes(searchLower)
+      })
+    }
+
+    return results
   }
 
   static async getById(id: string): Promise<Booking | null> {

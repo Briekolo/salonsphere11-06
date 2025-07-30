@@ -41,6 +41,9 @@ export function useTenantRealtime() {
     })
     watch('bookings', () => {
       qc.invalidateQueries({ queryKey: ['bookings', tenantId] })
+      qc.invalidateQueries({ queryKey: ['staff_bookings', tenantId] })
+      qc.invalidateQueries({ queryKey: ['staff_todays_bookings', tenantId] })
+      qc.invalidateQueries({ queryKey: ['staff_availability', tenantId] })
       qc.invalidateQueries({ queryKey: ['tenant_metrics', tenantId] })
     })
     watch('clients', () => {
@@ -48,6 +51,11 @@ export function useTenantRealtime() {
     })
     watch('supplier_pos', () => {
       qc.invalidateQueries({ queryKey: ['tenant_metrics', tenantId] })
+    })
+    watch('staff_permissions', () => {
+      qc.invalidateQueries({ queryKey: ['staff_permission', tenantId] })
+      qc.invalidateQueries({ queryKey: ['staff_bookings', tenantId] })
+      qc.invalidateQueries({ queryKey: ['staff_todays_bookings', tenantId] })
     })
 
     channel.subscribe()
