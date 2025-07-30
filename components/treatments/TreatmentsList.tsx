@@ -127,10 +127,6 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
                 <span className="font-medium ml-1">€{treatment.price}</span>
               </div>
               <div>
-                <span className="text-gray-600">Sessies:</span>
-                <span className="font-medium ml-1">{treatment.aantal_sessies ?? 1}x</span>
-              </div>
-              <div>
                 <span className="text-gray-600">Marge:</span>
                 <span className={`font-medium ml-1 ${
                   overheadMetrics 
@@ -157,7 +153,6 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
               <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Status</th>
               <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Duur</th>
               <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Prijs</th>
-              <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 hidden md:table-cell">Sessies</th>
               <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 hidden lg:table-cell">Overhead</th>
               <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600">Marge</th>
               <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-600 text-right">Acties</th>
@@ -195,11 +190,6 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
                     <Euro className="w-3 h-3 sm:w-4 sm:h-4" />
                     {treatment.price}
                   </div>
-                </td>
-                <td className="py-3 sm:py-4 px-2 sm:px-4 hidden md:table-cell">
-                  <span className="inline-block px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full">
-                    {treatment.aantal_sessies ?? 1}x
-                  </span>
                 </td>
                 <td className="py-3 sm:py-4 px-2 sm:px-4 hidden lg:table-cell">
                   <span className="text-xs sm:text-sm text-gray-600">
