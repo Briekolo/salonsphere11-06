@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronDown, Filter, Search } from 'lucide-react'
+import { ChevronDown, Search } from 'lucide-react'
 import { useUsers } from '@/lib/hooks/useUsers'
 import { useServices } from '@/lib/hooks/useServices'
 
@@ -102,10 +102,6 @@ export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps)
           <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
         </div>
 
-        <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-full text-sm hover:bg-gray-50 transition-colors min-h-[44px]">
-          <Filter className="w-4 h-4" />
-          <span className="hidden sm:inline">Meer filters</span>
-        </button>
       </div>
     </div>
   )
