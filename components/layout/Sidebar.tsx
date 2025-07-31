@@ -20,6 +20,7 @@ import {
 import clsx from 'clsx'
 import { Logo } from '@/components/layout/Logo'
 import { useIsAdmin } from '@/lib/hooks/use-admin'
+import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo'
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
@@ -35,6 +36,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isAdmin, isLoading } = useIsAdmin()
+  const { logoUrl, salonName } = useBusinessLogo()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -73,7 +75,11 @@ export function Sidebar() {
       )}>
         {/* Logo */}
         <div className="p-4 lg:p-6 border-b border-sidebar-border">
-          <Logo size="sm" />
+          <Logo 
+            size="sm" 
+            customLogoUrl={logoUrl}
+            salonName={salonName}
+          />
         </div>
 
         {/* Navigation */}

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/layout/Logo';
+import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo';
 import {
   LayoutDashboard,
   Settings,
@@ -56,6 +58,7 @@ const navigation: NavItem[] = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { logoUrl, salonName } = useBusinessLogo();
   
   // Automatically expand settings if on a settings page
   const initialExpanded = pathname.startsWith('/admin/settings') ? ['Instellingen'] : [];
@@ -134,8 +137,18 @@ export function AdminSidebar() {
 
   return (
     <div className="flex h-full w-sidebar flex-col bg-sidebar-bg border-r border-sidebar-border">
-      <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-        <h2 className="text-lg font-semibold text-sidebar-text">Admin Panel</h2>
+      {/* Logo Section */}
+      <div className="p-4 lg:p-6 border-b border-sidebar-border">
+        <Logo 
+          size="sm" 
+          customLogoUrl={logoUrl}
+          salonName={salonName}
+        />
+      </div>
+      
+      {/* Header */}
+      <div className="flex h-12 items-center justify-between px-4 border-b border-sidebar-border">
+        <h2 className="text-base font-semibold text-sidebar-text">Admin Panel</h2>
         <Link
           href="/"
           className="text-sidebar-icon hover:text-primary-700 transition-colors"
