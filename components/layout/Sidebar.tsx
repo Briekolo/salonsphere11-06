@@ -14,8 +14,7 @@ import {
   Sparkles,
   Menu,
   X,
-  Shield,
-  FileText
+  Shield
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LogoDynamic } from '@/components/layout/LogoDynamic'
@@ -27,7 +26,6 @@ const navigationItems = [
   { name: 'Agenda', href: '/appointments', icon: Calendar },
   { name: 'Klantbeheer', href: '/clients', icon: Users },
   { name: 'Behandelingen', href: '/treatments', icon: Sparkles },
-  { name: 'Facturen', href: '/invoices', icon: FileText },
   { name: 'Voorraadbeheer', href: '/inventory', icon: Package },
   { name: 'Marketing', href: '/marketing', icon: Mail },
 ]

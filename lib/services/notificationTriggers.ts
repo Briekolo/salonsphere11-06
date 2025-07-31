@@ -68,48 +68,6 @@ export class NotificationTriggers {
     })
   }
 
-  // Payment received
-  static async onPaymentReceived(
-    tenantId: string,
-    userId: string,
-    payment: any
-  ) {
-    await NotificationService.create({
-      tenant_id: tenantId,
-      user_id: userId,
-      title: 'Betaling ontvangen',
-      message: `€${payment.amount} ontvangen van ${payment.client_name}`,
-      type: 'payment',
-      severity: 'success',
-      action_url: `/invoices/${payment.invoice_id}`,
-      action_label: 'Factuur bekijken',
-      metadata: { payment_id: payment.id, amount: payment.amount }
-    })
-  }
-
-  // Payment overdue
-  static async onPaymentOverdue(
-    tenantId: string,
-    userId: string | null,
-    invoice: any
-  ) {
-    await NotificationService.create({
-      tenant_id: tenantId,
-      user_id: userId, // null broadcasts to all users in tenant
-      title: 'Betaling achterstallig',
-      message: `Factuur ${invoice.number} van €${invoice.total} van ${invoice.client_name} is achterstallig`,
-      type: 'payment',
-      severity: 'error',
-      action_url: `/invoices/${invoice.id}`,
-      action_label: 'Factuur bekijken',
-      metadata: { 
-        invoice_id: invoice.id, 
-        amount: invoice.total,
-        due_date: invoice.due_date,
-        client_name: invoice.client_name
-      }
-    })
-  }
 
   // New client registration
   static async onNewClientRegistration(

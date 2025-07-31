@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUpdateBooking } from '@/lib/hooks/useBookings'
-import { useInvoiceByBooking } from '@/lib/hooks/useInvoiceByBooking'
-import { QuickPaymentModal } from '@/components/invoices/QuickPaymentModal'
-import { CheckCircle, FileText, Euro } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 interface BookingCompletionFlowProps {
@@ -22,10 +20,8 @@ export function BookingCompletionFlow({
   servicePrice,
   onClose
 }: BookingCompletionFlowProps) {
-  const [step, setStep] = useState<'completing' | 'invoice-created' | 'payment'>('completing')
-  const [invoiceId, setInvoiceId] = useState<string | null>(null)
+  const [step, setStep] = useState<'completing' | 'completed'>('completing')
   const updateBooking = useUpdateBooking()
-  const { data: invoice, refetch: refetchInvoice } = useInvoiceByBooking(bookingId)
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -44,36 +40,23 @@ export function BookingCompletionFlow({
         }
       })
 
-      // Wait a moment for the trigger to create the invoice
-      setTimeout(async () => {
-        await refetchInvoice()
-        setStep('invoice-created')
-      }, 1000)
+      // Show completion message
+      setStep('completed')
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['revenue-data'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant_metrics'] })
+      
+      // Close after showing success message
+      setTimeout(() => {
+        onClose()
+      }, 2000)
     } catch (error) {
       console.error('Error completing booking:', error)
       alert('Er is een fout opgetreden bij het voltooien van de afspraak.')
       onClose()
     }
-  }
-
-  useEffect(() => {
-    if (step === 'invoice-created' && invoice) {
-      setInvoiceId(invoice.id)
-      // Show invoice created message for 2 seconds
-      setTimeout(() => {
-        setStep('payment')
-      }, 2000)
-    }
-  }, [step, invoice])
-
-  const handlePaymentComplete = () => {
-    // Invalidate queries to refresh data
-    queryClient.invalidateQueries({ queryKey: ['bookings'] })
-    queryClient.invalidateQueries({ queryKey: ['invoices'] })
-    queryClient.invalidateQueries({ queryKey: ['revenue-data'] })
-    queryClient.invalidateQueries({ queryKey: ['tenant_metrics'] })
-    
-    onClose()
   }
 
   return (
@@ -88,38 +71,20 @@ export function BookingCompletionFlow({
         </div>
       )}
 
-      {step === 'invoice-created' && (
+      {step === 'completed' && (
         <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
           <div className="text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
             <h3 className="text-lg font-semibold mb-2">Afspraak voltooid!</h3>
-            <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
-              <FileText className="w-5 h-5" />
-              <p>Factuur is automatisch aangemaakt</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
+            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 mt-4">
               <p className="font-medium">{serviceName}</p>
               <p className="text-gray-600">Klant: {clientName}</p>
-              <div className="flex items-center justify-center gap-1 mt-2 font-semibold">
-                <Euro className="w-4 h-4" />
-                <span>{servicePrice.toFixed(2)}</span>
-              </div>
+              <p className="mt-2 font-semibold">€ {servicePrice.toFixed(2)}</p>
             </div>
           </div>
         </div>
-      )}
-
-      {step === 'payment' && invoiceId && invoice && (
-        <QuickPaymentModal
-          isOpen={true}
-          onClose={onClose}
-          invoiceId={invoiceId}
-          totalAmount={invoice.total_amount || servicePrice * 1.21} // Include BTW
-          clientName={clientName}
-          onPaymentComplete={handlePaymentComplete}
-        />
       )}
     </div>
   )

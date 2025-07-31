@@ -86,6 +86,21 @@ export function useClientAppointments(clientId: string | null) {
   })
 }
 
+export function useUnpaidBookingsByClient(clientId: string | null) {
+  const { tenantId } = useTenant()
+
+  return useQuery<Booking[]>({
+    queryKey: ['unpaid-bookings', tenantId, clientId],
+    queryFn: async () => {
+      if (!tenantId || !clientId) return []
+      return BookingService.getUnpaidByClientId(clientId)
+    },
+    enabled: !!tenantId && !!clientId,
+    staleTime: 1000 * 60 * 2, // 2 minutes - more frequent since this affects invoice creation
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useCreateBooking() {
   const queryClient = useQueryClient()
   return useMutation({

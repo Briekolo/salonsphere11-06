@@ -99,38 +99,18 @@ export function useExpectedRevenueData({ startDate, endDate }: UseExpectedRevenu
         }
       })
 
-      // Fetch actual revenue data (paid invoices)
-      const { data: actualData } = await supabase
-        .from('invoices')
-        .select('total_amount, issue_date')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'paid')
-        .gte('issue_date', format(startDate, 'yyyy-MM-dd'))
-        .lte('issue_date', format(endDate, 'yyyy-MM-dd'))
-
-      // Group actual revenue by date
-      const actualByDate = new Map<string, number>()
-      
-      actualData?.forEach(invoice => {
-        if (invoice.issue_date) {
-          const current = actualByDate.get(invoice.issue_date) || 0
-          actualByDate.set(invoice.issue_date, current + Number(invoice.total_amount || 0))
-        }
-      })
-
       // Generate data points for each day in the range
       const days = eachDayOfInterval({ start: startDate, end: endDate })
       
       const result = days.map(day => {
         const dateStr = format(day, 'yyyy-MM-dd')
         const expected = expectedByDate.get(dateStr) || { revenue: 0, count: 0 }
-        const invoiceRevenue = actualByDate.get(dateStr) || 0
-        const futureBookingRevenue = actualFutureByDate.get(dateStr) || 0
+        const actualRevenue = actualFutureByDate.get(dateStr) || 0
         
         return {
           date: dateStr,
           expectedRevenue: expected.revenue,
-          actualRevenue: invoiceRevenue + futureBookingRevenue, // Combine invoice revenue with paid future bookings
+          actualRevenue: actualRevenue, // Only paid future bookings count as actual revenue
           bookingsCount: expected.count
         }
       })

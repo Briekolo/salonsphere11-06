@@ -28,49 +28,60 @@ export function useRevenueData({ startDate, endDate, previousStartDate }: UseRev
     queryFn: async () => {
       if (!tenantId) return []
 
-      // Fetch current period data - use status field with 'paid' value
+      // Fetch current period data - use bookings with is_paid = true
       const { data: currentData, error: currentError } = await supabase
-        .from('invoices')
-        .select('total_amount, paid_at')
+        .from('bookings')
+        .select(`
+          scheduled_at,
+          services:service_id (price)
+        `)
         .eq('tenant_id', tenantId)
-        .eq('status', 'paid')
-        .not('paid_at', 'is', null)
-        .gte('paid_at', startDate.toISOString())
-        .lte('paid_at', endDate.toISOString())
-        .order('paid_at', { ascending: true })
+        .eq('is_paid', true)
+        .gte('scheduled_at', startDate.toISOString())
+        .lte('scheduled_at', endDate.toISOString())
+        .order('scheduled_at', { ascending: true })
 
       if (currentError) {
         console.error('Error fetching revenue data:', currentError)
-        // Return mock data for development
-        return generateMockData(startDate, endDate)
+        // Return empty data instead of mock data
+        const days = eachDayOfInterval({ start: startDate, end: endDate })
+        return days.map(day => ({
+          date: format(day, 'yyyy-MM-dd'),
+          revenue: 0,
+          previousRevenue: 0
+        }))
       }
 
       // Fetch previous period data for comparison
       const { data: previousData } = await supabase
-        .from('invoices')
-        .select('total_amount, paid_at')
+        .from('bookings')
+        .select(`
+          scheduled_at,
+          services:service_id (price)
+        `)
         .eq('tenant_id', tenantId)
-        .eq('status', 'paid')
-        .not('paid_at', 'is', null)
-        .gte('paid_at', previousStartDate.toISOString())
-        .lt('paid_at', startDate.toISOString())
+        .eq('is_paid', true)
+        .gte('scheduled_at', previousStartDate.toISOString())
+        .lt('scheduled_at', startDate.toISOString())
 
       // Group revenue by date
       const revenueByDate = new Map<string, number>()
       const previousRevenueByDate = new Map<string, number>()
 
       // Process current period
-      currentData?.forEach(invoice => {
-        const date = format(new Date(invoice.paid_at), 'yyyy-MM-dd')
+      currentData?.forEach(booking => {
+        const date = format(new Date(booking.scheduled_at), 'yyyy-MM-dd')
         const current = revenueByDate.get(date) || 0
-        revenueByDate.set(date, current + (invoice.total_amount || 0))
+        const servicePrice = booking.services?.price || 0
+        revenueByDate.set(date, current + servicePrice)
       })
 
       // Process previous period
-      previousData?.forEach(invoice => {
-        const date = format(new Date(invoice.paid_at), 'yyyy-MM-dd')
+      previousData?.forEach(booking => {
+        const date = format(new Date(booking.scheduled_at), 'yyyy-MM-dd')
         const current = previousRevenueByDate.get(date) || 0
-        previousRevenueByDate.set(date, current + (invoice.total_amount || 0))
+        const servicePrice = booking.services?.price || 0
+        previousRevenueByDate.set(date, current + servicePrice)
       })
 
       // Generate data points for each day in the range

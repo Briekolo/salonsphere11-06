@@ -4,6 +4,7 @@ const nextConfig = {
   experimental: {
     typedRoutes: false,
   },
+  transpilePackages: ['@react-pdf/renderer'],
   images: {
     remotePatterns: [
 {
@@ -27,7 +28,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
     if (dev) {
       config.cache = { type: 'memory' }
       config.watchOptions = {
@@ -44,6 +45,17 @@ const nextConfig = {
         ]
       }
     }
+
+    // Configure @react-pdf/renderer for client-side only
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        canvas: false,
+      }
+    }
+
     return config
   },
 }
