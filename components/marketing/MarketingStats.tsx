@@ -1,10 +1,22 @@
 import { Mail, Users, TrendingUp, Calendar } from 'lucide-react'
+import { useCampaignAnalytics } from '@/lib/hooks/useCampaignAnalytics'
+import { useSubscriptionStats } from '@/lib/hooks/useEmailSubscriptions'
 
 export function MarketingStats() {
+  const { data: analytics } = useCampaignAnalytics('month')
+  const { data: subscriptionStats } = useSubscriptionStats()
+
+  // Get total active subscribers
+  const totalSubscribers = subscriptionStats?.total_active || 0
+  const newSubscribers = subscriptionStats?.new_this_month || 0
+
+  // Count scheduled campaigns
+  const scheduledCampaigns = analytics?.recentCampaigns?.filter(c => c.status === 'scheduled').length || 0
+
   const stats = [
     {
       title: 'Actieve campagnes',
-      value: '8',
+      value: analytics?.activeCampaigns?.toString() || '0',
       change: '+2',
       changeType: 'increase' as const,
       icon: <Mail className="w-4 h-4 lg:w-5 lg:h-5" />,
@@ -13,16 +25,16 @@ export function MarketingStats() {
     },
     {
       title: 'E-mail abonnees',
-      value: '1,247',
-      change: '+89',
-      changeType: 'increase' as const,
+      value: totalSubscribers.toLocaleString(),
+      change: `+${newSubscribers}`,
+      changeType: newSubscribers > 0 ? 'increase' as const : 'neutral' as const,
       icon: <Users className="w-4 h-4 lg:w-5 lg:h-5" />,
       iconColor: 'text-icon-green',
       iconBgColor: 'bg-icon-green-bg'
     },
     {
       title: 'Gemiddelde open rate',
-      value: '24.8%',
+      value: `${analytics?.averageOpenRate?.toFixed(1) || '0'}%`,
       change: '+2.1%',
       changeType: 'increase' as const,
       icon: <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5" />,
@@ -31,7 +43,7 @@ export function MarketingStats() {
     },
     {
       title: 'Geplande campagnes',
-      value: '5',
+      value: scheduledCampaigns.toString(),
       change: '+1',
       changeType: 'increase' as const,
       icon: <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />,
