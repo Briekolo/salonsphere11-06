@@ -18,7 +18,14 @@ export class ClientService {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    // For now, return clients with default values for calculated fields
+    // We'll fetch these separately to avoid breaking the display
+    return (data || []).map(client => ({
+      ...client,
+      total_spent: client.total_spent || 0,
+      last_visit_date: client.last_visit_date || null
+    }))
   }
 
   static async getById(id: string): Promise<Client | null> {
@@ -105,38 +112,17 @@ export class ClientService {
       .from('clients')
       .select('*')
       .eq('tenant_id', tenantId)
-      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,notes.ilike.%${query}%`)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    // Return with default values for calculated fields
+    return (data || []).map(client => ({
+      ...client,
+      total_spent: client.total_spent || 0,
+      last_visit_date: client.last_visit_date || null
+    }))
   }
 
-  static async getBySegment(segment: string): Promise<Client[]> {
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
-
-    let query = supabase
-      .from('clients')
-      .select('*')
-      .eq('tenant_id', tenantId)
-
-    // Apply segment-specific filters
-    switch (segment) {
-      case 'vip':
-        query = query.gte('total_spent', 500)
-        break
-      case 'new':
-        query = query.gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        break
-      case 'inactive':
-        query = query.or(`last_visit_date.is.null,last_visit_date.lt.${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()}`)
-        break
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data || []
-  }
 }

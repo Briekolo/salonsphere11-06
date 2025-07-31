@@ -18,7 +18,7 @@ export function ClientsContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: allClients = [] } = useClientsHook()
+  const { data: allClients = [], isLoading: clientsLoading } = useClientsHook(searchTerm)
   const createMutation = useCreateClient()
 
   const handleClientSelect = (clientId: string) => {
@@ -32,9 +32,10 @@ export function ClientsContent() {
   }
 
   const handleExport = () => {
-    if (!allClients || allClients.length === 0) return
+    const clientsToExport = allClients
+    if (!clientsToExport || clientsToExport.length === 0) return
     const header = ['first_name','last_name','email','phone']
-    const rows = allClients.map(c=>[
+    const rows = clientsToExport.map(c=>[
       c.first_name,
       c.last_name,
       c.email,
@@ -83,7 +84,11 @@ export function ClientsContent() {
           {/* Filters and Actions */}
           <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
             <div className="overflow-x-auto">
-              <ClientsFilters searchTerm={searchTerm} onSearch={setSearchTerm} />
+              <ClientsFilters 
+                searchTerm={searchTerm} 
+                onSearch={setSearchTerm}
+                isLoading={clientsLoading}
+              />
             </div>
             
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 lg:space-x-3">

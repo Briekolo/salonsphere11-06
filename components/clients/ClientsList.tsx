@@ -1,10 +1,31 @@
 'use client'
 
-import { useState } from 'react'
-import { Phone, Mail, MoreVertical } from 'lucide-react'
+import { Phone, Mail, MoreVertical, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useClients, Client } from '@/lib/hooks/useClients'
+
+// Utility functions for formatting
+const formatCurrency = (amount: number | null | undefined): string => {
+  if (amount === null || amount === undefined || amount === 0) {
+    return '€0,00'
+  }
+  return new Intl.NumberFormat('nl-NL', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount)
+}
+
+const formatLastVisit = (date: string | null | undefined): string => {
+  if (!date) {
+    return 'Geen bezoeken'
+  }
+  try {
+    return format(new Date(date), 'd MMM yyyy', { locale: nl })
+  } catch {
+    return 'Onbekend'
+  }
+}
 
 interface ClientsListProps {
   onClientSelect: (clientId: string) => void
@@ -12,11 +33,53 @@ interface ClientsListProps {
   searchTerm: string
 }
 
+// Helper function for highlighting matches
+const highlightMatch = (text: string, query: string): string => {
+  if (!query.trim()) return text
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return text.replace(regex, '<mark class="bg-yellow-200 rounded px-1">$1</mark>')
+}
+
+// Helper function to determine which field matched
+const getMatchedField = (client: Client, query: string): string | null => {
+  if (!query.trim()) return null
+  const q = query.toLowerCase()
+  if (client.first_name?.toLowerCase().includes(q)) return 'Voornaam'
+  if (client.last_name?.toLowerCase().includes(q)) return 'Achternaam'
+  if (client.email?.toLowerCase().includes(q)) return 'Email'
+  if (client.phone?.toLowerCase().includes(q)) return 'Telefoon'
+  if (client.notes?.toLowerCase().includes(q)) return 'Notities'
+  return null
+}
+
 export function ClientsList({ onClientSelect, onViewChange, searchTerm }: ClientsListProps) {
   const { data: clients = [], isLoading } = useClients(searchTerm)
 
   if (isLoading) {
     return <div className="card p-6 text-center">Klanten laden...</div>
+  }
+
+  // Empty state for no results
+  if (clients.length === 0 && searchTerm.trim()) {
+    return (
+      <div className="card p-8 text-center">
+        <div className="text-gray-400 mb-4">
+          <Search className="w-12 h-12 mx-auto" />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          Geen klanten gevonden
+        </h3>
+        <p className="text-gray-600 mb-4">
+          Geen resultaten voor "{searchTerm}". Probeer:
+        </p>
+        <ul className="text-sm text-gray-500 space-y-1">
+          <li>• Controleer de spelling</li>
+          <li>• Gebruik minder woorden</li>
+          <li>• Probeer initialen (bijv. "JD" voor Jan de Vries)</li>
+          <li>• Gebruik 'Slim zoeken' voor typfouten</li>
+        </ul>
+      </div>
+    )
   }
 
   return (
@@ -51,25 +114,51 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
                   {client.first_name.charAt(0)}{client.last_name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900">
-                    {client.first_name} {client.last_name}
-                  </div>
-                  <div className="text-sm text-gray-600 truncate">{client.email}</div>
+                  <div className="font-medium text-gray-900" 
+                       dangerouslySetInnerHTML={{
+                         __html: highlightMatch(`${client.first_name} ${client.last_name}`, searchTerm)
+                       }} 
+                  />
+                  <div className="text-sm text-gray-600 truncate" 
+                       dangerouslySetInnerHTML={{
+                         __html: highlightMatch(client.email || '', searchTerm)
+                       }} 
+                  />
+                  {client.phone && (
+                    <div className="text-xs text-gray-500 truncate" 
+                         dangerouslySetInnerHTML={{
+                           __html: highlightMatch(client.phone, searchTerm)
+                         }} 
+                    />
+                  )}
                   {client.notes && (
-                    <div className="text-xs text-gray-500 truncate mt-1">
-                      {client.notes}
+                    <div className="text-xs text-gray-500 truncate mt-1" 
+                         dangerouslySetInnerHTML={{
+                           __html: highlightMatch(client.notes, searchTerm)
+                         }} 
+                    />
+                  )}
+                  {searchTerm && getMatchedField(client, searchTerm) && (
+                    <div className="text-xs text-primary-600 mt-1">
+                      Gevonden in: {getMatchedField(client, searchTerm)}
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 text-sm mb-3">
+            <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+              <div>
+                <span className="text-gray-600">Uitgegeven:</span>
+                <div className="font-medium text-gray-900">
+                  {formatCurrency(client.total_spent)}
+                </div>
+              </div>
               <div>
                 <span className="text-gray-600">Laatste bezoek:</span>
-                <span className="text-sm text-gray-600">
-                  {client.last_visit_date ? format(new Date(client.last_visit_date), 'd MMM yyyy', { locale: nl }) : '—'}
-                </span>
+                <div className="text-gray-900">
+                  {formatLastVisit(client.last_visit_date)}
+                </div>
               </div>
             </div>
 
@@ -111,12 +200,21 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
                       {client.first_name.charAt(0)}{client.last_name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900">
-                        {client.first_name} {client.last_name}
-                      </div>
+                      <div className="font-medium text-gray-900" 
+                           dangerouslySetInnerHTML={{
+                             __html: highlightMatch(`${client.first_name} ${client.last_name}`, searchTerm)
+                           }} 
+                      />
                       {client.notes && (
-                        <div className="text-xs text-gray-500 truncate max-w-[200px]">
-                          {client.notes}
+                        <div className="text-xs text-gray-500 truncate max-w-[200px]" 
+                             dangerouslySetInnerHTML={{
+                               __html: highlightMatch(client.notes, searchTerm)
+                             }} 
+                        />
+                      )}
+                      {searchTerm && getMatchedField(client, searchTerm) && (
+                        <div className="text-xs text-primary-600 mt-1">
+                          Gevonden in: {getMatchedField(client, searchTerm)}
                         </div>
                       )}
                     </div>
@@ -124,18 +222,28 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
                 </td>
                 <td className="py-4 px-4">
                   <div className="text-sm">
-                    <div className="text-gray-900">{client.email}</div>
-                    <div className="text-gray-600">{client.phone}</div>
+                    <div className="text-gray-900" 
+                         dangerouslySetInnerHTML={{
+                           __html: highlightMatch(client.email || '', searchTerm)
+                         }} 
+                    />
+                    {client.phone && (
+                      <div className="text-gray-600" 
+                           dangerouslySetInnerHTML={{
+                             __html: highlightMatch(client.phone, searchTerm)
+                           }} 
+                      />
+                    )}
                   </div>
                 </td>
                 <td className="py-4 px-4">
                   <span className="text-sm font-medium text-gray-900">
-                    €{client.total_spent}
+                    {formatCurrency(client.total_spent)}
                   </span>
                 </td>
                 <td className="py-4 px-4">
                   <span className="text-sm text-gray-600">
-                    {client.last_visit_date ? format(new Date(client.last_visit_date), 'd MMM yyyy', { locale: nl }) : '—'}
+                    {formatLastVisit(client.last_visit_date)}
                   </span>
                 </td>
                 <td className="py-4 px-4">
