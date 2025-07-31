@@ -1,8 +1,8 @@
 // Re-export the browser client as the default client for client components
 import { Database } from '@/types/database'
-import { supabase as browserSupabase } from './browser-client'
+import { getSupabaseBrowserClient } from './browser-client'
 
-export const supabase = browserSupabase
+export const supabase = getSupabaseBrowserClient()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
