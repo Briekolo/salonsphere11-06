@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { InvoiceService } from '@/lib/services/invoiceService';
 import { AvailabilityService } from '@/lib/services/availabilityService';
 import { EmailService } from '@/lib/services/emailService';
 
@@ -14,7 +13,6 @@ export interface CreateBookingData {
   internalNotes?: string;
   isPaid?: boolean;
   paymentMethod?: string;
-  createInvoice?: boolean;
   sendConfirmationEmail?: boolean;
 }
 
@@ -117,16 +115,6 @@ export class BookingService {
       .single();
 
     if (error) throw error;
-    
-    // Create invoice if requested
-    if (data.createInvoice) {
-      try {
-        await InvoiceService.createInvoiceFromBooking(booking.id);
-      } catch (invoiceError) {
-        console.error('Error creating invoice:', invoiceError);
-        // Don't throw - booking is still created successfully
-      }
-    }
 
     // Send booking confirmation email if requested
     if (data.sendConfirmationEmail) {
