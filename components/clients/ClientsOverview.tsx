@@ -5,6 +5,8 @@ import { Phone, Mail, MoreVertical } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useClients, Client } from '@/lib/hooks/useClients'
+import { useToast } from '@/components/providers/ToastProvider'
+import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils'
 
 interface ClientsOverviewProps {
   onClientSelect: (clientId: string) => void
@@ -14,6 +16,7 @@ interface ClientsOverviewProps {
 
 export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: ClientsOverviewProps) {
   const { data: clients = [], isLoading } = useClients(searchTerm)
+  const { showToast } = useToast()
 
   if (isLoading) {
     return <div className="card p-6 text-center">Klanten laden...</div>
@@ -76,9 +79,10 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
                 className="btn-outlined flex-1 flex items-center justify-center gap-1 text-xs py-2 min-h-[36px]"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (client.phone) {
-                    window.location.href = `tel:${client.phone}`
-                  }
+                  handlePhoneClick(client.phone || '', {
+                    showToast,
+                    debugMode: true
+                  })
                 }}
               >
                 <Phone className="w-3 h-3" />
@@ -86,11 +90,12 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
               </button>
               <button 
                 className="btn-outlined flex-1 flex items-center justify-center gap-1 text-xs py-2 min-h-[36px]"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  if (client.email) {
-                    window.location.href = `mailto:${client.email}`
-                  }
+                  await handleEmailClick(client.email || '', {
+                    showToast,
+                    debugMode: true
+                  })
                 }}
               >
                 <Mail className="w-3 h-3" />

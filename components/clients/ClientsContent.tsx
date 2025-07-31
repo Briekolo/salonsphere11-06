@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { ClientsOverview } from './ClientsOverview'
 import { ClientsList } from './ClientsList'
 import { ClientProfile } from './ClientProfile'
 import { ClientsStats } from './ClientsStats'
 import { ClientsFilters } from './ClientsFilters'
-import { FileText, Upload, PlusCircle } from 'lucide-react'
+import { FileText, PlusCircle } from 'lucide-react'
 import { useClients as useClientsHook } from '@/lib/hooks/useClients'
 import { useCreateClient } from '@/lib/hooks/useClients'
 import { ClientForm } from './ClientForm'
@@ -16,7 +16,6 @@ export function ClientsContent() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: allClients = [], isLoading: clientsLoading } = useClientsHook(searchTerm)
   const createMutation = useCreateClient()
@@ -54,23 +53,6 @@ export function ClientsContent() {
     document.body.removeChild(link)
   }
 
-  const handleImportButton = () => fileInputRef.current?.click()
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if(!file) return
-    const text = await file.text()
-    const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean)
-    const headers = headerLine.split(',')
-    lines.forEach(line => {
-      const values = line.split(',')
-      if(values.length !== headers.length) return
-      const item:any = {}
-      headers.forEach((h,idx)=> item[h] = values[idx])
-      createMutation.mutate(item)
-    })
-    e.target.value=''
-  }
 
   return (
     <div className="mobile-p space-y-4 lg:space-y-6">
@@ -98,12 +80,6 @@ export function ClientsContent() {
                 <span className="hidden sm:inline">Exporteren</span>
               </button>
 
-              {/* Import */}
-              <button onClick={handleImportButton} className="btn-outlined flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">Importeren</span>
-              </button>
-              <input type="file" accept=".csv,text/csv" ref={fileInputRef} onChange={handleImportFile} className="hidden" />
 
               {/* Nieuw */}
               <button onClick={()=>setView('form')} className="btn-primary flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">

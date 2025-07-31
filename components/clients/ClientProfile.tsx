@@ -7,6 +7,8 @@ import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
 import { useClientById } from '@/lib/hooks/useClients';
+import { useToast } from '@/components/providers/ToastProvider';
+import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils';
 
 interface ClientProfileProps {
   clientId: string
@@ -114,6 +116,7 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents'>('overview')
   const [isEditing, setIsEditing] = useState(false)
+  const { showToast } = useToast()
 
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
 
@@ -239,11 +242,27 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <button className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors min-h-[44px]">
+              <button 
+                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors min-h-[44px]"
+                onClick={() => {
+                  handlePhoneClick(client.phone || '', {
+                    showToast,
+                    debugMode: true
+                  })
+                }}
+              >
                 <Phone className="w-4 h-4" />
                 Bellen
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors min-h-[44px]">
+              <button 
+                className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors min-h-[44px]"
+                onClick={async () => {
+                  await handleEmailClick(client.email || '', {
+                    showToast,
+                    debugMode: true
+                  })
+                }}
+              >
                 <Mail className="w-4 h-4" />
                 E-mail
               </button>
