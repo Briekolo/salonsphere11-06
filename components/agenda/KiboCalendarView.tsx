@@ -16,10 +16,9 @@ interface KiboCalendarViewProps {
   onDateSelect: (date: Date) => void
   filters?: {
     searchTerm: string
-    status: string
+    payment: string
     service: string
     staff: string
-    date: string
   }
 }
 

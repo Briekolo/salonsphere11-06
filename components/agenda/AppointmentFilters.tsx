@@ -8,19 +8,17 @@ import { useServices } from '@/lib/hooks/useServices'
 interface AppointmentFiltersProps {
   onFiltersChange?: (filters: {
     searchTerm: string
-    status: string
+    payment: string
     service: string
     staff: string
-    date: string
   }) => void
 }
 
 export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [paymentFilter, setPaymentFilter] = useState('all')
   const [serviceFilter, setServiceFilter] = useState('all')
   const [staffFilter, setStaffFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState('today')
   
   // Load staff members and services dynamically
   const { data: users } = useUsers()
@@ -34,13 +32,12 @@ export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps)
     if (onFiltersChange) {
       onFiltersChange({
         searchTerm,
-        status: statusFilter,
+        payment: paymentFilter,
         service: serviceFilter,
-        staff: staffFilter,
-        date: dateFilter
+        staff: staffFilter
       })
     }
-  }, [searchTerm, statusFilter, serviceFilter, staffFilter, dateFilter, onFiltersChange])
+  }, [searchTerm, paymentFilter, serviceFilter, staffFilter, onFiltersChange])
 
   return (
     <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-4">
@@ -57,34 +54,16 @@ export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps)
       </div>
 
       <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 lg:space-x-4">
-        {/* Date Filter */}
+        {/* Payment Filter */}
         <div className="relative">
           <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
             className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
           >
-            <option value="today">Vandaag</option>
-            <option value="tomorrow">Morgen</option>
-            <option value="week">Deze week</option>
-            <option value="month">Deze maand</option>
-            <option value="custom">Aangepast</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-        </div>
-
-        {/* Status Filter */}
-        <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
-          >
-            <option value="all">Alle statussen</option>
-            <option value="scheduled">Ingepland</option>
-            <option value="confirmed">Bevestigd</option>
-            <option value="completed">Afgerond</option>
-            <option value="cancelled">Geannuleerd</option>
+            <option value="all">Alle betalingen</option>
+            <option value="paid">Betaald</option>
+            <option value="unpaid">Niet betaald</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
         </div>
