@@ -157,7 +157,7 @@ export function ClientsList({ clients, onClientSelect, onViewChange, searchTerm 
                 </div>
               </div>
               <div>
-                <span className="text-gray-600">Uitgegeven:</span>
+                <span className="text-gray-600">Omzet:</span>
                 <div className="font-medium text-gray-900">
                   {formatCurrency(client.total_spent)}
                 </div>
@@ -195,7 +195,7 @@ export function ClientsList({ clients, onClientSelect, onViewChange, searchTerm 
               <th className="text-left py-3 px-4 font-medium text-gray-600">Klant</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Contact</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-              <th className="text-left py-3 px-4 font-medium text-gray-600">Uitgegeven</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600">Omzet</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Laatste bezoek</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Acties</th>
             </tr>

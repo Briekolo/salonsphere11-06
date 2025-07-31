@@ -295,7 +295,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">€{client.total_spent || 0}</div>
-                <div className="text-sm text-gray-600">Uitgegeven</div>
+                <div className="text-sm text-gray-600">Omzet</div>
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">

@@ -64,7 +64,7 @@ export function ClientsOverview({ clients, onClientSelect, onViewChange, searchT
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div>
-                <span className="text-gray-600">Uitgegeven:</span>
+                <span className="text-gray-600">Omzet:</span>
                 <span className="ml-2 font-medium">€{client.total_spent}</span>
               </div>
               <div>
