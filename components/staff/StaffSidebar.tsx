@@ -12,6 +12,7 @@ import {
   User,
   ArrowLeft,
   Settings,
+  CalendarClock,
 } from 'lucide-react';
 
 interface NavItem {
@@ -24,6 +25,7 @@ const staffNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
   { name: 'Mijn Agenda', href: '/staff/agenda', icon: Calendar },
   { name: 'Afspraken', href: '/staff/appointments', icon: Clock },
+  { name: 'Beschikbaarheid', href: '/staff/availability', icon: CalendarClock },
   { name: 'Klanten', href: '/staff/clients', icon: Users },
   { name: 'Profiel', href: '/staff/profile', icon: User },
 ];

@@ -34,11 +34,15 @@ export interface BookingHold {
 }
 
 export interface StaffSchedule {
+  id?: string;
+  tenant_id?: string;
   staff_id: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export class AvailabilityService {
@@ -469,5 +473,262 @@ export class AvailabilityService {
     } catch (error) {
       console.error('Error refreshing availability cache:', error);
     }
+  }
+
+  // ===========================================
+  // STAFF SCHEDULE MANAGEMENT METHODS
+  // ===========================================
+
+  /**
+   * Get staff schedule from staff_schedules table
+   */
+  static async getStaffSchedule(staffId: string, tenantId: string): Promise<StaffSchedule[]> {
+    const { data, error } = await supabase
+      .from('staff_schedules')
+      .select('*')
+      .eq('staff_id', staffId)
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .order('day_of_week');
+
+    if (error) {
+      console.error('Error fetching staff schedule:', error);
+      throw new Error('Fout bij ophalen van werkschema');
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Get legacy working hours from users table
+   */
+  static async getLegacyWorkingHours(staffId: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('working_hours')
+      .eq('id', staffId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching legacy working hours:', error);
+      return null;
+    }
+
+    return data?.working_hours || null;
+  }
+
+  /**
+   * Convert StaffSchedule array to WeekSchedule format for easier UI handling
+   */
+  static convertToWeekSchedule(schedules: StaffSchedule[]): any {
+    const weekSchedule = {
+      monday: { enabled: false, start: '09:00', end: '17:00' },
+      tuesday: { enabled: false, start: '09:00', end: '17:00' },
+      wednesday: { enabled: false, start: '09:00', end: '17:00' },
+      thursday: { enabled: false, start: '09:00', end: '17:00' },
+      friday: { enabled: false, start: '09:00', end: '17:00' },
+      saturday: { enabled: false, start: '09:00', end: '17:00' },
+      sunday: { enabled: false, start: '09:00', end: '17:00' }
+    };
+
+    const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    schedules.forEach(schedule => {
+      const dayName = dayMap[schedule.day_of_week] as keyof typeof weekSchedule;
+      if (dayName) {
+        weekSchedule[dayName] = {
+          enabled: schedule.is_active,
+          start: this.formatTime(schedule.start_time),
+          end: this.formatTime(schedule.end_time)
+        };
+      }
+    });
+
+    return weekSchedule;
+  }
+
+  /**
+   * Update staff schedule in staff_schedules table
+   */
+  static async updateStaffSchedule(
+    staffId: string, 
+    tenantId: string, 
+    weekSchedule: any
+  ): Promise<void> {
+    try {
+      // Delete all existing schedules for this staff member
+      await supabase
+        .from('staff_schedules')
+        .delete()
+        .eq('staff_id', staffId)
+        .eq('tenant_id', tenantId);
+
+      // Prepare new schedule data
+      const scheduleInserts: any[] = [];
+      const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+      Object.entries(weekSchedule).forEach(([dayName, daySchedule]: [string, any]) => {
+        const dayOfWeek = dayMap.indexOf(dayName);
+        if (dayOfWeek !== -1 && daySchedule.enabled) {
+          if (!this.isValidTimeRange(daySchedule.start, daySchedule.end)) {
+            throw new Error(`Ongeldige tijden voor ${dayName}: eindtijd moet na starttijd zijn`);
+          }
+
+          scheduleInserts.push({
+            tenant_id: tenantId,
+            staff_id: staffId,
+            day_of_week: dayOfWeek,
+            start_time: this.parseTime(daySchedule.start),
+            end_time: this.parseTime(daySchedule.end),
+            is_active: true
+          });
+        }
+      });
+
+      // Insert new schedules
+      if (scheduleInserts.length > 0) {
+        const { error } = await supabase
+          .from('staff_schedules')
+          .insert(scheduleInserts);
+
+        if (error) {
+          throw error;
+        }
+      }
+
+    } catch (error) {
+      console.error('Error updating staff schedule:', error);
+      throw new Error('Fout bij bijwerken van werkschema');
+    }
+  }
+
+  /**
+   * Get schedule exceptions for a staff member
+   */
+  static async getScheduleExceptions(
+    staffId: string, 
+    tenantId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<any[]> {
+    let query = supabase
+      .from('schedule_exceptions')
+      .select('*')
+      .eq('staff_id', staffId)
+      .eq('tenant_id', tenantId)
+      .order('date');
+
+    if (startDate) {
+      query = query.gte('date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('date', endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching schedule exceptions:', error);
+      throw new Error('Fout bij ophalen van uitzonderingen');
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Create a schedule exception
+   */
+  static async createScheduleException(exception: any): Promise<any> {
+    // Validate time range if it's a working day exception
+    if (exception.is_available && exception.start_time && exception.end_time) {
+      if (!this.isValidTimeRange(this.formatTime(exception.start_time), this.formatTime(exception.end_time))) {
+        throw new Error('Eindtijd moet na starttijd zijn');
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('schedule_exceptions')
+      .insert([exception])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating schedule exception:', error);
+      throw new Error('Fout bij aanmaken van uitzondering');
+    }
+
+    return data;
+  }
+
+  /**
+   * Update a schedule exception
+   */
+  static async updateScheduleException(id: string, updates: any): Promise<any> {
+    // Validate time range if updating times
+    if (updates.start_time && updates.end_time) {
+      if (!this.isValidTimeRange(this.formatTime(updates.start_time), this.formatTime(updates.end_time))) {
+        throw new Error('Eindtijd moet na starttijd zijn');
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('schedule_exceptions')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating schedule exception:', error);
+      throw new Error('Fout bij bijwerken van uitzondering');
+    }
+
+    return data;
+  }
+
+  /**
+   * Delete a schedule exception
+   */
+  static async deleteScheduleException(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('schedule_exceptions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting schedule exception:', error);
+      throw new Error('Fout bij verwijderen van uitzondering');
+    }
+  }
+
+  // ===========================================
+  // UTILITY METHODS FOR STAFF SCHEDULES
+  // ===========================================
+
+  static formatTime(time: string): string {
+    // Convert HH:mm:ss to HH:mm
+    return time.substring(0, 5);
+  }
+
+  static parseTime(time: string): string {
+    // Ensure HH:mm:ss format from HH:mm
+    return time.includes(':') && time.length === 5 ? `${time}:00` : time;
+  }
+
+  static isValidTimeRange(start: string, end: string): boolean {
+    const startMinutes = this.timeToMinutes(start);
+    const endMinutes = this.timeToMinutes(end);
+    return endMinutes > startMinutes;
+  }
+
+  static timeToMinutes(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  static minutesToTime(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 }

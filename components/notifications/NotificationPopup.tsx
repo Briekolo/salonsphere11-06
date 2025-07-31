@@ -1,7 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
-import { Popover, Transition } from '@headlessui/react'
+import { useState, useRef, useEffect } from 'react'
 import { Bell, Check, X, AlertCircle, Calendar, Users, Euro, Package, Settings, UserCheck, Loader2 } from 'lucide-react'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
@@ -27,6 +26,9 @@ const severityColors = {
 
 export function NotificationPopup() {
   const [isOpen, setIsOpen] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  
   const {
     notifications,
     unreadCount,
@@ -36,6 +38,39 @@ export function NotificationPopup() {
     dismiss,
     isMarkingAllAsRead,
   } = useNotifications({ limit: 20 })
+
+  // Handle clicks outside the popup to close it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        popupRef.current && 
+        !popupRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  // Handle escape key to close popup
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isOpen])
 
   const handleNotificationClick = (notification: any) => {
     if (!notification.read_at) {
@@ -75,148 +110,147 @@ export function NotificationPopup() {
   }, [])
 
   return (
-    <Popover className="relative">
-      {({ open }) => (
-        <>
-          <Popover.Button
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 sm:p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#02011F]"
-          >
-            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 flex items-center justify-center">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500 border-2 border-white">
-                  {unreadCount > 9 && (
-                    <span className="absolute -top-0.5 -right-0.5 text-[9px] text-white bg-red-500 rounded-full w-4 h-4 flex items-center justify-center font-medium">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1.5 sm:p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#02011F]"
+        aria-label="Notifications"
+        aria-expanded={isOpen}
+      >
+        <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 flex items-center justify-center">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500 border-2 border-white">
+              {unreadCount > 9 && (
+                <span className="absolute -top-0.5 -right-0.5 text-[9px] text-white bg-red-500 rounded-full w-4 h-4 flex items-center justify-center font-medium">
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
-              </span>
-            )}
-          </Popover.Button>
-
-          <Transition
-            show={isOpen}
-            as={Fragment}
-            enter="transition ease-out duration-200"
-            enterFrom="opacity-0 translate-y-1"
-            enterTo="opacity-100 translate-y-0"
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100 translate-y-0"
-            leaveTo="opacity-0 translate-y-1"
-          >
-            <Popover.Panel className="absolute right-0 z-50 mt-2 w-80 sm:w-96 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              <div className="p-4 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Meldingen</h3>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={() => markAllAsRead()}
-                      disabled={isMarkingAllAsRead}
-                      className="text-sm text-[#02011F] hover:text-gray-700 font-medium disabled:opacity-50"
-                    >
-                      {isMarkingAllAsRead ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        'Alles als gelezen markeren'
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                {isLoading ? (
-                  <div className="p-8 text-center">
-                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">Meldingen laden...</p>
-                  </div>
-                ) : notifications.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Bell className="w-12 h-12 text-gray-300 mx-auto" />
-                    <p className="mt-2 text-sm text-gray-500">Geen meldingen</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {groupedNotifications.map((group) => (
-                      <div key={group.date}>
-                        <div className="px-4 py-2 bg-gray-50">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {isToday(parseISO(group.date + 'T00:00:00')) ? 'Vandaag' :
-                             isYesterday(parseISO(group.date + 'T00:00:00')) ? 'Gisteren' :
-                             format(parseISO(group.date + 'T00:00:00'), 'd MMMM', { locale: nl })}
-                          </p>
-                        </div>
-                        {group.notifications.map((notification: any) => {
-                          const Icon = notificationIcons[notification.type as keyof typeof notificationIcons]
-                          const isUnread = !notification.read_at
-
-                          return (
-                            <div
-                              key={notification.id}
-                              className={cn(
-                                'relative px-4 py-3 hover:bg-gray-50 transition-colors',
-                                isUnread && 'bg-blue-50/30'
-                              )}
-                            >
-                              {notification.action_url ? (
-                                <Link
-                                  href={notification.action_url}
-                                  onClick={() => handleNotificationClick(notification)}
-                                  className="block"
-                                >
-                                  <NotificationContent
-                                    notification={notification}
-                                    Icon={Icon}
-                                    isUnread={isUnread}
-                                  />
-                                </Link>
-                              ) : (
-                                <div onClick={() => handleNotificationClick(notification)}>
-                                  <NotificationContent
-                                    notification={notification}
-                                    Icon={Icon}
-                                    isUnread={isUnread}
-                                  />
-                                </div>
-                              )}
-                              
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  dismiss(notification.id)
-                                }}
-                                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {notifications.length > 0 && (
-                <div className="p-4 border-t border-gray-100">
-                  <Link
-                    href="/notifications"
-                    onClick={() => setIsOpen(false)}
-                    className="text-sm text-[#02011F] hover:text-gray-700 font-medium"
-                  >
-                    Alle meldingen bekijken
-                  </Link>
-                </div>
               )}
-            </Popover.Panel>
-          </Transition>
-        </>
-      )}
-    </Popover>
+            </span>
+          </span>
+        )}
+      </button>
+
+      {/* Custom Popup Panel */}
+      <div
+        ref={popupRef}
+        className={cn(
+          'absolute right-0 z-50 mt-2 w-80 sm:w-96 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200',
+          isOpen 
+            ? 'opacity-100 scale-100 translate-y-0' 
+            : 'opacity-0 scale-95 translate-y-1 pointer-events-none'
+        )}
+        style={{ transformOrigin: 'top right' }}
+      >
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Meldingen</h3>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllAsRead()}
+                disabled={isMarkingAllAsRead}
+                className="text-sm text-[#02011F] hover:text-gray-700 font-medium disabled:opacity-50"
+              >
+                {isMarkingAllAsRead ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Alles als gelezen markeren'
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+              <p className="mt-2 text-sm text-gray-500">Meldingen laden...</p>
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="p-8 text-center">
+              <Bell className="w-12 h-12 text-gray-300 mx-auto" />
+              <p className="mt-2 text-sm text-gray-500">Geen meldingen</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {groupedNotifications.map((group) => (
+                <div key={group.date}>
+                  <div className="px-4 py-2 bg-gray-50">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {isToday(parseISO(group.date + 'T00:00:00')) ? 'Vandaag' :
+                       isYesterday(parseISO(group.date + 'T00:00:00')) ? 'Gisteren' :
+                       format(parseISO(group.date + 'T00:00:00'), 'd MMMM', { locale: nl })}
+                    </p>
+                  </div>
+                  {group.notifications.map((notification: any) => {
+                    const Icon = notificationIcons[notification.type as keyof typeof notificationIcons]
+                    const isUnread = !notification.read_at
+
+                    return (
+                      <div
+                        key={notification.id}
+                        className={cn(
+                          'relative px-4 py-3 hover:bg-gray-50 transition-colors',
+                          isUnread && 'bg-blue-50/30'
+                        )}
+                      >
+                        {notification.action_url ? (
+                          <Link
+                            href={notification.action_url}
+                            onClick={() => handleNotificationClick(notification)}
+                            className="block"
+                          >
+                            <NotificationContent
+                              notification={notification}
+                              Icon={Icon}
+                              isUnread={isUnread}
+                            />
+                          </Link>
+                        ) : (
+                          <div onClick={() => handleNotificationClick(notification)}>
+                            <NotificationContent
+                              notification={notification}
+                              Icon={Icon}
+                              isUnread={isUnread}
+                            />
+                          </div>
+                        )}
+                        
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            dismiss(notification.id)
+                          }}
+                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded"
+                          aria-label="Dismiss notification"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {notifications.length > 0 && (
+          <div className="p-4 border-t border-gray-100">
+            <Link
+              href="/notifications"
+              onClick={() => setIsOpen(false)}
+              className="text-sm text-[#02011F] hover:text-gray-700 font-medium"
+            >
+              Alle meldingen bekijken
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

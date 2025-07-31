@@ -2,6 +2,7 @@
 
 import { StaffSidebar } from '@/components/staff/StaffSidebar';
 import { StaffAuthProvider } from '@/components/staff/StaffAuthProvider';
+import { TopBar } from '@/components/layout/TopBar';
 
 interface StaffLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export function StaffLayout({ children, user }: StaffLayoutProps) {
       <div className="h-screen flex bg-background">
         <StaffSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
+          <TopBar />
           <main className="flex-1 overflow-y-auto">
             {children}
           </main>

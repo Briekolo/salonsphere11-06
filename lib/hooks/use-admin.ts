@@ -140,7 +140,7 @@ export function useRequireAdmin() {
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
-      router.push('/dashboard');
+      router.push('/');
     }
   }, [isAdmin, isLoading, router]);
 

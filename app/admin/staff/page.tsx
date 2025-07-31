@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { useTenant } from '@/lib/hooks/useTenant';
+import { useStaffSchedules } from '@/lib/hooks/useStaffSchedules';
 import { supabase } from '@/lib/supabase';
 import { 
   Users, 
@@ -17,7 +18,8 @@ import {
   Phone,
   Shield,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Calendar
 } from 'lucide-react';
 
 interface StaffMember {
@@ -37,6 +39,9 @@ export default function StaffManagementPage() {
   const { isAdmin, isLoading } = useRequireAdmin();
   const { tenantId } = useTenant();
   const router = useRouter();
+  
+  // Get staff schedules
+  const { data: staffSchedules } = useStaffSchedules(tenantId || '');
   
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,6 +220,9 @@ export default function StaffManagementPage() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Beschikbaarheid
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Laatste Login
                 </th>
                 <th className="relative px-6 py-3">
@@ -273,6 +281,35 @@ export default function StaffManagementPage() {
                       {member.active ? 'Actief' : 'Inactief'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {(() => {
+                      const schedule = staffSchedules?.[member.id];
+                      if (!schedule || !schedule.isActive) {
+                        return (
+                          <div className="text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3 text-amber-500" />
+                              Geen schema
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="text-sm">
+                          <div className="flex items-center gap-2 text-gray-900">
+                            <Calendar className="h-3 w-3 text-gray-400" />
+                            <span className="font-medium">
+                              {schedule.workingDays.join('-')}
+                            </span>
+                          </div>
+                          <div className="text-gray-500 text-xs mt-1">
+                            {schedule.totalHoursPerWeek.toFixed(0)}u/week
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {member.last_login 
                       ? new Date(member.last_login).toLocaleString('nl-NL')
@@ -299,6 +336,16 @@ export default function StaffManagementPage() {
                           >
                             <Edit className="h-4 w-4" />
                             Bewerken
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowActionMenu(null);
+                              router.push(`/admin/staff/${member.id}/availability`);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          >
+                            <Calendar className="h-4 w-4" />
+                            Bekijk Schema
                           </button>
                           <button
                             onClick={() => handleDeleteStaff(member.id)}

@@ -4,8 +4,10 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, isSameDay, isToday, startOfMonth, endOfMonth, addMonths, getDay, differenceInDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useBookings, useUpdateBooking, Booking } from '@/lib/hooks/useBookings'
+import { useStaffSchedules } from '@/lib/hooks/useStaffSchedules'
+import { useTenant } from '@/lib/hooks/useTenant'
 import { BookingFormModal } from './BookingFormModal'
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, Plus, MoreHorizontal, GripVertical, Phone, Mail, Euro, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, Plus, MoreHorizontal, GripVertical, Phone, Mail, Euro, Star, Users, Filter } from 'lucide-react'
 import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { atom, useAtom } from 'jotai'
 import { useQueryClient } from '@tanstack/react-query'
@@ -597,11 +599,13 @@ function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'm
 }
 
 // Week view with vertical hours
-function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
+function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick, getAvailabilityStatus, showAvailabilityIndicator = false }: {
   weekDays: Date[]
   bookingsByDate: Record<string, Booking[]>
   onEmptyClick: (date: Date) => void
   onBookingClick: (bookingId: string) => void
+  getAvailabilityStatus?: (date: Date) => 'available' | 'limited' | 'unavailable'
+  showAvailabilityIndicator?: boolean
 }) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0)
   // Generate hours from 7:00 to 22:00 (salon hours)
@@ -836,16 +840,29 @@ function WeekView({ weekDays, bookingsByDate, onEmptyClick, onBookingClick }: {
           return (
             <div key={dateKey} className="border-r border-gray-200 last:border-r-0">
               {/* Day header */}
-              <div className={`h-12 border-b border-gray-200 flex flex-col items-center justify-center px-2 ${
+              <div className={`h-12 border-b border-gray-200 flex flex-col items-center justify-center px-2 relative ${
                 isTodayDate ? 'bg-blue-50' : 'bg-white'
               }`}>
                 <div className="text-xs text-gray-500 uppercase">
                   {format(date, 'E', { locale: nl })}
                 </div>
-                <div className={`text-sm font-medium ${
+                <div className={`flex items-center gap-1 text-sm font-medium ${
                   isTodayDate ? 'text-blue-700' : 'text-gray-900'
                 }`}>
                   {format(date, 'd')}
+                  {/* Availability indicator */}
+                  {showAvailabilityIndicator && getAvailabilityStatus && (
+                    <div className={`w-1.5 h-1.5 rounded-full ${
+                      getAvailabilityStatus(date) === 'unavailable' ? 'bg-red-500' :
+                      getAvailabilityStatus(date) === 'limited' ? 'bg-amber-500' :
+                      'bg-green-500'
+                    }`} 
+                    title={
+                      getAvailabilityStatus(date) === 'unavailable' ? 'Geen staff beschikbaar' :
+                      getAvailabilityStatus(date) === 'limited' ? 'Beperkte staff beschikbaarheid' :
+                      'Staff beschikbaar'
+                    } />
+                  )}
                 </div>
               </div>
 
@@ -1088,13 +1105,15 @@ function TimeSlot({ date, hour, bookings, onEmptyClick, onBookingClick }: {
 }
 
 // Droppable calendar cell
-function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, isCurrentMonth = true }: { 
+function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, isCurrentMonth = true, availabilityStatus = 'available', showAvailabilityIndicator = false }: { 
   date: Date; 
   bookings: Booking[]; 
   onDrop: (date: Date) => void;
   onEmptyClick: (date: Date) => void;
   onBookingClick: (bookingId: string) => void;
   isCurrentMonth?: boolean;
+  availabilityStatus?: 'available' | 'limited' | 'unavailable';
+  showAvailabilityIndicator?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: format(date, 'yyyy-MM-dd'),
@@ -1128,6 +1147,20 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, is
   
   const hiddenCount = bookings.length - maxVisible
 
+  // Get availability styling
+  const getAvailabilityStyles = () => {
+    if (!showAvailabilityIndicator) return ''
+    
+    switch (availabilityStatus) {
+      case 'unavailable':
+        return 'bg-red-50/50 border-red-100 hover:bg-red-50/70'
+      case 'limited':
+        return 'bg-amber-50/50 border-amber-100 hover:bg-amber-50/70'
+      default:
+        return ''
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -1145,16 +1178,32 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, is
         ${isCurrentDay ? 'bg-blue-50/30' : isCurrentMonth ? 'bg-white hover:bg-gray-50' : 'bg-gray-100/70 hover:bg-gray-150/80'}
         ${isOver ? 'ring-2 ring-blue-500 ring-inset bg-blue-50' : ''}
         ${!isCurrentMonth ? 'shadow-lg shadow-gray-400/30 opacity-60' : ''}
+        ${getAvailabilityStyles()}
         transition-all cursor-pointer
       `}
     >
       <div className="flex items-center justify-between mb-1 sm:mb-2">
-        <span className={`text-xs sm:text-sm font-medium ${
-          isCurrentDay ? 'text-primary-700' : 
-          isCurrentMonth ? 'text-gray-700' : 'text-gray-400'
-        }`}>
-          {dayNumber}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className={`text-xs sm:text-sm font-medium ${
+            isCurrentDay ? 'text-primary-700' : 
+            isCurrentMonth ? 'text-gray-700' : 'text-gray-400'
+          }`}>
+            {dayNumber}
+          </span>
+          {/* Availability indicator */}
+          {showAvailabilityIndicator && (
+            <div className={`w-1.5 h-1.5 rounded-full ${
+              availabilityStatus === 'unavailable' ? 'bg-red-500' :
+              availabilityStatus === 'limited' ? 'bg-amber-500' :
+              'bg-green-500'
+            }`} 
+            title={
+              availabilityStatus === 'unavailable' ? 'Geen staff beschikbaar' :
+              availabilityStatus === 'limited' ? 'Beperkte staff beschikbaarheid' :
+              'Staff beschikbaar'
+            } />
+          )}
+        </div>
         <button
           onClick={() => onEmptyClick(date)}
           className="opacity-0 hover:opacity-100 transition-opacity p-0.5 sm:p-1 hover:bg-gray-200 rounded"
@@ -1204,11 +1253,13 @@ function CalendarCell({ date, bookings, onDrop, onEmptyClick, onBookingClick, is
 }
 
 // Calendar header with navigation
-function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate }: {
+function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate, showOnlyAvailable, onShowOnlyAvailableChange }: {
   viewMode: 'week' | 'month'
   onViewModeChange: (mode: 'week' | 'month') => void
   currentDate: Date
   onNavigate: (direction: 'prev' | 'next' | 'today') => void
+  showOnlyAvailable?: boolean
+  onShowOnlyAvailableChange?: (value: boolean) => void
 }) {
   const displayText = useMemo(() => {
     if (viewMode === 'week') {
@@ -1306,6 +1357,22 @@ function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate }:
               </button>
             </div>
 
+            {/* Staff availability filter toggle */}
+            {onShowOnlyAvailableChange && (
+              <button
+                onClick={() => onShowOnlyAvailableChange(!showOnlyAvailable)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  showOnlyAvailable 
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title={showOnlyAvailable ? 'Toon alle tijden' : 'Toon alleen beschikbare tijden'}
+              >
+                <Users className="w-4 h-4" />
+                {showOnlyAvailable ? 'Beschikbaar' : 'Filter'}
+              </button>
+            )}
+
             <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
               <Calendar className="w-4 h-4" />
             </button>
@@ -1325,6 +1392,48 @@ export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCa
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
   const [initialModalDate, setInitialModalDate] = useState<Date | undefined>()
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false)
+  
+  // Get tenant and staff schedules for availability checking
+  const { tenantId } = useTenant()
+  const { data: staffSchedules } = useStaffSchedules(tenantId || '')
+
+  // Helper function to check if any staff is available on a given date
+  const isStaffAvailableOnDate = useCallback((date: Date): boolean => {
+    if (!staffSchedules) return true // If no data, assume available
+    
+    const dayOfWeek = date.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+    const dayName = dayNames[dayOfWeek]
+    
+    // Check if any staff member is working on this day
+    return Object.values(staffSchedules).some(schedule => {
+      if (!schedule.isActive) return false
+      // Check if the staff has any schedule for this day of week
+      return schedule.schedules.some(staffSchedule => 
+        staffSchedule.day_of_week === dayOfWeek && staffSchedule.is_active
+      )
+    })
+  }, [staffSchedules])
+
+  // Helper function to get availability status for a date
+  const getAvailabilityStatus = useCallback((date: Date): 'available' | 'limited' | 'unavailable' => {
+    if (!staffSchedules) return 'available'
+    
+    const dayOfWeek = date.getDay()
+    const activeStaffCount = Object.values(staffSchedules).filter(schedule => {
+      if (!schedule.isActive) return false
+      return schedule.schedules.some(staffSchedule => 
+        staffSchedule.day_of_week === dayOfWeek && staffSchedule.is_active
+      )
+    }).length
+    
+    const totalStaffCount = Object.keys(staffSchedules).length
+    
+    if (activeStaffCount === 0) return 'unavailable'
+    if (activeStaffCount < totalStaffCount * 0.5) return 'limited' // Less than 50% available
+    return 'available'
+  }, [staffSchedules])
 
   // Configure sensors for mobile drag and drop support
   const mouseSensor = useSensor(MouseSensor, {
@@ -1830,6 +1939,8 @@ export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCa
         onViewModeChange={setViewMode}
         currentDate={currentDate}
         onNavigate={handleNavigate}
+        showOnlyAvailable={showOnlyAvailable}
+        onShowOnlyAvailableChange={setShowOnlyAvailable}
       />
 
       <div className="flex-1 bg-white rounded-lg sm:rounded-xl shadow-sm overflow-hidden flex flex-col">
@@ -1863,6 +1974,21 @@ export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCa
                   const dateKey = format(date, 'yyyy-MM-dd')
                   const dayBookings = bookingsByDate[dateKey] || []
                   const isCurrentMonth = date.getMonth() === currentDate.getMonth()
+                  const availabilityStatus = getAvailabilityStatus(date)
+                  
+                  // Hide unavailable days if filter is active
+                  if (showOnlyAvailable && availabilityStatus === 'unavailable') {
+                    return (
+                      <div key={dateKey} className="min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] p-1 sm:p-2 border-r border-b border-gray-200 bg-gray-100 opacity-30 relative">
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center text-gray-500">
+                            <Users className="w-4 h-4 mx-auto mb-1 opacity-50" />
+                            <div className="text-xs">Geen staff</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
 
                   return (
                     <CalendarCell
@@ -1873,6 +1999,8 @@ export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCa
                       onEmptyClick={openModalForNew}
                       onBookingClick={openModalForEdit}
                       isCurrentMonth={isCurrentMonth}
+                      availabilityStatus={availabilityStatus}
+                      showAvailabilityIndicator={!!staffSchedules && Object.keys(staffSchedules).length > 0}
                     />
                   )
                 })}
@@ -1883,6 +2011,8 @@ export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCa
                 bookingsByDate={bookingsByDate}
                 onEmptyClick={openModalForNew}
                 onBookingClick={openModalForEdit}
+                getAvailabilityStatus={getAvailabilityStatus}
+                showAvailabilityIndicator={!!staffSchedules && Object.keys(staffSchedules).length > 0}
               />
             )}
           </div>

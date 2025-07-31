@@ -136,11 +136,11 @@ export async function middleware(req: NextRequest) {
       redirectUrl.pathname = '/staff'
       return NextResponse.redirect(redirectUrl)
     } else if (userRole === 'admin' || userRole === 'owner') {
-      redirectUrl.pathname = '/admin'
-      return NextResponse.redirect(redirectUrl)
+      // Admin users can access root without redirect
+      return response
     }
-    // Default to dashboard for other roles
-    redirectUrl.pathname = '/dashboard'
+    // Default to root for other roles
+    redirectUrl.pathname = '/'
     return NextResponse.redirect(redirectUrl)
   }
 

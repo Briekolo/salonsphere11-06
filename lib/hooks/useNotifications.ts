@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { NotificationService } from '@/lib/services/notificationService'
 import { useTenant } from './useTenant'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { toast } from 'sonner'
+// import { toast } from 'sonner' // Removed sonner dependency
 
 export function useNotifications(options?: {
   limit?: number
@@ -61,7 +61,7 @@ export function useNotifications(options?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] })
-      toast.success('Alle meldingen gemarkeerd als gelezen')
+      console.log('Alle meldingen gemarkeerd als gelezen')
     },
   })
 
@@ -87,14 +87,8 @@ export function useNotifications(options?: {
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
         queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] })
         
-        // Show toast for new notification
-        toast(notification.title, {
-          description: notification.message,
-          action: notification.action_url ? {
-            label: notification.action_label || 'Bekijken',
-            onClick: () => window.location.href = notification.action_url!,
-          } : undefined,
-        })
+        // Show console log for new notification (toast removed)
+        console.log('New notification:', notification.title, notification.message)
       }
     )
 
