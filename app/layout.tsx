@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Outfit } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import ReactQueryProvider from '@/components/providers/ReactQueryProvider'
 import RealtimeProvider from '@/components/providers/RealtimeProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const outfit = Outfit({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'SalonSphere - Salon CRM & Management Platform',
@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nl" className="h-full">
-      <body className={`${inter.className} h-full`}>
+      <body className={`${outfit.className} h-full`}>
         <ReactQueryProvider>
           <AuthProvider>
             <RealtimeProvider>{children}</RealtimeProvider>

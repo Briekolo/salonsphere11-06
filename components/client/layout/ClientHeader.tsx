@@ -18,6 +18,8 @@ import {
 import { useTenant } from '@/lib/client/tenant-context';
 import { useBusinessInfo } from '@/lib/hooks/useBusinessInfo';
 import { useBusinessHours } from '@/lib/hooks/useBusinessHours';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
 interface ClientHeaderProps {
@@ -28,9 +30,11 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { tenant } = useTenant();
-  const { data: businessInfo } = useBusinessInfo();
   const { isCurrentlyOpen, getNextOpeningTime } = useBusinessHours();
   const pathname = usePathname();
+
+  // Skip the React Query fetch and use tenant context directly to avoid flickering
+  const displayData = tenant;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -69,20 +73,20 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-6 text-sm">
-              {tenant?.phone && (
+              {displayData?.phone && (
                 <a 
-                  href={`tel:${tenant.phone}`} 
+                  href={`tel:${displayData.phone}`} 
                   className="flex items-center gap-2 text-gray-600 hover:text-[#010009] transition-colors"
                 >
                   <Phone className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>{tenant.phone}</span>
+                  <span className="hidden sm:inline" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>{displayData.phone}</span>
                 </a>
               )}
-              {tenant?.address && (
+              {displayData?.address && (
                 <div className="hidden md:flex items-center gap-2 text-gray-600">
                   <MapPin className="h-3.5 w-3.5" />
                   <span className="text-sm">
-                    {tenant.address}{tenant.city ? `, ${tenant.city}` : ''}
+                    {displayData.address}{displayData.city ? `, ${displayData.city}` : ''}
                   </span>
                 </div>
               )}
@@ -114,10 +118,10 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href={`/${domain}`} className="flex items-center gap-3">
-              {tenant?.logo_url ? (
+              {displayData?.logo_url ? (
                 <Image
-                  src={tenant.logo_url}
-                  alt={tenant.name}
+                  src={displayData.logo_url}
+                  alt={displayData.name || 'Salon'}
                   width={40}
                   height={40}
                   className="rounded-lg"
@@ -129,10 +133,10 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
               )}
               <div>
                 <h1 className="text-lg font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
-                  {tenant?.name || 'Salon'}
+                  {displayData?.name || 'Salon'}
                 </h1>
-                {tenant?.description && (
-                  <p className="text-xs text-gray-600 hidden sm:block">{tenant.description.slice(0, 50)}...</p>
+                {displayData?.description && (
+                  <p className="text-xs text-gray-600 hidden sm:block">{displayData.description.slice(0, 50)}...</p>
                 )}
               </div>
             </Link>

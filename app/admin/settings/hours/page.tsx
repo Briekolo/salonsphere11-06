@@ -4,28 +4,39 @@ import { useState, useEffect } from 'react';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { useTenant } from '@/lib/hooks/useTenant';
 import { supabase } from '@/lib/supabase';
+import { ValidationService } from '@/lib/services/validationService';
+import { BusinessHoursTimeline } from '@/components/admin/BusinessHoursTimeline';
 import { 
   Clock,
   Save,
   Loader2,
   Copy,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Trash2,
+  Coffee
 } from 'lucide-react';
 
+interface BreakTime {
+  start: string;
+  end: string;
+}
+
 interface BusinessHours {
-  monday: { open: string; close: string; closed: boolean };
-  tuesday: { open: string; close: string; closed: boolean };
-  wednesday: { open: string; close: string; closed: boolean };
-  thursday: { open: string; close: string; closed: boolean };
-  friday: { open: string; close: string; closed: boolean };
-  saturday: { open: string; close: string; closed: boolean };
-  sunday: { open: string; close: string; closed: boolean };
+  monday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
+  tuesday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
+  wednesday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
+  thursday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
+  friday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
+  saturday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
+  sunday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
 }
 
 const defaultHours = {
   open: '09:00',
   close: '18:00',
-  closed: false
+  closed: false,
+  breaks: []
 };
 
 const dayNames = {
@@ -55,6 +66,7 @@ export default function BusinessHoursPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (tenantId) {
@@ -91,6 +103,102 @@ export default function BusinessHoursPage() {
         [field]: value
       }
     }));
+    
+    // Clear validation error for this day
+    const errorKey = `${day}_time`;
+    if (validationErrors[errorKey]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateBusinessHours = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    (Object.keys(hours) as (keyof BusinessHours)[]).forEach(day => {
+      const dayHours = hours[day];
+      if (!dayHours.closed) {
+        // Validate basic opening hours
+        const timeValidation = ValidationService.validateTime(dayHours.open, dayHours.close);
+        if (!timeValidation.isValid) {
+          errors[`${day}_time`] = timeValidation.error!;
+        }
+        
+        // Validate breaks if they exist
+        if (dayHours.breaks && dayHours.breaks.length > 0) {
+          // Validate each break
+          dayHours.breaks.forEach((breakTime, index) => {
+            const breakValidation = ValidationService.validateBreakTime(
+              breakTime.start, 
+              breakTime.end, 
+              dayHours.open, 
+              dayHours.close
+            );
+            if (!breakValidation.isValid) {
+              errors[`${day}_break_${index}`] = breakValidation.error!;
+            }
+          });
+          
+          // Validate break overlaps
+          const overlapValidation = ValidationService.validateBreakOverlaps(dayHours.breaks);
+          if (!overlapValidation.isValid) {
+            errors[`${day}_breaks_overlap`] = overlapValidation.error!;
+          }
+        }
+      }
+    });
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const addBreak = (day: keyof BusinessHours) => {
+    setHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        breaks: [
+          ...(prev[day].breaks || []),
+          { start: '12:00', end: '13:00' }
+        ]
+      }
+    }));
+  };
+
+  const removeBreak = (day: keyof BusinessHours, breakIndex: number) => {
+    setHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        breaks: prev[day].breaks?.filter((_, index) => index !== breakIndex) || []
+      }
+    }));
+  };
+
+  const updateBreak = (day: keyof BusinessHours, breakIndex: number, field: 'start' | 'end', value: string) => {
+    setHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        breaks: prev[day].breaks?.map((breakTime, index) => 
+          index === breakIndex ? { ...breakTime, [field]: value } : breakTime
+        ) || []
+      }
+    }));
+    
+    // Clear validation errors for this break
+    const errorKey = `${day}_break_${breakIndex}`;
+    if (validationErrors[errorKey]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        delete newErrors[`${day}_breaks_overlap`];
+        return newErrors;
+      });
+    }
   };
 
   const handleClosedToggle = (day: keyof BusinessHours) => {
@@ -115,8 +223,58 @@ export default function BusinessHoursPage() {
     }
   };
 
+  const applyPreset = (presetType: 'office' | 'retail' | 'salon') => {
+    let presetHours: BusinessHours;
+    
+    switch (presetType) {
+      case 'office':
+        presetHours = {
+          monday: { open: '09:00', close: '17:00', closed: false, breaks: [{ start: '12:00', end: '13:00' }] },
+          tuesday: { open: '09:00', close: '17:00', closed: false, breaks: [{ start: '12:00', end: '13:00' }] },
+          wednesday: { open: '09:00', close: '17:00', closed: false, breaks: [{ start: '12:00', end: '13:00' }] },
+          thursday: { open: '09:00', close: '17:00', closed: false, breaks: [{ start: '12:00', end: '13:00' }] },
+          friday: { open: '09:00', close: '17:00', closed: false, breaks: [{ start: '12:00', end: '13:00' }] },
+          saturday: { open: '09:00', close: '17:00', closed: true, breaks: [] },
+          sunday: { open: '09:00', close: '17:00', closed: true, breaks: [] }
+        };
+        break;
+      case 'retail':
+        presetHours = {
+          monday: { open: '10:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          tuesday: { open: '10:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          wednesday: { open: '10:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          thursday: { open: '10:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          friday: { open: '10:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          saturday: { open: '10:00', close: '18:00', closed: false, breaks: [] },
+          sunday: { open: '12:00', close: '17:00', closed: false, breaks: [] }
+        };
+        break;
+      case 'salon':
+        presetHours = {
+          monday: { open: '09:00', close: '18:00', closed: true, breaks: [] },
+          tuesday: { open: '09:00', close: '18:00', closed: false, breaks: [{ start: '12:30', end: '13:30' }] },
+          wednesday: { open: '09:00', close: '18:00', closed: false, breaks: [{ start: '12:30', end: '13:30' }] },
+          thursday: { open: '09:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          friday: { open: '09:00', close: '20:00', closed: false, breaks: [{ start: '14:00', end: '15:00' }] },
+          saturday: { open: '09:00', close: '17:00', closed: false, breaks: [] },
+          sunday: { open: '09:00', close: '18:00', closed: true, breaks: [] }
+        };
+        break;
+    }
+    
+    setHours(presetHours);
+    setValidationErrors({});
+    setMessage({ type: 'success', text: 'Preset toegepast! Vergeet niet op te slaan.' });
+  };
+
   const handleSave = async () => {
     if (!tenantId) return;
+    
+    // Validate business hours before saving
+    if (!validateBusinessHours()) {
+      setMessage({ type: 'error', text: 'Controleer de openingstijden en probeer opnieuw' });
+      return;
+    }
     
     setSaving(true);
     setMessage(null);
@@ -168,40 +326,73 @@ export default function BusinessHoursPage() {
       )}
 
       <div className="card">
-        <div className="flex items-center gap-2 mb-6">
-          <Clock className="h-5 w-5" />
-          <h2 className="text-heading">Weekschema</h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            <h2 className="text-heading">Weekschema</h2>
+          </div>
+          
+          {/* Quick Presets */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-gray-600 self-center">Snelle presets:</span>
+            <button
+              onClick={() => applyPreset('office')}
+              className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Kantoor (Ma-Vr 9-17)
+            </button>
+            <button
+              onClick={() => applyPreset('retail')}
+              className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Winkel (Ma-Za 10-20)
+            </button>
+            <button
+              onClick={() => applyPreset('salon')}
+              className="px-3 py-1.5 text-xs bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-colors"
+            >
+              Salon (Di-Za)
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
-          {(Object.keys(dayNames) as (keyof BusinessHours)[]).map((day, index) => (
-            <div key={day} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center py-3 border-b last:border-0">
-              <div className="font-medium">{dayNames[day]}</div>
+          {(Object.keys(dayNames) as (keyof BusinessHours)[]).map((day, index) => {
+            const errorKey = `${day}_time`;
+            const hasError = validationErrors[errorKey];
+            const inputClassName = hasError 
+              ? "px-3 py-2 border border-red-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+              : "px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500";
               
-              <div className="md:col-span-2">
-                {!hours[day].closed ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={hours[day].open}
-                      onChange={(e) => handleTimeChange(day, 'open', e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <span className="text-gray-500">tot</span>
-                    <input
-                      type="time"
-                      value={hours[day].close}
-                      onChange={(e) => handleTimeChange(day, 'close', e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+            return (
+              <div key={day} className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center py-3 border-b last:border-0">
+                  <div className="font-medium">{dayNames[day]}</div>
+                  
+                  <div className="md:col-span-2">
+                    {!hours[day].closed ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="time"
+                          value={hours[day].open}
+                          onChange={(e) => handleTimeChange(day, 'open', e.target.value)}
+                          className={inputClassName}
+                        />
+                        <span className="text-gray-500">tot</span>
+                        <input
+                          type="time"
+                          value={hours[day].close}
+                          onChange={(e) => handleTimeChange(day, 'close', e.target.value)}
+                          className={inputClassName}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-gray-500">Gesloten</span>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-gray-500">Gesloten</span>
-                )}
-              </div>
 
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={hours[day].closed}
@@ -217,11 +408,79 @@ export default function BusinessHoursPage() {
                     title="Kopieer van vorige dag"
                   >
                     <Copy className="h-4 w-4" />
-                  </button>
+                    </button>
+                  )}
+                  </div>
+                </div>
+                
+                {/* Break Times */}
+                {!hours[day].closed && (
+                  <div className="ml-0 md:ml-32 space-y-2">
+                    {hours[day].breaks && hours[day].breaks.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Coffee className="h-4 w-4" />
+                          <span>Pauzes</span>
+                        </div>
+                        {hours[day].breaks.map((breakTime, breakIndex) => {
+                          const breakErrorKey = `${day}_break_${breakIndex}`;
+                          const hasBreakError = validationErrors[breakErrorKey];
+                          const breakInputClassName = hasBreakError 
+                            ? "px-2 py-1 text-sm border border-red-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500"
+                            : "px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500";
+                          
+                          return (
+                            <div key={breakIndex} className="flex items-center gap-2 ml-6">
+                              <input
+                                type="time"
+                                value={breakTime.start}
+                                onChange={(e) => updateBreak(day, breakIndex, 'start', e.target.value)}
+                                className={breakInputClassName}
+                              />
+                              <span className="text-gray-500 text-sm">tot</span>
+                              <input
+                                type="time"
+                                value={breakTime.end}
+                                onChange={(e) => updateBreak(day, breakIndex, 'end', e.target.value)}
+                                className={breakInputClassName}
+                              />
+                              <button
+                                onClick={() => removeBreak(day, breakIndex)}
+                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                title="Verwijder pauze"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                              {hasBreakError && (
+                                <p className="text-red-500 text-xs">{validationErrors[breakErrorKey]}</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={() => addBreak(day)}
+                      className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 transition-colors ml-6"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Pauze toevoegen
+                    </button>
+                    
+                    {/* Break overlap error */}
+                    {validationErrors[`${day}_breaks_overlap`] && (
+                      <p className="text-red-500 text-xs ml-6">{validationErrors[`${day}_breaks_overlap`]}</p>
+                    )}
+                  </div>
+                )}
+                
+                {hasError && (
+                  <p className="text-red-500 text-xs ml-0 md:ml-32">{validationErrors[errorKey]}</p>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Special Hours Note */}
@@ -235,6 +494,9 @@ export default function BusinessHoursPage() {
           </div>
         </div>
       </div>
+
+      {/* Visual Timeline */}
+      <BusinessHoursTimeline hours={hours} />
 
       {/* Save Button */}
       <div className="flex justify-end">

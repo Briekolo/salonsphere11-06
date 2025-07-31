@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Save, Calculator, TrendingUp, Euro, AlertCircle } from 'lucide-react'
 import { useOverheadSettings, useUpdateOverheadSettings, useOverheadMetrics } from '@/lib/hooks/useOverheadCalculations'
+import { ValidationService } from '@/lib/services/validationService'
 
 export function OverheadSettings() {
   const [overheadMonthly, setOverheadMonthly] = useState(0)
   const [hasChanges, setHasChanges] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const { data: settings, isLoading } = useOverheadSettings()
   const { data: metrics } = useOverheadMetrics()
@@ -19,9 +21,17 @@ export function OverheadSettings() {
   }, [settings])
 
   const handleSave = async () => {
+    // Validate overhead amount before saving
+    const validation = ValidationService.validateOverheadAmount(overheadMonthly);
+    if (!validation.isValid) {
+      setValidationError(validation.error!);
+      return;
+    }
+    
     try {
       await updateMutation.mutateAsync(overheadMonthly)
       setHasChanges(false)
+      setValidationError(null)
     } catch (error) {
       console.error('Error updating overhead settings:', error)
       alert('Fout bij opslaan van overhead instellingen')
@@ -31,6 +41,11 @@ export function OverheadSettings() {
   const handleOverheadChange = (value: number) => {
     setOverheadMonthly(value)
     setHasChanges(value !== (settings?.overhead_monthly || 0))
+    
+    // Clear validation error when user starts typing
+    if (validationError) {
+      setValidationError(null)
+    }
   }
 
   if (isLoading) {
@@ -82,7 +97,11 @@ export function OverheadSettings() {
               type="number"
               value={overheadMonthly}
               onChange={(e) => handleOverheadChange(parseFloat(e.target.value) || 0)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                validationError 
+                  ? 'border-red-300 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-primary-500 focus:border-transparent'
+              }`}
               placeholder="Voer uw maandelijkse overhead kosten in"
               min="0"
               step="0.01"
@@ -91,6 +110,9 @@ export function OverheadSettings() {
           <p className="text-xs text-gray-600 mt-2">
             Inclusief huur, utilities, verzekeringen, administratiekosten, etc.
           </p>
+          {validationError && (
+            <p className="text-red-500 text-xs mt-1">{validationError}</p>
+          )}
         </div>
 
         {/* Information Box */}

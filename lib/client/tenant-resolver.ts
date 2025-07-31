@@ -115,7 +115,7 @@ function getMockTenant(subdomain: string): TenantInfo {
       theme_settings: {
         primary_color: '#E91E63',
         secondary_color: '#FFC107',
-        font_family: 'Inter',
+        font_family: 'Outfit',
         logo_position: 'left'
       }
     },
@@ -124,7 +124,7 @@ function getMockTenant(subdomain: string): TenantInfo {
       theme_settings: {
         primary_color: '#9C27B0',
         secondary_color: '#00BCD4',
-        font_family: 'Inter',
+        font_family: 'Outfit',
         logo_position: 'center'
       }
     },
@@ -133,7 +133,7 @@ function getMockTenant(subdomain: string): TenantInfo {
       theme_settings: {
         primary_color: '#FF5722',
         secondary_color: '#795548',
-        font_family: 'Inter',
+        font_family: 'Outfit',
         logo_position: 'left'
       }
     }
