@@ -18,7 +18,7 @@ import {
   FileText
 } from 'lucide-react'
 import clsx from 'clsx'
-import { Logo } from '@/components/layout/Logo'
+import { LogoDynamic } from '@/components/layout/LogoDynamic'
 import { useIsAdmin } from '@/lib/hooks/use-admin'
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo'
 
@@ -75,7 +75,7 @@ export function Sidebar() {
       )}>
         {/* Logo */}
         <div className="p-4 lg:p-6 border-b border-sidebar-border">
-          <Logo 
+          <LogoDynamic 
             size="sm" 
             customLogoUrl={logoUrl}
             salonName={salonName}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Logo } from '@/components/layout/Logo';
+import { LogoDynamic } from '@/components/layout/LogoDynamic';
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo';
 import {
   LayoutDashboard,
@@ -139,7 +139,7 @@ export function AdminSidebar() {
     <div className="flex h-full w-sidebar flex-col bg-sidebar-bg border-r border-sidebar-border">
       {/* Logo Section */}
       <div className="p-4 lg:p-6 border-b border-sidebar-border">
-        <Logo 
+        <LogoDynamic 
           size="sm" 
           customLogoUrl={logoUrl}
           salonName={salonName}

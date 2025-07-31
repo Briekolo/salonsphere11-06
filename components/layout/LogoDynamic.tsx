@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { Sparkles } from 'lucide-react'
@@ -12,7 +14,7 @@ interface LogoProps {
   salonName?: string
 }
 
-export function Logo({ 
+export function LogoDynamic({ 
   variant = 'full', 
   size = 'md', 
   className = '',

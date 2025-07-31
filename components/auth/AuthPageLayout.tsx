@@ -1,6 +1,6 @@
 import { CheckCircle2, Sparkles } from 'lucide-react'
 import React from 'react'
-import { Logo } from '@/components/layout/Logo'
+import { LogoStatic } from '@/components/layout/LogoStatic'
 
 interface AuthPageLayoutProps {
   children: React.ReactNode
@@ -24,7 +24,7 @@ export default function AuthPageLayout({ children, title, subtitle, footer }: Au
         <div className="w-full max-w-md">
           {/* Logo/Brand Section */}
           <div className="text-center mb-8">
-            <Logo size="md" className="justify-center" />
+            <LogoStatic size="md" className="justify-center" />
           </div>
 
           {/* Form Card */}
