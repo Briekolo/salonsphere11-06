@@ -291,7 +291,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+          <h1 className="text-2xl sm:text-3xl font-medium text-[#010009] mb-2" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
             Kies uw behandeling
           </h1>
           <p className="text-base text-gray-600">
@@ -326,7 +326,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                       ? 'bg-[#02011F] text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
-                  style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                  style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                 >
                   {category.name}
                   <span className="ml-1.5 text-xs">
@@ -410,7 +410,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                   </span>
 
                   {/* Service Name */}
-                  <h3 className="text-base sm:text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                  <h3 className="text-base sm:text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                     {service.name}
                   </h3>
 

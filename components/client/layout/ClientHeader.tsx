@@ -79,7 +79,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
                   className="flex items-center gap-2 text-gray-600 hover:text-[#010009] transition-colors"
                 >
                   <Phone className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>{displayData.phone}</span>
+                  <span className="hidden sm:inline" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>{displayData.phone}</span>
                 </a>
               )}
               {displayData?.address && (
@@ -132,7 +132,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
                 </div>
               )}
               <div>
-                <h1 className="text-lg font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                <h1 className="text-lg font-medium text-[#010009]" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                   {displayData?.name || 'Salon'}
                 </h1>
                 {displayData?.description && (
@@ -152,7 +152,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
                       ? 'bg-gray-100 text-[#010009] font-medium' 
                       : 'text-gray-600 hover:bg-gray-100 hover:text-[#010009]'
                   }`}
-                  style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                  style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                 >
                   {item.name}
                 </Link>
@@ -164,7 +164,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
               <Link
                 href={`/${domain}/account`}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-[#010009] hover:bg-gray-100 rounded-lg transition-all duration-200"
-                style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
               >
                 <User className="h-4 w-4" />
                 <span>Mijn account</span>
@@ -172,7 +172,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
               <Link
                 href={`/${domain}/book`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#02011F] text-white font-medium rounded-full hover:opacity-90 transition-all duration-200"
-                style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
               >
                 <Calendar className="h-4 w-4" />
                 <span>Boek afspraak</span>
@@ -210,7 +210,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
                       ? 'bg-gray-100 text-[#010009] font-medium' 
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
-                  style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                  style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.name}
@@ -225,12 +225,12 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <User className="h-5 w-5" />
-                  <span style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>Mijn account</span>
+                  <span style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>Mijn account</span>
                 </Link>
                 <Link
                   href={`/${domain}/book`}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-[#02011F] text-white font-medium rounded-2xl hover:opacity-90 transition-all duration-200"
-                  style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                  style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <Calendar className="h-5 w-5" />

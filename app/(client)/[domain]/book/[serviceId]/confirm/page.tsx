@@ -241,7 +241,7 @@ export default function BookingConfirmationPage({
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
             
-            <h1 className="text-2xl font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+            <h1 className="text-2xl font-medium text-[#010009] mb-2" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
               Afspraak bevestigd!
             </h1>
             
@@ -308,7 +308,7 @@ export default function BookingConfirmationPage({
               </button>
             )}
             
-            <h1 className="text-2xl font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+            <h1 className="text-2xl font-medium text-[#010009]" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
               Bevestig uw afspraak
             </h1>
             <p className="mt-1 text-sm text-gray-600">
@@ -323,7 +323,7 @@ export default function BookingConfirmationPage({
           {/* Summary */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-6 mb-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-              <h2 className="text-lg font-medium text-[#010009] mb-6" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              <h2 className="text-lg font-medium text-[#010009] mb-6" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                 Afspraakdetails
               </h2>
               
@@ -457,7 +457,7 @@ export default function BookingConfirmationPage({
           {/* Price Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 sticky top-24" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-              <h3 className="text-lg font-medium text-[#010009] mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              <h3 className="text-lg font-medium text-[#010009] mb-4" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                 Prijsoverzicht
               </h3>
               

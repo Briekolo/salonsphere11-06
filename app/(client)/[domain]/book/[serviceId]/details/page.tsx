@@ -216,7 +216,7 @@ export default function ClientDetailsPage({
             
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                <h1 className="text-2xl font-medium text-[#010009]" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                   Uw gegevens
                 </h1>
                 <p className="mt-1 text-sm text-gray-600">
@@ -268,7 +268,7 @@ export default function ClientDetailsPage({
           {/* Form */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-              <h2 className="text-lg font-medium text-[#010009] mb-4 sm:mb-6" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              <h2 className="text-lg font-medium text-[#010009] mb-4 sm:mb-6" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                 Contactgegevens
               </h2>
               
@@ -424,7 +424,7 @@ export default function ClientDetailsPage({
           {/* Booking Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-4 sm:p-6 lg:sticky lg:top-24" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-              <h3 className="text-lg font-medium text-[#010009] mb-3 sm:mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              <h3 className="text-lg font-medium text-[#010009] mb-3 sm:mb-4" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                 Uw afspraak
               </h3>
               

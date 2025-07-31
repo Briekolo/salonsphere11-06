@@ -217,7 +217,7 @@ export default function BookingCalendarPage({
             
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                <h1 className="text-2xl font-medium text-[#010009]" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                   Kies datum en tijd
                 </h1>
                 <p className="mt-1 text-sm text-gray-600">
@@ -249,7 +249,7 @@ export default function BookingCalendarPage({
           {/* Calendar */}
           <div className="bg-white rounded-2xl p-3 sm:p-4 lg:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-[#010009]" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+              <h2 className="text-lg font-medium text-[#010009]" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                 {format(currentMonth, 'MMMM yyyy', { locale: nl })}
               </h2>
               <div className="flex gap-1">
@@ -378,7 +378,7 @@ export default function BookingCalendarPage({
                         ) : ''}
                         ${isPast ? 'text-gray-300 cursor-not-allowed bg-gray-50' : ''}
                       `}
-                      style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                      style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                     >
                       <span className="relative z-10">{format(day, 'd')}</span>
                       {!isAvailable && !isPast && isCurrentMonth && (
@@ -435,7 +435,7 @@ export default function BookingCalendarPage({
 
           {/* Time slots */}
           <div className="bg-white rounded-2xl p-3 sm:p-4 lg:p-6" style={{ boxShadow: '1px 4px 8px rgba(0, 0, 0, 0.04)' }}>
-            <h2 className="text-lg font-medium text-[#010009] mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+            <h2 className="text-lg font-medium text-[#010009] mb-4" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
               {selectedDate 
                 ? `Beschikbare tijden op ${format(selectedDate, 'd MMMM', { locale: nl })}`
                 : 'Selecteer eerst een datum'
@@ -468,7 +468,7 @@ export default function BookingCalendarPage({
                             <Clock className={`h-4 w-4 ${slot.available ? 'text-[#7091D9]' : 'text-gray-400'}`} />
                             <div className="text-left">
                               <p className={`font-medium text-sm ${slot.available ? 'text-[#010009]' : 'text-gray-400'}`}
-                                style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+                                style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                                 {slot.time}
                               </p>
                               {slot.staffName && (
