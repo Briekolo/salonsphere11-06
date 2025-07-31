@@ -3,10 +3,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
+import { useInventoryItems } from '@/lib/hooks/useInventoryItems'
 import { Package, AlertTriangle, TrendingDown, ShoppingCart } from 'lucide-react'
+import { useMemo } from 'react'
 
 export function InventoryStats() {
   const { tenantId } = useTenant()
+  const { data: inventoryItems, isLoading: itemsLoading } = useInventoryItems()
 
   interface InventoryMetrics {
     total_products: number
@@ -15,23 +18,44 @@ export function InventoryStats() {
     orders_last30: number
   }
 
-  const { data: metrics, isLoading } = useQuery<InventoryMetrics | null>({
-    queryKey: ['inventory_stats', tenantId],
+  // Try RPC first, fallback to client-side calculation
+  const { data: rpcMetrics, isLoading: rpcLoading } = useQuery<InventoryMetrics | null>({
+    queryKey: ['inventory_stats_rpc', tenantId],
     enabled: !!tenantId,
     staleTime: 60_000,
+    retry: false, // Don't retry if RPC fails
     queryFn: async (): Promise<InventoryMetrics | null> => {
       if (!tenantId) return null
 
-      // Eén enkele RPC-call die alle aggregaties server-side afhandelt
-      const { data, error } = await (supabase as any).rpc('get_inventory_stats', {
-        _tenant: tenantId,
-      }).single()
+      try {
+        const { data, error } = await (supabase as any).rpc('get_inventory_stats', {
+          _tenant: tenantId,
+        }).single()
 
-      if (error) throw error
-
-      return data as InventoryMetrics
+        if (error) throw error
+        return data as InventoryMetrics
+      } catch (error) {
+        console.warn('RPC get_inventory_stats failed, falling back to client-side calculation:', error)
+        return null
+      }
     },
   })
+
+  // Client-side calculation as fallback
+  const clientMetrics = useMemo((): InventoryMetrics | null => {
+    if (!inventoryItems) return null
+
+    return {
+      total_products: inventoryItems.length,
+      low_stock_items: inventoryItems.filter(item => item.current_stock <= item.min_stock).length,
+      out_of_stock_items: inventoryItems.filter(item => item.current_stock === 0).length,
+      orders_last30: 0 // Placeholder - no order system yet
+    }
+  }, [inventoryItems])
+
+  // Use RPC data if available, otherwise use client-side calculation
+  const metrics = rpcMetrics || clientMetrics
+  const isLoading = rpcLoading || itemsLoading
 
   const stats = [
     {

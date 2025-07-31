@@ -1,13 +1,9 @@
 'use client'
 
-import { ShoppingCart, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { useLowStockItems } from '@/lib/hooks/useInventoryItems'
 
-interface LowStockBannerProps {
-  onNewOrder?: () => void
-}
-
-export function LowStockBanner({ onNewOrder }: LowStockBannerProps) {
+export function LowStockBanner() {
   const { data: lowStockItems = [], isLoading } = useLowStockItems()
 
   if (isLoading || lowStockItems.length === 0) return null
@@ -31,12 +27,6 @@ export function LowStockBanner({ onNewOrder }: LowStockBannerProps) {
             ))}
           </div>
         </div>
-        {onNewOrder && (
-          <button onClick={onNewOrder} className="btn-primary flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" />
-            Bestelling plaatsen
-          </button>
-        )}
       </div>
     </div>
   )
