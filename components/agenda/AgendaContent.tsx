@@ -22,10 +22,9 @@ export function AgendaContent() {
   // Filter state
   const [filters, setFilters] = useState({
     searchTerm: '',
-    status: 'all',
+    payment: 'all',
     service: 'all',
-    staff: 'all',
-    date: 'today'
+    staff: 'all'
   })
 
   return (

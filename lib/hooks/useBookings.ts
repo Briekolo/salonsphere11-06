@@ -28,7 +28,7 @@ export type Booking = Database['public']['Tables']['bookings']['Row'] & {
 
 export function useBookings(startDate?: string, endDate?: string, filters?: {
   searchTerm?: string
-  status?: string
+  payment?: string
   service?: string
   staff?: string
 }, enabled: boolean = true) {

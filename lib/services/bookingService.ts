@@ -27,7 +27,7 @@ export class BookingService {
 
   static async getByDateRange(startDate: string, endDate: string, filters?: {
     searchTerm?: string
-    status?: string
+    payment?: string
     service?: string
     staff?: string
   }): Promise<Booking[]> {
@@ -48,6 +48,12 @@ export class BookingService {
 
     // Apply filters
     if (filters) {
+      // Payment filter
+      if (filters.payment && filters.payment !== 'all') {
+        const isPaid = filters.payment === 'paid'
+        query = query.eq('is_paid', isPaid)
+      }
+
       // Staff filter
       if (filters.staff && filters.staff !== 'all') {
         query = query.eq('staff_id', filters.staff)
