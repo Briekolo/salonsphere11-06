@@ -26,10 +26,13 @@ export class ClientService {
     const clientIds = clients.map(c => c.id)
     const statusMap = await ClientStatusService.calculateBulkClientStatus(clientIds)
     
+    // Calculate last visit date from bookings for all clients
+    const lastVisitMap = await this.calculateBulkLastVisit(clientIds, tenantId)
+    
     return clients.map(client => ({
       ...client,
       total_spent: client.total_spent || 0,
-      last_visit_date: client.last_visit_date || null,
+      last_visit_date: lastVisitMap[client.id] || null,
       status: statusMap[client.id] || 'inactive'
     }))
   }
@@ -51,8 +54,12 @@ export class ClientService {
     // Calculate status for this specific client
     const status = await ClientStatusService.calculateClientStatus(id)
     
+    // Calculate last visit from bookings
+    const lastVisitMap = await this.calculateBulkLastVisit([id], tenantId)
+    
     return {
       ...data,
+      last_visit_date: lastVisitMap[id] || null,
       status
     }
   }
@@ -137,12 +144,51 @@ export class ClientService {
     const clientIds = clients.map(c => c.id)
     const statusMap = await ClientStatusService.calculateBulkClientStatus(clientIds)
     
+    // Calculate last visit date from bookings for all clients
+    const lastVisitMap = await this.calculateBulkLastVisit(clientIds, tenantId)
+    
     return clients.map(client => ({
       ...client,
       total_spent: client.total_spent || 0,
-      last_visit_date: client.last_visit_date || null,
+      last_visit_date: lastVisitMap[client.id] || null,
       status: statusMap[client.id] || 'inactive'
     }))
+  }
+
+  // Helper method to calculate last visit dates in bulk for performance
+  static async calculateBulkLastVisit(clientIds: string[], tenantId: string): Promise<Record<string, string | null>> {
+    if (clientIds.length === 0) return {}
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('client_id, scheduled_at')
+      .eq('tenant_id', tenantId)
+      .in('client_id', clientIds)
+      .lt('scheduled_at', new Date().toISOString()) // Only past appointments
+      .order('scheduled_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching booking data for last visit:', error)
+      return {}
+    }
+
+    const lastVisitMap: Record<string, string | null> = {}
+    
+    // Initialize all clients to null
+    clientIds.forEach(id => {
+      lastVisitMap[id] = null
+    })
+
+    // Find the most recent booking for each client
+    if (data) {
+      data.forEach(booking => {
+        if (!lastVisitMap[booking.client_id]) {
+          lastVisitMap[booking.client_id] = booking.scheduled_at
+        }
+      })
+    }
+
+    return lastVisitMap
   }
 
 }

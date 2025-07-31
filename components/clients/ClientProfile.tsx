@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, MessageSquare, FileText, CreditCard, Tag, Activity } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, MessageSquare, FileText, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,30 +18,6 @@ interface ClientProfileProps {
   onBack: () => void
 }
 
-interface Communication {
-  id: string
-  type: 'email' | 'phone' | 'sms'
-  date: Date
-  subject: string
-  content: string
-}
-
-const mockCommunications: Communication[] = [
-  {
-    id: '1',
-    type: 'email',
-    date: new Date('2024-01-14'),
-    subject: 'Bevestiging afspraak',
-    content: 'Uw afspraak voor morgen om 10:30 is bevestigd.'
-  },
-  {
-    id: '2',
-    type: 'phone',
-    date: new Date('2024-01-10'),
-    subject: 'Telefonisch contact',
-    content: 'Gebeld voor het verzetten van afspraak.'
-  }
-]
 
 const ProgressBar = ({ value, max }: { value: number; max: number }) => {
   const percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -56,7 +32,7 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 };
 
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments'>('overview')
   const [isEditing, setIsEditing] = useState(false)
   const { showToast } = useToast()
 
@@ -165,7 +141,18 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {client.last_visit_date ? format(new Date(client.last_visit_date), 'd MMM', { locale: nl }) : 'N.v.t.'}
+                  {(() => {
+                    if (!appointments || appointments.length === 0) return 'N.v.t.';
+                    
+                    // Filter past appointments and sort by date (most recent first)
+                    const pastAppointments = appointments
+                      .filter(apt => new Date(apt.scheduled_at) < new Date())
+                      .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                    
+                    if (pastAppointments.length === 0) return 'N.v.t.';
+                    
+                    return format(new Date(pastAppointments[0].scheduled_at), 'd MMM', { locale: nl });
+                  })()}
                 </div>
                 <div className="text-sm text-gray-600">Laatste bezoek</div>
               </div>
@@ -218,19 +205,17 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 overflow-x-auto">
-        <nav className="flex space-x-4 lg:space-x-8 min-w-max">
+        <nav className="flex min-w-max">
           {[
             { id: 'overview', label: 'Overzicht', icon: FileText },
-            { id: 'appointments', label: 'Afspraken', icon: Calendar },
-            { id: 'communications', label: 'Communicatie', icon: MessageSquare },
-            { id: 'documents', label: 'Documenten', icon: FileText }
+            { id: 'appointments', label: 'Afspraken', icon: Calendar }
           ].map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap min-h-[44px] ${
+                className={`flex items-center justify-center gap-2 py-2 px-4 border-b-2 font-medium text-sm whitespace-nowrap min-h-[44px] flex-1 ${
                   activeTab === tab.id
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -385,59 +370,6 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           </div>
         )}
 
-        {activeTab === 'communications' && (
-          <div className="lg:col-span-12">
-            <div className="card">
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-                <h3 className="text-lg font-semibold">Communicatiegeschiedenis</h3>
-                <button className="btn-primary self-start sm:self-auto">
-                  Nieuwe communicatie
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {mockCommunications.map((comm) => (
-                  <div key={comm.id} className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg">
-                    <div className={`p-2 rounded-lg ${
-                      comm.type === 'email' ? 'bg-blue-100' :
-                      comm.type === 'phone' ? 'bg-green-100' : 'bg-purple-100'
-                    }`}>
-                      {comm.type === 'email' ? <Mail className="w-4 h-4" /> :
-                       comm.type === 'phone' ? <Phone className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{comm.subject}</h4>
-                        <span className="text-sm text-gray-600 mt-1 sm:mt-0">
-                          {format(comm.date, 'd MMM yyyy HH:mm', { locale: nl })}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">{comm.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'documents' && (
-          <div className="lg:col-span-12">
-            <div className="card">
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-                <h3 className="text-lg font-semibold">Documenten</h3>
-                <button className="btn-primary self-start sm:self-auto">
-                  Document uploaden
-                </button>
-              </div>
-
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Nog geen documenten geüpload</p>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
