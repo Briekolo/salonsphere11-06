@@ -114,6 +114,26 @@ export class BookingService {
     return data
   }
 
+  static async getByClientId(clientId: string): Promise<Booking[]> {
+    const tenantId = await getCurrentUserTenantId()
+    if (!tenantId) throw new Error('No tenant found')
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        clients:client_id (first_name, last_name, email, phone),
+        services:service_id (name, duration_minutes, price),
+        users:staff_id (first_name, last_name)
+      `)
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .order('scheduled_at', { ascending: false }) // Most recent first
+
+    if (error) throw error
+    return data || []
+  }
+
   static async create(booking: Omit<BookingInsert, 'tenant_id'>): Promise<Booking> {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')

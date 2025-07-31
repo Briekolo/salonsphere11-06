@@ -7,6 +7,7 @@ import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
 import { useClientById } from '@/lib/hooks/useClients';
+import { useClientAppointments } from '@/lib/hooks/useBookings';
 import { useToast } from '@/components/providers/ToastProvider';
 import { ClientStatusBadge } from './ClientStatusBadge';
 import { ClientStatus } from '@/lib/services/clientStatusService';
@@ -17,16 +18,6 @@ interface ClientProfileProps {
   onBack: () => void
 }
 
-interface Appointment {
-  id: string
-  date: Date
-  service: string
-  duration: number
-  price: number
-  is_paid: boolean
-  notes?: string
-}
-
 interface Communication {
   id: string
   type: 'email' | 'phone' | 'sms'
@@ -34,57 +25,6 @@ interface Communication {
   subject: string
   content: string
 }
-
-const mockClient = {
-  id: '1',
-  firstName: 'Emma',
-  lastName: 'de Vries',
-  email: 'emma@example.com',
-  phone: '+31 6 12345678',
-  avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-  status: 'vip',
-  segment: 'premium',
-  dateOfBirth: new Date('1985-03-15'),
-  address: 'Hoofdstraat 123, 1234 AB Amsterdam',
-  joinDate: new Date('2022-06-15'),
-  lastVisit: new Date('2024-01-15'),
-  totalSpent: 1250,
-  appointmentsCount: 12,
-  tags: ['VIP', 'Regulier', 'Allergieën'],
-  notes: 'Allergisch voor lavendel. Prefereert afspraken in de ochtend.',
-  preferences: {
-    preferredServices: ['Pedicure', 'Manicure'],
-    preferredStaff: 'Julia',
-    communicationPreference: 'email'
-  }
-}
-
-const mockAppointments: Appointment[] = [
-  {
-    id: '1',
-    date: new Date('2024-01-15'),
-    service: 'Pedicure',
-    duration: 45,
-    price: 65,
-    is_paid: true
-  },
-  {
-    id: '2',
-    date: new Date('2024-01-08'),
-    service: 'Manicure',
-    duration: 60,
-    price: 45,
-    is_paid: true
-  },
-  {
-    id: '3',
-    date: new Date('2024-01-22'),
-    service: 'Pedicure',
-    duration: 45,
-    price: 65,
-    is_paid: false
-  }
-]
 
 const mockCommunications: Communication[] = [
   {
@@ -121,6 +61,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const { showToast } = useToast()
 
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
+  const { data: appointments, isLoading: appointmentsLoading, error: appointmentsError } = useClientAppointments(clientId);
 
   if (clientLoading) return <div>Laden...</div>
   if (clientError) return <div>Fout bij het laden van de klant.</div>
@@ -382,35 +323,64 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {mockAppointments.map((appointment) => (
-                  <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-gray-900">
-                          {format(appointment.date, 'd', { locale: nl })}
+              {appointmentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-gray-600">Afspraken laden...</div>
+                </div>
+              ) : appointmentsError ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-red-600">Fout bij het laden van afspraken</div>
+                </div>
+              ) : !appointments || appointments.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Geen afspraken gevonden voor deze klant</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {appointments.map((appointment) => (
+                    <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-gray-900">
+                            {format(new Date(appointment.scheduled_at), 'd', { locale: nl })}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {format(new Date(appointment.scheduled_at), 'MMM', { locale: nl })}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {format(new Date(appointment.scheduled_at), 'HH:mm', { locale: nl })}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {format(appointment.date, 'MMM', { locale: nl })}
+                        <div>
+                          <h4 className="font-medium text-gray-900">
+                            {appointment.services?.name || 'Onbekende service'}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {appointment.duration_minutes || appointment.services?.duration_minutes || 0} minuten
+                          </p>
+                          {appointment.users && (
+                            <p className="text-xs text-gray-500">
+                              Met {appointment.users.first_name} {appointment.users.last_name}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">{appointment.service}</h4>
-                        <p className="text-sm text-gray-600">{appointment.duration} minuten</p>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-4">
-                      <div className="text-center sm:text-right">
-                        <div className="font-semibold text-gray-900">€{appointment.price}</div>
-                        <span className={`status-chip ${getAppointmentStatusColor(appointment.is_paid)}`}>
-                          {appointment.is_paid ? 'Betaald' : 'Nog niet betaald'}
-                        </span>
+                      <div className="flex items-center justify-between sm:justify-end gap-4">
+                        <div className="text-center sm:text-right">
+                          <div className="font-semibold text-gray-900">
+                            €{appointment.price || appointment.services?.price || 0}
+                          </div>
+                          <span className={`status-chip ${getAppointmentStatusColor(appointment.is_paid)}`}>
+                            {appointment.is_paid ? 'Betaald' : 'Nog niet betaald'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
