@@ -22,7 +22,6 @@ interface Staff {
   last_name: string;
   email: string;
   avatar_url?: string;
-  bio?: string;
   specializations?: string[];
   rating?: number;
   review_count?: number;
@@ -86,7 +85,6 @@ export default function BookStaffPage({
             last_name,
             email,
             avatar_url,
-            bio,
             specializations
           )
         `)
@@ -277,13 +275,6 @@ export default function BookStaffPage({
                             ({member.review_count || 0} reviews)
                           </span>
                         </div>
-                      )}
-
-                      {/* Bio */}
-                      {member.bio && (
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                          {member.bio}
-                        </p>
                       )}
 
                       {/* Specializations */}

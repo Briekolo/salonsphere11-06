@@ -11,6 +11,7 @@ import {
   getDay
 } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { NotificationTriggers } from './notificationTriggers';
 
 export interface TimeSlot {
   date: string;
@@ -374,6 +375,24 @@ export class AvailabilityService {
 
           if (clientError) throw clientError;
           clientId = newClient.id;
+
+          // Trigger notification for new client registration through booking
+          try {
+            await NotificationTriggers.onNewClientRegistration(
+              hold.tenant_id,
+              {
+                id: newClient.id,
+                first_name: newClient.first_name,
+                last_name: newClient.last_name,
+                email: newClient.email,
+                phone: newClient.phone,
+                source: 'booking'
+              }
+            );
+          } catch (notificationError) {
+            console.error('Failed to send notification for new client registration via booking:', notificationError);
+            // Don't fail the booking confirmation if notification fails
+          }
         }
       }
 
@@ -556,6 +575,13 @@ export class AvailabilityService {
     weekSchedule: any
   ): Promise<void> {
     try {
+      // Get staff member name for notifications
+      const { data: staffMember } = await supabase
+        .from('users')
+        .select('first_name, last_name')
+        .eq('id', staffId)
+        .single();
+
       // Delete all existing schedules for this staff member
       await supabase
         .from('staff_schedules')
@@ -594,6 +620,23 @@ export class AvailabilityService {
         if (error) {
           throw error;
         }
+      }
+
+      // Send notification to admin about schedule change
+      try {
+        const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : 'Een medewerker';
+        
+        await NotificationTriggers.onStaffScheduleChanged(
+          tenantId,
+          staffId,
+          {
+            staff_name: staffName,
+            change_type: 'schedule_updated'
+          }
+        );
+      } catch (notificationError) {
+        console.error('Failed to send notification for schedule update:', notificationError);
+        // Don't fail the schedule update if notification fails
       }
 
     } catch (error) {
@@ -657,6 +700,34 @@ export class AvailabilityService {
       throw new Error('Fout bij aanmaken van uitzondering');
     }
 
+    // Send notification about schedule exception
+    try {
+      const { data: staffMember } = await supabase
+        .from('users')
+        .select('first_name, last_name')
+        .eq('id', exception.staff_id)
+        .single();
+
+      const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : 'Een medewerker';
+      const exceptionType = exception.is_available ? 'extra_hours' : 'time_off';
+      
+      await NotificationTriggers.onStaffScheduleChanged(
+        exception.tenant_id,
+        exception.staff_id,
+        {
+          staff_name: staffName,
+          change_type: exceptionType,
+          date: exception.date,
+          start_time: exception.start_time,
+          end_time: exception.end_time,
+          reason: exception.reason
+        }
+      );
+    } catch (notificationError) {
+      console.error('Failed to send notification for schedule exception:', notificationError);
+      // Don't fail the exception creation if notification fails
+    }
+
     return data;
   }
 
@@ -683,6 +754,34 @@ export class AvailabilityService {
       throw new Error('Fout bij bijwerken van uitzondering');
     }
 
+    // Send notification about schedule exception update
+    try {
+      const { data: staffMember } = await supabase
+        .from('users')
+        .select('first_name, last_name')
+        .eq('id', data.staff_id)
+        .single();
+
+      const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : 'Een medewerker';
+      const exceptionType = data.is_available ? 'extra_hours' : 'time_off';
+      
+      await NotificationTriggers.onStaffScheduleChanged(
+        data.tenant_id,
+        data.staff_id,
+        {
+          staff_name: staffName,
+          change_type: `${exceptionType}_updated`,
+          date: data.date,
+          start_time: data.start_time,
+          end_time: data.end_time,
+          reason: data.reason
+        }
+      );
+    } catch (notificationError) {
+      console.error('Failed to send notification for schedule exception update:', notificationError);
+      // Don't fail the update if notification fails
+    }
+
     return data;
   }
 
@@ -690,6 +789,13 @@ export class AvailabilityService {
    * Delete a schedule exception
    */
   static async deleteScheduleException(id: string): Promise<void> {
+    // Get exception details before deletion for notification
+    const { data: exception } = await supabase
+      .from('schedule_exceptions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
     const { error } = await supabase
       .from('schedule_exceptions')
       .delete()
@@ -698,6 +804,34 @@ export class AvailabilityService {
     if (error) {
       console.error('Error deleting schedule exception:', error);
       throw new Error('Fout bij verwijderen van uitzondering');
+    }
+
+    // Send notification about schedule exception deletion
+    if (exception) {
+      try {
+        const { data: staffMember } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('id', exception.staff_id)
+          .single();
+
+        const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : 'Een medewerker';
+        const exceptionType = exception.is_available ? 'extra_hours' : 'time_off';
+        
+        await NotificationTriggers.onStaffScheduleChanged(
+          exception.tenant_id,
+          exception.staff_id,
+          {
+            staff_name: staffName,
+            change_type: `${exceptionType}_cancelled`,
+            date: exception.date,
+            reason: exception.reason
+          }
+        );
+      } catch (notificationError) {
+        console.error('Failed to send notification for schedule exception deletion:', notificationError);
+        // Don't fail the deletion if notification fails
+      }
     }
   }
 

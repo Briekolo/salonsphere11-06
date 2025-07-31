@@ -83,19 +83,24 @@ export class NotificationTriggers {
   // Payment overdue
   static async onPaymentOverdue(
     tenantId: string,
-    userId: string,
+    userId: string | null,
     invoice: any
   ) {
     await NotificationService.create({
       tenant_id: tenantId,
-      user_id: userId,
+      user_id: userId, // null broadcasts to all users in tenant
       title: 'Betaling achterstallig',
-      message: `Factuur ${invoice.number} van €${invoice.total} is achterstallig`,
+      message: `Factuur ${invoice.number} van €${invoice.total} van ${invoice.client_name} is achterstallig`,
       type: 'payment',
       severity: 'error',
       action_url: `/invoices/${invoice.id}`,
       action_label: 'Factuur bekijken',
-      metadata: { invoice_id: invoice.id, amount: invoice.total }
+      metadata: { 
+        invoice_id: invoice.id, 
+        amount: invoice.total,
+        due_date: invoice.due_date,
+        client_name: invoice.client_name
+      }
     })
   }
 
@@ -104,16 +109,27 @@ export class NotificationTriggers {
     tenantId: string,
     client: any
   ) {
+    const isBookingRegistration = client.source === 'booking'
+    const title = isBookingRegistration ? 'Nieuwe klant via online boeking' : 'Nieuwe klant registratie'
+    const message = isBookingRegistration 
+      ? `${client.first_name} ${client.last_name} heeft zich geregistreerd via online boeking`
+      : `${client.first_name} ${client.last_name} is toegevoegd als nieuwe klant`
+
     await NotificationService.create({
       tenant_id: tenantId,
       user_id: null, // Broadcast to all users in tenant
-      title: 'Nieuwe klant registratie',
-      message: `${client.first_name} ${client.last_name} heeft zich geregistreerd`,
+      title,
+      message,
       type: 'client',
-      severity: 'info',
+      severity: 'success',
       action_url: `/clients/${client.id}`,
       action_label: 'Klant bekijken',
-      metadata: { client_id: client.id }
+      metadata: { 
+        client_id: client.id,
+        source: client.source || 'manual',
+        email: client.email,
+        phone: client.phone
+      }
     })
   }
 
@@ -169,6 +185,71 @@ export class NotificationTriggers {
       action_url: `/treatments`,
       action_label: 'Bekijken',
       metadata: { assignment_id: assignment.id }
+    })
+  }
+
+  // Staff schedule changed
+  static async onStaffScheduleChanged(
+    tenantId: string,
+    staffId: string,
+    scheduleChange: any
+  ) {
+    let title = 'Werkschema gewijzigd'
+    let message = `${scheduleChange.staff_name} heeft het werkschema bijgewerkt`
+    let severity: 'info' | 'warning' | 'error' | 'success' = 'info'
+
+    // Customize message based on change type
+    switch (scheduleChange.change_type) {
+      case 'schedule_updated':
+        message = `${scheduleChange.staff_name} heeft het werkschema bijgewerkt`
+        break
+      case 'time_off':
+        title = 'Verlof aangevraagd'
+        message = `${scheduleChange.staff_name} heeft verlof aangevraagd voor ${scheduleChange.date}`
+        severity = 'warning'
+        break
+      case 'extra_hours':
+        title = 'Extra uren toegevoegd'
+        message = `${scheduleChange.staff_name} heeft extra uren toegevoegd voor ${scheduleChange.date}`
+        severity = 'success'
+        break
+      case 'time_off_updated':
+        title = 'Verlof gewijzigd'
+        message = `${scheduleChange.staff_name} heeft verlof gewijzigd voor ${scheduleChange.date}`
+        severity = 'warning'
+        break
+      case 'extra_hours_updated':
+        title = 'Extra uren gewijzigd'
+        message = `${scheduleChange.staff_name} heeft extra uren gewijzigd voor ${scheduleChange.date}`
+        break
+      case 'time_off_cancelled':
+        title = 'Verlof geannuleerd'
+        message = `${scheduleChange.staff_name} heeft verlof geannuleerd voor ${scheduleChange.date}`
+        break
+      case 'extra_hours_cancelled':
+        title = 'Extra uren geannuleerd'
+        message = `${scheduleChange.staff_name} heeft extra uren geannuleerd voor ${scheduleChange.date}`
+        break
+    }
+
+    // Notify admin users (users with role admin or owner)
+    await NotificationService.create({
+      tenant_id: tenantId,
+      user_id: null, // Broadcast to all admin users in tenant
+      title,
+      message,
+      type: 'staff',
+      severity,
+      action_url: `/admin/staff/${staffId}/availability`,
+      action_label: 'Beschikbaarheid bekijken',
+      metadata: { 
+        staff_id: staffId,
+        change_type: scheduleChange.change_type,
+        date: scheduleChange.date,
+        start_time: scheduleChange.start_time,
+        end_time: scheduleChange.end_time,
+        reason: scheduleChange.reason
+      }
     })
   }
 

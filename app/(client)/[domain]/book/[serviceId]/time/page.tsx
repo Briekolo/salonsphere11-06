@@ -14,7 +14,9 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle,
-  Timer
+  Timer,
+  X,
+  Info
 } from 'lucide-react';
 import { 
   format, 
@@ -28,7 +30,9 @@ import {
   startOfWeek,
   endOfWeek,
   isBefore,
-  startOfDay
+  startOfDay,
+  getDay,
+  endOfDay
 } from 'date-fns';
 import { nl } from 'date-fns/locale';
 
@@ -106,7 +110,7 @@ export default function BookingCalendarPage({
   };
 
   // Get staff availability for the month
-  const { data: monthAvailability } = useStaffAvailability(
+  const { data: monthAvailability, isLoading: availabilityLoading, error: availabilityError } = useStaffAvailability(
     tenant?.id || '',
     format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
     format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
@@ -265,6 +269,56 @@ export default function BookingCalendarPage({
               </div>
             </div>
 
+            {/* Availability status info */}
+            {availabilityError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <p className="text-sm text-red-600">
+                    Kon beschikbaarheid niet laden. Probeer het opnieuw.
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {monthAvailability && Object.values(monthAvailability).every(available => !available) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-amber-700 font-medium">
+                      Geen beschikbare dagen deze maand
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      {isAnyStaff ? 'Geen medewerkers beschikbaar' : `${staff?.first_name} ${staff?.last_name} werkt niet deze maand`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {!isAnyStaff && staff && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                  <p className="text-sm text-blue-700">
+                    Beschikbaarheid van <span className="font-medium">{staff.first_name} {staff.last_name}</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {isAnyStaff && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                  <p className="text-sm text-gray-700">
+                    Beschikbaarheid gebaseerd op alle medewerkers
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Calendar grid */}
             <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
               {['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].map(day => (
@@ -274,49 +328,108 @@ export default function BookingCalendarPage({
               ))}
             </div>
             
-            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
-              {days.map(day => {
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const isAvailable = monthAvailability?.[dateStr] || false;
-                const isPast = isBefore(day, startOfDay(new Date()));
-                const isCurrentMonth = isSameMonth(day, currentMonth);
-                const isSelected = selectedDate && format(selectedDate, 'yyyy-MM-dd') === dateStr;
-                
-                return (
-                  <button
-                    key={dateStr}
-                    onClick={() => handleDateSelect(day)}
-                    disabled={!isAvailable || isPast || !isCurrentMonth}
-                    className={`
-                      aspect-square p-1 sm:p-2 rounded-lg text-xs sm:text-sm transition-colors min-h-[44px] flex items-center justify-center
-                      ${!isCurrentMonth ? 'text-gray-300' : ''}
-                      ${isToday(day) ? 'bg-[#E3ECFB] text-[#7091D9]' : ''}
-                      ${isSelected ? 'bg-[#02011F] text-white' : ''}
-                      ${isAvailable && !isPast && isCurrentMonth && !isSelected ? 'hover:bg-gray-100 text-[#010009] active:bg-gray-200' : ''}
-                      ${!isAvailable || isPast ? 'text-gray-300 cursor-not-allowed' : ''}
-                    `}
-                    style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
-                  >
-                    {format(day, 'd')}
-                  </button>
-                );
-              })}
-            </div>
+            {availabilityLoading ? (
+              <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+                {[...Array(35)].map((_, i) => (
+                  <div key={i} className="aspect-square bg-gray-100 animate-pulse rounded-lg min-h-[44px]" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+                {days.map(day => {
+                  const dateStr = format(day, 'yyyy-MM-dd');
+                  const isAvailable = monthAvailability?.[dateStr] || false;
+                  const isPast = isBefore(day, startOfDay(new Date()));
+                  const isCurrentMonth = isSameMonth(day, currentMonth);
+                  const isSelected = selectedDate && format(selectedDate, 'yyyy-MM-dd') === dateStr;
+                  const dayOfWeek = getDay(day); // 0 = Sunday, 1 = Monday, etc.
+                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                  
+                  // Determine availability reason for tooltip
+                  let availabilityReason = '';
+                  if (isPast) {
+                    availabilityReason = 'Verleden datum';
+                  } else if (!isCurrentMonth) {
+                    availabilityReason = 'Buiten huidige maand';
+                  } else if (!isAvailable && isWeekend) {
+                    availabilityReason = 'Weekend - salon gesloten';
+                  } else if (!isAvailable && !isAnyStaff) {
+                    availabilityReason = `${staff?.first_name} werkt niet op deze dag`;
+                  } else if (!isAvailable) {
+                    availabilityReason = 'Geen medewerkers beschikbaar';
+                  }
+                  
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => handleDateSelect(day)}
+                      disabled={!isAvailable || isPast || !isCurrentMonth}
+                      title={availabilityReason || ''}
+                      className={`
+                        aspect-square p-1 sm:p-2 rounded-lg text-xs sm:text-sm transition-all duration-200 min-h-[44px] flex items-center justify-center relative group
+                        ${!isCurrentMonth ? 'text-gray-300' : ''}
+                        ${isToday(day) && isAvailable ? 'bg-[#E3ECFB] text-[#7091D9] ring-2 ring-[#7091D9] ring-opacity-30' : ''}
+                        ${isSelected ? 'bg-[#02011F] text-white shadow-lg' : ''}
+                        ${isAvailable && !isPast && isCurrentMonth && !isSelected && !isToday(day) ? 'hover:bg-gray-100 text-[#010009] active:bg-gray-200 border border-transparent hover:border-gray-300' : ''}
+                        ${!isAvailable && !isPast && isCurrentMonth ? (
+                          isWeekend 
+                            ? 'bg-gray-50 text-gray-400 cursor-not-allowed relative' 
+                            : 'bg-red-50 text-red-400 cursor-not-allowed relative'
+                        ) : ''}
+                        ${isPast ? 'text-gray-300 cursor-not-allowed bg-gray-50' : ''}
+                      `}
+                      style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                    >
+                      <span className="relative z-10">{format(day, 'd')}</span>
+                      {!isAvailable && !isPast && isCurrentMonth && (
+                        <X className="absolute inset-0 m-auto h-3 w-3 text-gray-400 opacity-60" />
+                      )}
+                      
+                      {/* Tooltip on hover */}
+                      {availabilityReason && (
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
+                          {availabilityReason}
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Legend */}
-            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-4 text-xs">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-3 h-3 bg-[#02011F] rounded"></div>
-                <span className="text-gray-600">Geselecteerd</span>
+            {/* Enhanced Legend */}
+            <div className="mt-3 sm:mt-4 space-y-2">
+              <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-3 h-3 bg-[#02011F] rounded shadow-sm"></div>
+                  <span className="text-gray-600">Geselecteerde datum</span>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-3 h-3 bg-white border border-gray-300 rounded"></div>
+                  <span className="text-gray-600">Beschikbaar</span>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-3 h-3 bg-red-50 rounded relative flex items-center justify-center">
+                    <X className="h-2 w-2 text-red-400" />
+                  </div>
+                  <span className="text-gray-600">Geen medewerkers beschikbaar</span>
+                </div>
+                {!isAnyStaff && (
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-3 h-3 bg-gray-50 rounded relative flex items-center justify-center">
+                      <X className="h-2 w-2 text-gray-400" />
+                    </div>
+                    <span className="text-gray-600">Medewerker werkt niet</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-3 h-3 bg-gray-100 rounded"></div>
-                <span className="text-gray-600">Beschikbaar</span>
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-3 h-3 bg-gray-50 rounded"></div>
-                <span className="text-gray-600">Niet beschikbaar</span>
-              </div>
+              
+              {monthAvailability && Object.keys(monthAvailability).length > 0 && (
+                <div className="text-xs text-gray-500">
+                  <span>💡 Tip: Beweeg je muis over een datum voor meer informatie</span>
+                </div>
+              )}
             </div>
           </div>
 
