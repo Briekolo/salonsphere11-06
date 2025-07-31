@@ -9,6 +9,7 @@ import {
   InvoiceFilters,
   InvoiceStatus 
 } from '@/types/invoice';
+import { NotificationTriggers } from './notificationTriggers';
 
 export class InvoiceService {
   // Generate invoice number
@@ -295,14 +296,38 @@ export class InvoiceService {
 
   // Add payment
   static async addPayment(data: AddPaymentData): Promise<void> {
-    const { error } = await supabase
+    const { data: payment, error } = await supabase
       .from('invoice_payments')
       .insert({
         ...data,
         payment_date: data.payment_date || new Date().toISOString().split('T')[0]
-      });
+      })
+      .select()
+      .single();
 
     if (error) throw error;
+
+    // Get invoice details for notification
+    try {
+      const invoice = await this.getInvoiceById(data.invoice_id);
+      
+      await NotificationTriggers.onPaymentReceived(
+        invoice.tenant_id,
+        data.created_by, // The user who recorded the payment
+        {
+          id: payment.id,
+          amount: data.amount,
+          client_name: `${invoice.clients?.first_name || ''} ${invoice.clients?.last_name || ''}`.trim(),
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          payment_method: data.payment_method,
+          payment_date: payment.payment_date
+        }
+      );
+    } catch (notificationError) {
+      console.error('Failed to send notification for payment received:', notificationError);
+      // Don't fail the payment recording if notification fails
+    }
   }
 
   // Delete payment
@@ -410,6 +435,25 @@ export class InvoiceService {
   static async checkOverdueInvoices(tenantId: string): Promise<void> {
     const today = new Date().toISOString().split('T')[0];
     
+    // First, get the invoices that will become overdue
+    const { data: overdueInvoices } = await supabase
+      .from('invoices')
+      .select(`
+        id,
+        invoice_number,
+        total_amount,
+        due_date,
+        clients (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('tenant_id', tenantId)
+      .in('status', ['sent', 'viewed', 'partially_paid'])
+      .lt('due_date', today);
+    
+    // Update their status to overdue
     const { error } = await supabase
       .from('invoices')
       .update({
@@ -421,5 +465,27 @@ export class InvoiceService {
       .lt('due_date', today);
     
     if (error) throw error;
+
+    // Send notifications for each overdue invoice
+    if (overdueInvoices && overdueInvoices.length > 0) {
+      for (const invoice of overdueInvoices) {
+        try {
+          await NotificationTriggers.onPaymentOverdue(
+            tenantId,
+            null, // Broadcast to all users in tenant
+            {
+              id: invoice.id,
+              number: invoice.invoice_number,
+              total: invoice.total_amount,
+              due_date: invoice.due_date,
+              client_name: `${invoice.clients?.first_name || ''} ${invoice.clients?.last_name || ''}`.trim()
+            }
+          );
+        } catch (notificationError) {
+          console.error('Failed to send overdue payment notification:', notificationError);
+          // Continue with other notifications even if one fails
+        }
+      }
+    }
   }
 }

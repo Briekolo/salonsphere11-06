@@ -1,5 +1,6 @@
 import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
 import { Database } from '@/types/database'
+import { NotificationTriggers } from './notificationTriggers'
 
 type Client = Database['public']['Tables']['clients']['Row']
 type ClientInsert = Database['public']['Tables']['clients']['Insert']
@@ -46,6 +47,24 @@ export class ClientService {
       .single()
 
     if (error) throw error
+
+    // Trigger notification for new client registration
+    try {
+      await NotificationTriggers.onNewClientRegistration(
+        tenantId,
+        {
+          id: data.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone: data.phone
+        }
+      )
+    } catch (notificationError) {
+      console.error('Failed to send notification for new client registration:', notificationError)
+      // Don't fail the client creation if notification fails
+    }
+
     return data
   }
 

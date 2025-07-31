@@ -1,5 +1,6 @@
 import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
 import { Database } from '@/types/database'
+import { NotificationTriggers } from './notificationTriggers'
 
 type Booking = Database['public']['Tables']['bookings']['Row']
 type BookingInsert = Database['public']['Tables']['bookings']['Insert']
@@ -120,10 +121,33 @@ export class BookingService {
     const { data, error } = await supabase
       .from('bookings')
       .insert({ ...booking, tenant_id: tenantId })
-      .select()
+      .select(`
+        *,
+        clients:client_id (first_name, last_name, email, phone),
+        services:service_id (name, duration_minutes, price),
+        users:staff_id (first_name, last_name)
+      `)
       .single()
 
     if (error) throw error
+
+    // Trigger notification for new appointment
+    try {
+      await NotificationTriggers.onNewAppointment(
+        tenantId,
+        data.staff_id,
+        {
+          id: data.id,
+          client_name: `${data.clients?.first_name || ''} ${data.clients?.last_name || ''}`.trim(),
+          service_name: data.services?.name || 'Unknown Service',
+          scheduled_at: data.scheduled_at
+        }
+      )
+    } catch (notificationError) {
+      console.error('Failed to send notification for new appointment:', notificationError)
+      // Don't fail the booking creation if notification fails
+    }
+
     return data
   }
 
@@ -149,7 +173,12 @@ export class BookingService {
         .update(updates)
         .eq('id', id)
         .eq('tenant_id', tenantId)
-        .select()
+        .select(`
+          *,
+          clients:client_id (first_name, last_name, email, phone),
+          services:service_id (name, duration_minutes, price),
+          users:staff_id (first_name, last_name)
+        `)
         .single()
 
       console.log('Supabase response:', { data, error })
@@ -181,6 +210,40 @@ export class BookingService {
       if (!data) {
         throw new Error('No data returned from update - booking may not exist or you may not have permission')
       }
+
+      // Trigger notifications for relevant updates
+      try {
+        // Check if booking is being cancelled (status changed to cancelled)
+        if (updates.status === 'cancelled') {
+          await NotificationTriggers.onAppointmentCancelled(
+            tenantId,
+            data.staff_id,
+            {
+              id: data.id,
+              client_name: `${data.clients?.first_name || ''} ${data.clients?.last_name || ''}`.trim(),
+              service_name: data.services?.name || 'Unknown Service',
+              scheduled_at: data.scheduled_at
+            }
+          )
+        }
+        // Check if appointment time was rescheduled
+        else if (updates.scheduled_at && updates.scheduled_at !== data.scheduled_at) {
+          // For rescheduling, we'll use the new appointment trigger
+          await NotificationTriggers.onNewAppointment(
+            tenantId,
+            data.staff_id,
+            {
+              id: data.id,
+              client_name: `${data.clients?.first_name || ''} ${data.clients?.last_name || ''}`.trim(),
+              service_name: data.services?.name || 'Unknown Service',
+              scheduled_at: data.scheduled_at
+            }
+          )
+        }
+      } catch (notificationError) {
+        console.error('Failed to send notification for booking update:', notificationError)
+        // Don't fail the update if notification fails
+      }
       
       return data
     } catch (error) {
@@ -193,6 +256,9 @@ export class BookingService {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // Get booking details before deletion for notification
+    const bookingToDelete = await this.getById(id)
+
     const { error } = await supabase
       .from('bookings')
       .delete()
@@ -200,6 +266,25 @@ export class BookingService {
       .eq('tenant_id', tenantId)
 
     if (error) throw error
+
+    // Trigger notification for deleted appointment
+    if (bookingToDelete) {
+      try {
+        await NotificationTriggers.onAppointmentCancelled(
+          tenantId,
+          bookingToDelete.staff_id,
+          {
+            id: bookingToDelete.id,
+            client_name: `${bookingToDelete.clients?.first_name || ''} ${bookingToDelete.clients?.last_name || ''}`.trim(),
+            service_name: bookingToDelete.services?.name || 'Unknown Service',
+            scheduled_at: bookingToDelete.scheduled_at
+          }
+        )
+      } catch (notificationError) {
+        console.error('Failed to send notification for booking deletion:', notificationError)
+        // Don't fail the deletion if notification fails
+      }
+    }
   }
 
   static async getUpcoming(limit: number = 10): Promise<Booking[]> {
