@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { useTenant } from '@/lib/hooks/useTenant';
-import { useToast } from '@/lib/hooks/useToast';
+import { useToast } from '@/components/providers/ToastProvider';
 import { supabase } from '@/lib/supabase';
 import { ValidationService } from '@/lib/services/validationService';
 import { ToastContainer } from '@/components/ui/Toast';
