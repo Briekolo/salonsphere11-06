@@ -21,6 +21,7 @@ export interface TenantInfo {
     allow_guest_booking: boolean;
   };
   logo_url?: string;
+  description?: string;
   address?: string;
   city?: string;
   postal_code?: string;
@@ -47,6 +48,7 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
       // In development: /salon-name/services -> extract "salon-name"
       const subdomain = domain;
       
+      // Try database query for all subdomains
       const { data, error } = await supabase
         .from('tenants')
         .select('*')
@@ -54,14 +56,8 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
         .single();
         
       if (error) {
-        console.error('Tenant not found:', subdomain, error);
-        // Check if we have a mock tenant for development
-        const mockTenant = getMockTenant(subdomain);
-        // For testing, use the real tenant ID from database
-        if (subdomain === 'brieks-salon') {
-          mockTenant.id = '7aa448b8-3166-4693-a13d-e833748292db';
-        }
-        return mockTenant;
+        console.error('Tenant not found in database:', subdomain, error);
+        return null;
       }
       
       return data as TenantInfo;
@@ -107,7 +103,7 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
     return null;
   } catch (error) {
     console.error('Error resolving tenant:', error);
-    return getMockTenant(domain);
+    return null;
   }
 }
 
