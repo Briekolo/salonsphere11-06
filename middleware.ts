@@ -41,7 +41,7 @@ export async function middleware(req: NextRequest) {
   
   // IMPORTANT: Use getUser() to refresh the session and set cookies
   // This is critical for server-side auth to work
-  const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+  await supabase.auth.getUser()
   
   // Then get the session
   const { data: { session }, error } = await supabase.auth.getSession()
@@ -130,12 +130,18 @@ export async function middleware(req: NextRequest) {
       authCache.set(cacheKey, { data: { role: userRole }, timestamp: Date.now() })
     }
 
-    // Redirect staff users to staff portal
+    // Redirect based on user role
+    const redirectUrl = req.nextUrl.clone()
     if (userRole === 'staff') {
-      const redirectUrl = req.nextUrl.clone()
       redirectUrl.pathname = '/staff'
       return NextResponse.redirect(redirectUrl)
+    } else if (userRole === 'admin' || userRole === 'owner') {
+      redirectUrl.pathname = '/admin'
+      return NextResponse.redirect(redirectUrl)
     }
+    // Default to dashboard for other roles
+    redirectUrl.pathname = '/dashboard'
+    return NextResponse.redirect(redirectUrl)
   }
 
   // Admin route protection
