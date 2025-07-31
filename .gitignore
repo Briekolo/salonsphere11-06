@@ -4,6 +4,8 @@ node_modules/
 *.log
 .vercel/
 .env*.local
+.env
+marketing.env
 dist/
 build/
 tsconfig.tsbuildinfo
