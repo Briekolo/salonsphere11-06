@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ClientsOverview } from './ClientsOverview'
 import { ClientsList } from './ClientsList'
 import { ClientProfile } from './ClientProfile'
@@ -10,15 +10,25 @@ import { FileText, PlusCircle } from 'lucide-react'
 import { useClients as useClientsHook } from '@/lib/hooks/useClients'
 import { useCreateClient } from '@/lib/hooks/useClients'
 import { ClientForm } from './ClientForm'
+import { ClientStatus } from '@/lib/services/clientStatusService'
 
 export function ClientsContent() {
   const [view, setView] = useState<'overview' | 'list' | 'profile' | 'form'>('overview')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all')
 
 
   const { data: allClients = [], isLoading: clientsLoading } = useClientsHook(searchTerm)
   const createMutation = useCreateClient()
+
+  // Filter clients by status
+  const filteredClients = useMemo(() => {
+    if (statusFilter === 'all') {
+      return allClients
+    }
+    return allClients.filter(client => client.status === statusFilter)
+  }, [allClients, statusFilter])
 
   const handleClientSelect = (clientId: string) => {
     setSelectedClientId(clientId)
@@ -69,6 +79,8 @@ export function ClientsContent() {
               <ClientsFilters 
                 searchTerm={searchTerm} 
                 onSearch={setSearchTerm}
+                statusFilter={statusFilter}
+                onStatusFilter={setStatusFilter}
                 isLoading={clientsLoading}
               />
             </div>
@@ -94,12 +106,14 @@ export function ClientsContent() {
             <ClientForm clientId={null} onBack={() => setView('overview')} />
           ) : view === 'overview' ? (
             <ClientsOverview
+              clients={filteredClients}
               onClientSelect={handleClientSelect}
               onViewChange={setView}
               searchTerm={searchTerm}
             />
           ) : (
             <ClientsList
+              clients={filteredClients}
               onClientSelect={handleClientSelect}
               onViewChange={setView}
               searchTerm={searchTerm}

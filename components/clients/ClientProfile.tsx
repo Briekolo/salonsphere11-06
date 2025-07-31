@@ -8,6 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
 import { useClientById } from '@/lib/hooks/useClients';
 import { useToast } from '@/components/providers/ToastProvider';
+import { ClientStatusBadge } from './ClientStatusBadge';
+import { ClientStatus } from '@/lib/services/clientStatusService';
 import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils';
 
 interface ClientProfileProps {
@@ -200,9 +202,11 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </div>
 
               <div className="flex items-center justify-center sm:justify-start lg:justify-start gap-2 mt-3 sm:mt-4 lg:mt-0">
-                <span className={`status-chip text-xs sm:text-sm ${getStatusColor(client.status || 'active')}`}>
-                  {client.status?.toUpperCase() || 'ACTIEF'}
-                </span>
+                <ClientStatusBadge 
+                  status={(client.status as ClientStatus) || 'inactive'} 
+                  showTooltip={true}
+                  className="text-xs sm:text-sm"
+                />
                 <button className="p-1 hover:bg-gray-100 rounded min-h-[32px] min-w-[32px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center">
                   <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
                 </button>

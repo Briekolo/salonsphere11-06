@@ -4,6 +4,9 @@ import { Phone, Mail, MoreVertical, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useClients, Client } from '@/lib/hooks/useClients'
+import { ClientStatusBadge } from './ClientStatusBadge'
+import { ClientStatusDropdown } from './ClientStatusDropdown'
+import { ClientStatus } from '@/lib/services/clientStatusService'
 
 // Utility functions for formatting
 const formatCurrency = (amount: number | null | undefined): string => {
@@ -28,6 +31,7 @@ const formatLastVisit = (date: string | null | undefined): string => {
 }
 
 interface ClientsListProps {
+  clients: Client[]
   onClientSelect: (clientId: string) => void
   onViewChange: (view: 'overview' | 'list') => void
   searchTerm: string
@@ -52,12 +56,7 @@ const getMatchedField = (client: Client, query: string): string | null => {
   return null
 }
 
-export function ClientsList({ onClientSelect, onViewChange, searchTerm }: ClientsListProps) {
-  const { data: clients = [], isLoading } = useClients(searchTerm)
-
-  if (isLoading) {
-    return <div className="card p-6 text-center">Klanten laden...</div>
-  }
+export function ClientsList({ clients, onClientSelect, onViewChange, searchTerm }: ClientsListProps) {
 
   // Empty state for no results
   if (clients.length === 0 && searchTerm.trim()) {
@@ -149,12 +148,21 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
 
             <div className="grid grid-cols-2 gap-4 text-sm mb-3">
               <div>
+                <span className="text-gray-600">Status:</span>
+                <div className="mt-1">
+                  <ClientStatusBadge 
+                    status={(client.status as ClientStatus) || 'inactive'} 
+                    showTooltip={false}
+                  />
+                </div>
+              </div>
+              <div>
                 <span className="text-gray-600">Uitgegeven:</span>
                 <div className="font-medium text-gray-900">
                   {formatCurrency(client.total_spent)}
                 </div>
               </div>
-              <div>
+              <div className="col-span-2">
                 <span className="text-gray-600">Laatste bezoek:</span>
                 <div className="text-gray-900">
                   {formatLastVisit(client.last_visit_date)}
@@ -186,6 +194,7 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4 font-medium text-gray-600">Klant</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Contact</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Uitgegeven</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Laatste bezoek</th>
               <th className="text-left py-3 px-4 font-medium text-gray-600">Acties</th>
@@ -237,6 +246,12 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
                   </div>
                 </td>
                 <td className="py-4 px-4">
+                  <ClientStatusBadge 
+                    status={(client.status as ClientStatus) || 'inactive'} 
+                    showTooltip={false}
+                  />
+                </td>
+                <td className="py-4 px-4">
                   <span className="text-sm font-medium text-gray-900">
                     {formatCurrency(client.total_spent)}
                   </span>
@@ -248,15 +263,37 @@ export function ClientsList({ onClientSelect, onViewChange, searchTerm }: Client
                 </td>
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-1">
-                    <button className="p-1 hover:bg-gray-200 rounded">
+                    <button 
+                      className="p-1 hover:bg-gray-200 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (client.phone) {
+                          window.open(`tel:${client.phone}`, '_self')
+                        }
+                      }}
+                    >
                       <Phone className="w-4 h-4 text-gray-500" />
                     </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
+                    <button 
+                      className="p-1 hover:bg-gray-200 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (client.email) {
+                          window.open(`mailto:${client.email}`, '_self')
+                        }
+                      }}
+                    >
                       <Mail className="w-4 h-4 text-gray-500" />
                     </button>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <MoreVertical className="w-4 h-4 text-gray-500" />
-                    </button>
+                    <ClientStatusDropdown
+                      clientId={client.id}
+                      currentStatus={(client.status as ClientStatus) || 'inactive'}
+                      onViewClient={onClientSelect}
+                      onStatusChange={(clientId, newStatus) => {
+                        // TODO: Implement status change functionality
+                        console.log('Status change:', clientId, newStatus)
+                      }}
+                    />
                   </div>
                 </td>
               </tr>

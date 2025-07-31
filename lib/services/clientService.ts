@@ -1,6 +1,7 @@
 import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import { NotificationTriggers } from './notificationTriggers'
+import { ClientStatusService } from './clientStatusService'
 
 type Client = Database['public']['Tables']['clients']['Row']
 type ClientInsert = Database['public']['Tables']['clients']['Insert']
@@ -19,12 +20,17 @@ export class ClientService {
 
     if (error) throw error
     
-    // For now, return clients with default values for calculated fields
-    // We'll fetch these separately to avoid breaking the display
-    return (data || []).map(client => ({
+    const clients = data || []
+    
+    // Calculate status for all clients in bulk for efficiency
+    const clientIds = clients.map(c => c.id)
+    const statusMap = await ClientStatusService.calculateBulkClientStatus(clientIds)
+    
+    return clients.map(client => ({
       ...client,
       total_spent: client.total_spent || 0,
-      last_visit_date: client.last_visit_date || null
+      last_visit_date: client.last_visit_date || null,
+      status: statusMap[client.id] || 'inactive'
     }))
   }
 
@@ -40,7 +46,15 @@ export class ClientService {
       .single()
 
     if (error) throw error
-    return data
+    if (!data) return null
+
+    // Calculate status for this specific client
+    const status = await ClientStatusService.calculateClientStatus(id)
+    
+    return {
+      ...data,
+      status
+    }
   }
 
   static async create(client: Omit<ClientInsert, 'tenant_id'>): Promise<Client> {
@@ -117,11 +131,17 @@ export class ClientService {
 
     if (error) throw error
     
-    // Return with default values for calculated fields
-    return (data || []).map(client => ({
+    const clients = data || []
+    
+    // Calculate status for all search results in bulk
+    const clientIds = clients.map(c => c.id)
+    const statusMap = await ClientStatusService.calculateBulkClientStatus(clientIds)
+    
+    return clients.map(client => ({
       ...client,
       total_spent: client.total_spent || 0,
-      last_visit_date: client.last_visit_date || null
+      last_visit_date: client.last_visit_date || null,
+      status: statusMap[client.id] || 'inactive'
     }))
   }
 

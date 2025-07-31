@@ -1,17 +1,22 @@
 "use client"
 
-import { Search, X } from 'lucide-react'
+import { Search, X, Filter } from 'lucide-react'  
 import { useState, useRef, useEffect } from 'react'
+import { ClientStatus } from '@/lib/services/clientStatusService'
 
 interface ClientsFiltersProps {
   searchTerm: string
   onSearch: (value: string) => void
+  statusFilter: ClientStatus | 'all'
+  onStatusFilter: (status: ClientStatus | 'all') => void
   isLoading?: boolean
 }
 
 export function ClientsFilters({ 
   searchTerm, 
-  onSearch, 
+  onSearch,
+  statusFilter,
+  onStatusFilter,
   isLoading = false
 }: ClientsFiltersProps) {
   const [localValue, setLocalValue] = useState(searchTerm)
@@ -62,8 +67,17 @@ export function ClientsFilters({
     setShowSuggestions(false)
   }
 
+  const statusOptions = [
+    { value: 'all' as const, label: 'Alle statussen' },
+    { value: 'active' as ClientStatus, label: 'Actief' },
+    { value: 'inactive' as ClientStatus, label: 'Inactief' },
+    { value: 'new' as ClientStatus, label: 'Nieuw' },
+    { value: 'vip' as ClientStatus, label: 'VIP' }
+  ]
+
   return (
-    <div className="w-full lg:w-auto">
+    <div className="w-full lg:w-auto flex flex-col lg:flex-row gap-4">
+      {/* Search Input */}
       <div className="relative w-full lg:w-64">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         {isLoading && (
@@ -113,6 +127,22 @@ export function ClientsFilters({
             </div>
           </div>
         )}
+      </div>
+      
+      {/* Status Filter */}
+      <div className="relative w-full lg:w-48">
+        <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <select
+          value={statusFilter}
+          onChange={(e) => onStatusFilter(e.target.value as ClientStatus | 'all')}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] bg-white appearance-none"
+        >
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
       
     </div>
