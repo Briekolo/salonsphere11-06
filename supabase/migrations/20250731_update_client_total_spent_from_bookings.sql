@@ -2,7 +2,7 @@
 -- Date: 2025-07-31
 
 -- Function to update a single client's total_spent
-CREATE OR REPLACE FUNCTION update_client_total_spent(client_id UUID)
+CREATE OR REPLACE FUNCTION update_client_total_spent(p_client_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -18,23 +18,23 @@ BEGIN
   INTO v_total, v_count
   FROM bookings b
   JOIN services s ON s.id = b.service_id
-  WHERE b.client_id = client_id
+  WHERE b.client_id = p_client_id
     AND b.is_paid = true
     AND s.price IS NOT NULL
     AND s.price > 0;
 
   -- Log for debugging
-  RAISE NOTICE 'Updating client % - found % paid bookings, total: %', client_id, v_count, v_total;
+  RAISE NOTICE 'Updating client % - found % paid bookings, total: %', p_client_id, v_count, v_total;
 
   -- Update the client record
   UPDATE clients c
   SET total_spent = v_total
-  WHERE c.id = client_id;
+  WHERE c.id = p_client_id;
 END;
 $$;
 
 -- Function to update all clients' total_spent for a tenant
-CREATE OR REPLACE FUNCTION update_all_clients_total_spent(tenant_id UUID)
+CREATE OR REPLACE FUNCTION update_all_clients_total_spent(p_tenant_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -56,10 +56,10 @@ BEGIN
         AND s.price > 0
     ), 0
   )
-  WHERE c.tenant_id = tenant_id;
+  WHERE c.tenant_id = p_tenant_id;
   
   GET DIAGNOSTICS v_updated = ROW_COUNT;
-  RAISE NOTICE 'Updated % clients for tenant %', v_updated, tenant_id;
+  RAISE NOTICE 'Updated % clients for tenant %', v_updated, p_tenant_id;
 END;
 $$;
 
