@@ -77,22 +77,116 @@ export function InventoryContent() {
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const text = await file.text()
-    const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean)
-    const headers = headerLine.split(',')
-    lines.forEach(line => {
-      const values = line.split(',')
-      if (values.length !== headers.length) return
-      const item: any = {}
-      headers.forEach((h, idx) => item[h] = values[idx])
-      // Convert numeric fields
-      item.current_stock = parseInt(item.current_stock)
-      item.min_stock = parseInt(item.min_stock)
-      item.max_stock = parseInt(item.max_stock)
-      item.cost_per_unit = parseFloat(item.cost_per_unit)
-      createMutation.mutate(item)
-    })
-    e.target.value = '' // reset input
+
+    try {
+      // Validate file type
+      if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+        alert('Alleen CSV bestanden zijn toegestaan')
+        e.target.value = ''
+        return
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Bestand is te groot. Maximum grootte is 5MB')
+        e.target.value = ''
+        return
+      }
+
+      const text = await file.text()
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '')
+      
+      if (lines.length < 2) {
+        alert('CSV bestand moet minimaal een header rij en één data rij bevatten')
+        e.target.value = ''
+        return
+      }
+
+      const [headerLine, ...dataLines] = lines
+      const headers = headerLine.split(',').map(h => h.trim().replace(/"/g, ''))
+      
+      // Validate required headers
+      const requiredHeaders = ['name', 'current_stock', 'min_stock', 'max_stock', 'cost_per_unit', 'unit']
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+      if (missingHeaders.length > 0) {
+        alert(`Ontbrekende kolommen: ${missingHeaders.join(', ')}. Vereiste kolommen: ${requiredHeaders.join(', ')}`)
+        e.target.value = ''
+        return
+      }
+
+      const errors: string[] = []
+      let processedCount = 0
+
+      for (const [index, line] of dataLines.entries()) {
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+        const lineNumber = index + 2 // +2 because we start from line 2 (after header)
+        
+        if (values.length !== headers.length) {
+          errors.push(`Regel ${lineNumber}: Aantal kolommen klopt niet (verwacht ${headers.length}, gevonden ${values.length})`)
+          continue
+        }
+
+        const item: any = {}
+        headers.forEach((header, idx) => {
+          item[header] = values[idx]
+        })
+
+        // Validate and convert required fields
+        try {
+          // Name validation
+          if (!item.name || item.name.trim() === '') {
+            errors.push(`Regel ${lineNumber}: Productnaam is verplicht`)
+            continue
+          }
+
+          // Numeric field validation and conversion
+          const numericFields = ['current_stock', 'min_stock', 'max_stock', 'cost_per_unit']
+          for (const field of numericFields) {
+            const value = parseFloat(item[field])
+            if (isNaN(value) || value < 0) {
+              errors.push(`Regel ${lineNumber}: ${field} moet een geldig positief getal zijn`)
+              continue
+            }
+            item[field] = field === 'cost_per_unit' ? value : Math.floor(value)
+          }
+
+          // Unit validation
+          if (!item.unit || item.unit.trim() === '') {
+            errors.push(`Regel ${lineNumber}: Eenheid is verplicht`)
+            continue
+          }
+
+          // Set optional fields with defaults
+          item.category = item.category || 'Geen categorie'
+          item.supplier = item.supplier || ''
+          item.location = item.location || ''
+          item.sku = item.sku || ''
+          item.description = item.description || ''
+
+          // Try to create the item
+          await createMutation.mutateAsync(item)
+          processedCount++
+          
+        } catch (error) {
+          errors.push(`Regel ${lineNumber}: Fout bij verwerken - ${error instanceof Error ? error.message : 'Onbekende fout'}`)
+        }
+      }
+
+      // Show results
+      if (errors.length > 0) {
+        const errorMessage = `Import voltooid met ${processedCount} succesvolle items en ${errors.length} fouten:\n\n${errors.slice(0, 10).join('\n')}` + 
+          (errors.length > 10 ? `\n\n... en ${errors.length - 10} meer fouten` : '')
+        alert(errorMessage)
+      } else {
+        alert(`Import succesvol voltooid! ${processedCount} items toegevoegd.`)
+      }
+
+    } catch (error) {
+      console.error('Import error:', error)
+      alert('Fout bij het importeren van het bestand. Controleer of het een geldig CSV bestand is.')
+    } finally {
+      e.target.value = '' // reset input
+    }
   }
 
   const handleBackToOverview = () => {

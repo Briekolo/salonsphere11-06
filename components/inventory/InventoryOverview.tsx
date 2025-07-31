@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Package, AlertTriangle, Edit, Plus, Minus, History, ShoppingCart } from 'lucide-react'
+import { Package, AlertTriangle, Edit, Plus, Minus, History } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useInventoryItems, useLowStockItems, InventoryItem } from '@/lib/hooks/useInventoryItems'
@@ -49,7 +49,7 @@ else if (status === 'out-of-stock') color = 'bg-red-600'
   }
 }
 
-const LowStockAlert = ({ onNewOrder }: { onNewOrder: () => void }) => {
+const LowStockAlert = () => {
   const { data: lowStockItems = [], isLoading } = useLowStockItems()
 
   if (isLoading || lowStockItems.length === 0) {
@@ -75,11 +75,6 @@ const LowStockAlert = ({ onNewOrder }: { onNewOrder: () => void }) => {
             ))}
           </div>
         </div>
-        <button onClick={onNewOrder} className="btn-primary flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center min-h-[36px] sm:min-h-[40px]">
-          <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="hidden xs:inline">Bestelling plaatsen</span>
-          <span className="xs:hidden">Bestellen</span>
-        </button>
       </div>
     </div>
   )
@@ -131,7 +126,7 @@ export function InventoryOverview({ onProductEdit, onStockAdjustment, onViewHist
 
   return (
     <div className="space-y-6">
-      <LowStockAlert onNewOrder={() => console.log('New order modal')} />
+      <LowStockAlert />
 
       {/* Category Filter */}
       <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
