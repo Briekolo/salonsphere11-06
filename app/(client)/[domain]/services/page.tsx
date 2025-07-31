@@ -153,7 +153,7 @@ export default function ServicesPage({ params }: { params: Promise<{ domain: str
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-3xl">
-            <h1 className="text-2xl sm:text-3xl font-medium text-[#010009] mb-4" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+            <h1 className="text-2xl sm:text-3xl font-medium text-[#010009] mb-4" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
               Onze Behandelingen
             </h1>
             <p className="text-base text-gray-600 mb-6">
@@ -192,7 +192,7 @@ export default function ServicesPage({ params }: { params: Promise<{ domain: str
                       ? 'bg-[#02011F] text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
-                  style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                  style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                 >
                   {category}
                   {category !== 'Alle' && (
@@ -318,7 +318,7 @@ export default function ServicesPage({ params }: { params: Promise<{ domain: str
                   </span>
                   
                   {/* Service Name */}
-                  <h3 className="text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                  <h3 className="text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                     {service.name}
                   </h3>
 
@@ -363,7 +363,7 @@ export default function ServicesPage({ params }: { params: Promise<{ domain: str
                   {/* Book Button */}
                   <Link href={`/${resolvedParams.domain}/book?service=${service.id}`}>
                     <button className="w-full bg-[#02011F] text-white font-medium py-3 px-4 rounded-2xl sm:rounded-full hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2"
-                      style={{ fontFamily: 'Aeonik, Inter, sans-serif', minHeight: '44px' }}>
+                      style={{ fontFamily: 'Outfit, Inter, sans-serif', minHeight: '44px' }}>
                       <Calendar className="h-4 w-4" />
                       Boek deze behandeling
                     </button>

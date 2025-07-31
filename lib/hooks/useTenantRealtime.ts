@@ -10,8 +10,12 @@ export function useTenantRealtime() {
   const qc = useQueryClient()
 
   useEffect(() => {
-    if (!tenantId) return
+    if (!tenantId) {
+      console.log('[useTenantRealtime] No tenantId, skipping realtime setup')
+      return
+    }
 
+    console.log(`[useTenantRealtime] Setting up realtime for tenant: ${tenantId}`)
     const channel = supabase.channel('tenant_realtime_' + tenantId)
 
     const watch = (
@@ -58,9 +62,35 @@ export function useTenantRealtime() {
       qc.invalidateQueries({ queryKey: ['staff_todays_bookings', tenantId] })
     })
 
-    channel.subscribe()
+    // Watch tenants table for salon profile updates
+    channel.on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'tenants', filter: `id=eq.${tenantId}` },
+      () => {
+        console.log('[useTenantRealtime] Tenant data updated, invalidating caches')
+        // Invalidate all tenant-related queries
+        qc.invalidateQueries({ queryKey: ['business-info', tenantId] })
+        qc.invalidateQueries({ queryKey: ['tenant', tenantId] })
+        qc.invalidateQueries({ queryKey: ['user-tenant'] })
+        qc.invalidateQueries({ queryKey: ['tenant-resolver'] })
+        qc.invalidateQueries({ queryKey: ['client-tenant-data', tenantId] })
+        // Invalidate tenant metrics as they might depend on tenant data
+        qc.invalidateQueries({ queryKey: ['tenant_metrics', tenantId] })
+      }
+    )
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('[useTenantRealtime] Successfully subscribed to realtime updates')
+      } else if (status === 'CLOSED') {
+        console.log('[useTenantRealtime] Realtime subscription closed')
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('[useTenantRealtime] Error subscribing to realtime updates')
+      }
+    })
 
     return () => {
+      console.log('[useTenantRealtime] Cleaning up realtime subscription')
       supabase.removeChannel(channel)
     }
   }, [tenantId, qc])

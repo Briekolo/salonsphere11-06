@@ -71,6 +71,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Alle');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
@@ -85,15 +86,30 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
   }, [preselectedServiceId, loading, services]);
 
   useEffect(() => {
-    if (tenant?.id) {
-      fetchServices();
+    // Skip if already initialized or still loading tenant
+    if (hasInitialized || tenantLoading) {
+      return;
     }
-  }, [tenant]);
+    
+    if (tenant?.id) {
+      console.log('[BookServicePage] Tenant loaded, fetching services for:', tenant.id);
+      setHasInitialized(true);
+      fetchServices();
+    } else {
+      console.error('[BookServicePage] No tenant available after loading completed');
+      setLoading(false);
+    }
+  }, [tenant?.id, tenantLoading, hasInitialized]);
 
   const fetchServices = async () => {
-    if (!tenant?.id) return;
+    if (!tenant?.id) {
+      console.error('[BookServicePage] No tenant ID available');
+      return;
+    }
 
     try {
+      console.log('[BookServicePage] Starting to fetch services for tenant:', tenant.id);
+      
       const { data, error } = await supabase
         .from('services')
         .select(`
@@ -109,7 +125,12 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      console.log('[BookServicePage] Supabase query result:', { data, error });
+      
+      if (error) {
+        console.error('[BookServicePage] Supabase error:', error);
+        throw error;
+      }
 
       setServices(data || []);
 
@@ -130,8 +151,10 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
         { name: 'Alle', count: data?.length || 0 },
         ...categoryList
       ]);
+      
+      console.log('[BookServicePage] Services loaded:', data?.length);
     } catch (error) {
-      console.error('Error fetching services:', error);
+      console.error('[BookServicePage] Error fetching services:', error);
     } finally {
       setLoading(false);
     }
@@ -158,7 +181,44 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
     return mins > 0 ? `${hours}u ${mins}min` : `${hours} uur`;
   };
 
-  if (tenantLoading || loading) {
+  // Show loading state only while tenant is loading
+  // Once tenant is loaded (or failed), show services or error
+  if (tenantLoading) {
+    return (
+      <div className="min-h-screen bg-[#f9faf7] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#E3ECFB] rounded-xl mb-4">
+            <Loader2 className="h-8 w-8 animate-spin text-[#7091D9]" />
+          </div>
+          <p className="text-base text-gray-600">Salon laden...</p>
+          {/* Debug info */}
+          <div className="mt-4 p-4 bg-gray-100 rounded text-left text-sm">
+            <p>Debug Info:</p>
+            <p>Tenant Loading: Yes</p>
+            <p>Domain: {resolvedParams.domain}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If tenant failed to load
+  if (!tenantLoading && !tenant) {
+    return (
+      <div className="min-h-screen bg-[#f9faf7] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-xl mb-4">
+            <X className="h-8 w-8 text-red-600" />
+          </div>
+          <p className="text-lg font-medium text-gray-900 mb-2">Salon niet gevonden</p>
+          <p className="text-sm text-gray-600">De salon "{resolvedParams.domain}" bestaat niet of is niet beschikbaar.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If still loading services but tenant is available
+  if (loading && tenant) {
     return (
       <div className="min-h-screen bg-[#f9faf7] flex items-center justify-center">
         <div className="text-center">
@@ -166,6 +226,13 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
             <Loader2 className="h-8 w-8 animate-spin text-[#7091D9]" />
           </div>
           <p className="text-base text-gray-600">Services laden...</p>
+          {/* Debug info */}
+          <div className="mt-4 p-4 bg-gray-100 rounded text-left text-sm">
+            <p>Debug Info:</p>
+            <p>Services Loading: Yes</p>
+            <p>Tenant ID: {tenant.id}</p>
+            <p>Tenant Name: {tenant.name}</p>
+          </div>
         </div>
       </div>
     );
@@ -224,7 +291,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+          <h1 className="text-2xl sm:text-3xl font-medium text-[#010009] mb-2" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
             Kies uw behandeling
           </h1>
           <p className="text-base text-gray-600">
@@ -259,7 +326,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                       ? 'bg-[#02011F] text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
-                  style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}
+                  style={{ fontFamily: 'Outfit, Inter, sans-serif' }}
                 >
                   {category.name}
                   <span className="ml-1.5 text-xs">
@@ -343,7 +410,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
                   </span>
 
                   {/* Service Name */}
-                  <h3 className="text-base sm:text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Aeonik, Inter, sans-serif', letterSpacing: '-0.03em' }}>
+                  <h3 className="text-base sm:text-lg font-medium text-[#010009] mb-2" style={{ fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '-0.03em' }}>
                     {service.name}
                   </h3>
 

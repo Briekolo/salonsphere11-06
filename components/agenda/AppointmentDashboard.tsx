@@ -32,15 +32,6 @@ export function AppointmentDashboard() {
         🟠 CACHE TEST: {new Date().toLocaleTimeString()} - Als tijd verandert, werkt het! 🟠
       </div>
 
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-          Afspraken Dashboard
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Centraal overzicht en beheer van alle afspraken en planning
-        </p>
-      </div>
 
       {/* Key Metrics Grid */}
       <AppointmentMetrics />

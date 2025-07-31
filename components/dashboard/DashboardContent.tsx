@@ -317,7 +317,7 @@ export function DashboardContent() {
     <div className="mobile-p space-y-4 lg:space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
+        <h1 className="text-3xl font-bold tracking-tight">
           Dashboard
         </h1>
         <p className="text-gray-600 mt-2">
