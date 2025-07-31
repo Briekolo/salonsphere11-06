@@ -7,7 +7,7 @@ import { useBookings, useUpdateBooking, Booking } from '@/lib/hooks/useBookings'
 import { useStaffSchedules } from '@/lib/hooks/useStaffSchedules'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { BookingFormModal } from './BookingFormModal'
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, Plus, MoreHorizontal, GripVertical, Phone, Mail, Euro, Star, Users, Filter } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, User, MapPin, Plus, MoreHorizontal, GripVertical, Phone, Mail, Euro, Star, Users, Filter } from 'lucide-react'
 import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { atom, useAtom } from 'jotai'
 import { useQueryClient } from '@tanstack/react-query'
@@ -18,10 +18,9 @@ interface KiboCalendarViewProps {
   onDateSelect: (date: Date) => void
   filters?: {
     searchTerm: string
-    status: string
+    payment: string
     service: string
     staff: string
-    date: string
   }
 }
 
@@ -1372,10 +1371,6 @@ function CalendarHeader({ viewMode, onViewModeChange, currentDate, onNavigate, s
                 {showOnlyAvailable ? 'Beschikbaar' : 'Filter'}
               </button>
             )}
-
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-              <Calendar className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </div>
