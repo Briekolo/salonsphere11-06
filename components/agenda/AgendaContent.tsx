@@ -29,15 +29,6 @@ export function AgendaContent() {
 
   return (
     <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight" style={{ fontFamily: 'Aeonik, Inter, sans-serif' }}>
-          Afspraken Dashboard
-        </h1>
-        <p className="text-sm lg:text-base text-gray-600 mt-1 lg:mt-2">
-          Centraal overzicht en beheer van alle afspraken en planning
-        </p>
-      </div>
 
       {/* Key Metrics - Enhanced version with appointment metrics */}
       <AppointmentMetrics viewMode={viewMode} currentDate={currentDate} />

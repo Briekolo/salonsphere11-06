@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { useTenant } from '@/lib/hooks/useTenant';
 import { supabase } from '@/lib/supabase';
+import { ValidationService } from '@/lib/services/validationService';
 import { 
   Calculator,
   Save,
@@ -35,6 +36,7 @@ export default function TaxSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (tenantId) {
@@ -74,10 +76,67 @@ export default function TaxSettingsPage() {
       ...prev,
       [field]: value
     }));
+    
+    // Clear validation error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Validate VAT rates
+    const defaultVatValidation = ValidationService.validateVATRate(settings.default_vat_rate);
+    if (!defaultVatValidation.isValid) {
+      errors.default_vat_rate = defaultVatValidation.error!;
+    }
+    
+    const reducedVatValidation = ValidationService.validateVATRate(settings.reduced_vat_rate);
+    if (!reducedVatValidation.isValid) {
+      errors.reduced_vat_rate = reducedVatValidation.error!;
+    }
+    
+    // Validate VAT number if provided
+    if (settings.vat_number) {
+      const vatNumberValidation = ValidationService.validateVATNumber(settings.vat_number);
+      if (!vatNumberValidation.isValid) {
+        errors.vat_number = vatNumberValidation.error!;
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const getInputClassName = (fieldName: string) => {
+    const baseClass = "w-full pr-10 px-3 py-2 border rounded-xl focus:outline-none focus:ring-2";
+    const errorClass = validationErrors[fieldName] 
+      ? "border-red-300 focus:ring-red-500" 
+      : "border-gray-300 focus:ring-primary-500";
+    return `${baseClass} ${errorClass}`;
+  };
+
+  const getStandardInputClassName = (fieldName: string) => {
+    const baseClass = "w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2";
+    const errorClass = validationErrors[fieldName] 
+      ? "border-red-300 focus:ring-red-500" 
+      : "border-gray-300 focus:ring-primary-500";
+    return `${baseClass} ${errorClass}`;
   };
 
   const handleSave = async () => {
     if (!tenantId) return;
+    
+    // Validate form before saving
+    if (!validateForm()) {
+      setMessage({ type: 'error', text: 'Controleer de invoervelden en probeer opnieuw' });
+      return;
+    }
     
     setSaving(true);
     setMessage(null);
@@ -153,7 +212,7 @@ export default function TaxSettingsPage() {
                   type="number"
                   value={settings.default_vat_rate}
                   onChange={(e) => handleInputChange('default_vat_rate', parseFloat(e.target.value) || 0)}
-                  className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className={getInputClassName('default_vat_rate')}
                   placeholder="21"
                   min="0"
                   max="100"
@@ -161,6 +220,9 @@ export default function TaxSettingsPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">Standaard 21% in Nederland</p>
+              {validationErrors.default_vat_rate && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.default_vat_rate}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,7 +234,7 @@ export default function TaxSettingsPage() {
                   type="number"
                   value={settings.reduced_vat_rate}
                   onChange={(e) => handleInputChange('reduced_vat_rate', parseFloat(e.target.value) || 0)}
-                  className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className={getInputClassName('reduced_vat_rate')}
                   placeholder="9"
                   min="0"
                   max="100"
@@ -180,6 +242,9 @@ export default function TaxSettingsPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">Verlaagd tarief 9% in Nederland</p>
+              {validationErrors.reduced_vat_rate && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.reduced_vat_rate}</p>
+              )}
             </div>
           </div>
 
@@ -191,10 +256,13 @@ export default function TaxSettingsPage() {
               type="text"
               value={settings.vat_number}
               onChange={(e) => handleInputChange('vat_number', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className={getStandardInputClassName('vat_number')}
               placeholder="NL123456789B01"
             />
             <p className="text-xs text-gray-500 mt-1">Uw officiële BTW nummer</p>
+            {validationErrors.vat_number && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.vat_number}</p>
+            )}
           </div>
         </div>
       </div>

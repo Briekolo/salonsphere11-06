@@ -48,15 +48,15 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Aeonik', 'Inter', 'system-ui', 'sans-serif'],
-        heading: ['Aeonik', 'Inter', 'system-ui', 'sans-serif'], // Explicit heading font
-        body: ['Aeonik', 'Inter', 'system-ui', 'sans-serif'], // Explicit body font
+        sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        heading: ['Outfit', 'Inter', 'system-ui', 'sans-serif'], // Explicit heading font
+        body: ['Outfit', 'Inter', 'system-ui', 'sans-serif'], // Explicit body font
       },
       fontWeight: {
-        normal: '400', // Aeonik Regular
-        medium: '500', // Aeonik Medium
-        semibold: '500', // Map to Aeonik Medium
-        bold: '500', // Map to Aeonik Medium (since no bold available)
+        normal: '400',
+        medium: '500',
+        semibold: '600',
+        bold: '700',
       },
       fontSize: {
         'caption': ['12px', { lineHeight: '16px', fontWeight: '400' }],
@@ -71,9 +71,6 @@ module.exports = {
         'xl': ['1.25rem', { lineHeight: '1.75rem', fontWeight: '500' }],
         '2xl': ['1.5rem', { lineHeight: '2rem', fontWeight: '500' }],
         '3xl': ['1.875rem', { lineHeight: '2.25rem', fontWeight: '500' }],
-      },
-      letterSpacing: {
-        'tight': '-0.03em',
       },
       borderRadius: {
         'xl': '12px',

@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { useTenant } from '@/lib/hooks/useTenant';
+import { useToast } from '@/lib/hooks/useToast';
 import { supabase } from '@/lib/supabase';
+import { ValidationService } from '@/lib/services/validationService';
+import { DomainService } from '@/lib/services/domainService';
+import { ToastContainer } from '@/components/ui/Toast';
 import { 
   Link2,
   CheckCircle,
@@ -11,7 +15,8 @@ import {
   Copy,
   Check,
   Save,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 
 interface DomainSettings {
@@ -20,9 +25,23 @@ interface DomainSettings {
   domain_verified?: boolean;
 }
 
+interface SubdomainStatus {
+  checking: boolean;
+  available: boolean | null;
+  error?: string;
+}
+
+interface DomainVerificationStatus {
+  verifying: boolean;
+  verified: boolean | null;
+  error?: string;
+  suggestions?: string[];
+}
+
 export default function DomainSettingsPage() {
   const { isAdmin, isLoading } = useRequireAdmin();
   const { tenantId } = useTenant();
+  const { toasts, showToast, removeToast } = useToast();
   
   const [settings, setSettings] = useState<DomainSettings>({
     subdomain: '',
@@ -32,14 +51,124 @@ export default function DomainSettingsPage() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [subdomainStatus, setSubdomainStatus] = useState<SubdomainStatus>({
+    checking: false,
+    available: null
+  });
+  const [domainVerificationStatus, setDomainVerificationStatus] = useState<DomainVerificationStatus>({
+    verifying: false,
+    verified: null
+  });
 
   useEffect(() => {
     if (tenantId) {
       fetchDomainSettings();
     }
   }, [tenantId]);
+
+  // Debounced subdomain availability check
+  const checkSubdomainAvailability = useCallback(async (subdomain: string) => {
+    if (!subdomain || subdomain.length < 3) {
+      setSubdomainStatus({
+        checking: false,
+        available: null
+      });
+      return;
+    }
+
+    // Skip check if it's the current subdomain
+    if (subdomain === settings.subdomain) {
+      setSubdomainStatus({
+        checking: false,
+        available: true
+      });
+      return;
+    }
+
+    setSubdomainStatus({
+      checking: true,
+      available: null
+    });
+
+    try {
+      const result = await DomainService.checkSubdomainAvailability(subdomain, tenantId);
+      
+      setSubdomainStatus({
+        checking: false,
+        available: result.available,
+        error: result.error
+      });
+    } catch (error) {
+      console.error('Error checking subdomain availability:', error);
+      setSubdomainStatus({
+        checking: false,
+        available: null,
+        error: 'Kon beschikbaarheid niet controleren'
+      });
+    }
+  }, [tenantId, settings.subdomain]);
+
+  // Debounce the availability check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (settings.subdomain) {
+        checkSubdomainAvailability(settings.subdomain);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [settings.subdomain, checkSubdomainAvailability]);
+
+  // Domain verification function
+  const verifyDomain = useCallback(async (domain: string) => {
+    if (!domain || !settings.subdomain) {
+      return;
+    }
+
+    setDomainVerificationStatus({
+      verifying: true,
+      verified: null
+    });
+
+    try {
+      const expectedTarget = `${settings.subdomain}.salonsphere.nl`;
+      const result = await DomainService.verifyDomainConfiguration(domain, expectedTarget);
+      
+      setDomainVerificationStatus({
+        verifying: false,
+        verified: result.verified,
+        error: result.error,
+        suggestions: result.suggestions
+      });
+
+      if (result.verified) {
+        showToast('Domein succesvol geverifieerd!', 'success');
+        // Update the domain_verified status in the database
+        await supabase
+          .from('tenants')
+          .update({ 
+            domain_verified: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', tenantId);
+        
+        // Refresh settings to show updated verification status
+        fetchDomainSettings();
+      } else {
+        showToast(result.error || 'Domein verificatie mislukt', 'error');
+      }
+    } catch (error) {
+      console.error('Error verifying domain:', error);
+      setDomainVerificationStatus({
+        verifying: false,
+        verified: false,
+        error: 'Kon domein niet verifiëren'
+      });
+      showToast('Er ging iets mis bij het verifiëren van het domein', 'error');
+    }
+  }, [settings.subdomain, tenantId, showToast]);
 
   const fetchDomainSettings = async () => {
     if (!tenantId) return;
@@ -60,7 +189,7 @@ export default function DomainSettingsPage() {
       }
     } catch (error) {
       console.error('Error fetching domain settings:', error);
-      setMessage({ type: 'error', text: 'Kon domein instellingen niet laden' });
+      showToast('Kon domein instellingen niet laden', 'error');
     } finally {
       setLoading(false);
     }
@@ -71,6 +200,52 @@ export default function DomainSettingsPage() {
       ...prev,
       [field]: value
     }));
+    
+    // Clear validation error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Validate subdomain
+    const subdomainValidation = ValidationService.validateSubdomain(settings.subdomain || '');
+    if (!subdomainValidation.isValid) {
+      errors.subdomain = subdomainValidation.error!;
+    }
+    
+    // Validate custom domain if provided
+    if (settings.custom_domain) {
+      const domainValidation = ValidationService.validateDomain(settings.custom_domain);
+      if (!domainValidation.isValid) {
+        errors.custom_domain = domainValidation.error!;
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const getInputClassName = (fieldName: string) => {
+    const baseClass = "flex-1 px-3 py-2 border rounded-l-xl focus:outline-none focus:ring-2";
+    const errorClass = validationErrors[fieldName] 
+      ? "border-red-300 focus:ring-red-500" 
+      : "border-gray-300 focus:ring-primary-500";
+    return `${baseClass} ${errorClass}`;
+  };
+  
+  const getStandardInputClassName = (fieldName: string) => {
+    const baseClass = "w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2";
+    const errorClass = validationErrors[fieldName] 
+      ? "border-red-300 focus:ring-red-500" 
+      : "border-gray-300 focus:ring-primary-500";
+    return `${baseClass} ${errorClass}`;
   };
 
   const copyToClipboard = async (text: string, field: string) => {
@@ -86,8 +261,25 @@ export default function DomainSettingsPage() {
   const handleSave = async () => {
     if (!tenantId) return;
     
+    // Validate form before saving
+    if (!validateForm()) {
+      showToast('Controleer de invoervelden en probeer opnieuw', 'error');
+      return;
+    }
+    
+    // Check subdomain availability before saving
+    if (settings.subdomain && subdomainStatus.available === false) {
+      showToast('Subdomain is niet beschikbaar. Kies een andere naam.', 'error');
+      return;
+    }
+    
+    // Don't save if we're still checking availability
+    if (settings.subdomain && subdomainStatus.checking) {
+      showToast('Wacht even terwijl we de beschikbaarheid controleren', 'warning');
+      return;
+    }
+    
     setSaving(true);
-    setMessage(null);
     
     try {
       const { error } = await supabase
@@ -101,10 +293,10 @@ export default function DomainSettingsPage() {
 
       if (error) throw error;
 
-      setMessage({ type: 'success', text: 'Domein instellingen succesvol bijgewerkt' });
+      showToast('Domein instellingen succesvol bijgewerkt', 'success');
     } catch (error) {
       console.error('Error saving domain settings:', error);
-      setMessage({ type: 'error', text: 'Kon instellingen niet opslaan' });
+      showToast('Kon instellingen niet opslaan', 'error');
     } finally {
       setSaving(false);
     }
@@ -127,11 +319,7 @@ export default function DomainSettingsPage() {
         </p>
       </div>
 
-      {message && (
-        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-          {message.text}
-        </div>
-      )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Domain Settings */}
       <div className="card">
@@ -148,21 +336,51 @@ export default function DomainSettingsPage() {
             </label>
             <div className="flex gap-2">
               <div className="flex-1">
-                <div className="flex items-center">
-                  <input
-                    type="text"
-                    value={settings.subdomain}
-                    onChange={(e) => handleInputChange('subdomain', e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="mijn-salon"
-                  />
-                  <span className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-xl text-gray-600">
-                    .salonsphere.nl
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center flex-1">
+                    <input
+                      type="text"
+                      value={settings.subdomain}
+                      onChange={(e) => handleInputChange('subdomain', e.target.value)}
+                      className={getInputClassName('subdomain')}
+                      placeholder="mijn-salon"
+                    />
+                    <span className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-xl text-gray-600">
+                      .salonsphere.nl
+                    </span>
+                  </div>
+                  {/* Availability indicator */}
+                  {settings.subdomain && settings.subdomain.length >= 3 && (
+                    <div className="flex items-center">
+                      {subdomainStatus.checking ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      ) : subdomainStatus.available === true ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : subdomainStatus.available === false ? (
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                      ) : null}
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Uw klanten kunnen uw salon bereiken via: https://{settings.subdomain || 'mijn-salon'}.salonsphere.nl
                 </p>
+                {/* Availability feedback */}
+                {settings.subdomain && settings.subdomain.length >= 3 && subdomainStatus.available === true && (
+                  <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Subdomain is beschikbaar
+                  </p>
+                )}
+                {settings.subdomain && settings.subdomain.length >= 3 && subdomainStatus.available === false && (
+                  <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {subdomainStatus.error || 'Subdomain is niet beschikbaar'}
+                  </p>
+                )}
+                {validationErrors.subdomain && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.subdomain}</p>
+                )}
               </div>
             </div>
           </div>
@@ -173,13 +391,32 @@ export default function DomainSettingsPage() {
               Eigen Domein (Optioneel)
             </label>
             <div className="space-y-3">
-              <input
-                type="text"
-                value={settings.custom_domain}
-                onChange={(e) => handleInputChange('custom_domain', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="www.mijnsalon.nl"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={settings.custom_domain}
+                  onChange={(e) => handleInputChange('custom_domain', e.target.value)}
+                  className={getStandardInputClassName('custom_domain')}
+                  placeholder="www.mijnsalon.nl"
+                />
+                {settings.custom_domain && !settings.domain_verified && (
+                  <button
+                    onClick={() => verifyDomain(settings.custom_domain!)}
+                    disabled={domainVerificationStatus.verifying || !settings.subdomain}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {domainVerificationStatus.verifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Verificeren
+                  </button>
+                )}
+              </div>
+              {validationErrors.custom_domain && (
+                <p className="text-red-500 text-xs mt-1">{validationErrors.custom_domain}</p>
+              )}
               
               {settings.custom_domain && (
                 <div className={`p-3 rounded-lg flex items-start gap-2 ${
@@ -217,6 +454,20 @@ export default function DomainSettingsPage() {
                           </div>
                         </div>
                       </div>
+                      {/* Domain verification feedback */}
+                      {domainVerificationStatus.error && (
+                        <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
+                          <p className="font-medium">Verificatie mislukt:</p>
+                          <p>{domainVerificationStatus.error}</p>
+                          {domainVerificationStatus.suggestions && (
+                            <ul className="mt-1 list-disc list-inside space-y-1">
+                              {domainVerificationStatus.suggestions.map((suggestion, index) => (
+                                <li key={index}>{suggestion}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -271,8 +522,10 @@ export default function DomainSettingsPage() {
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="text-sm font-medium text-blue-900 mb-2">Hoe werkt het?</h3>
             <ul className="text-xs text-blue-800 space-y-1">
-              <li>• Uw subdomain is direct beschikbaar na het opslaan</li>
+              <li>• Uw subdomain wordt automatisch gecontroleerd op beschikbaarheid</li>
+              <li>• Een groene vinkje betekent dat de subdomain beschikbaar is</li>
               <li>• Voor een eigen domein moet u DNS records configureren bij uw domein provider</li>
+              <li>• Klik op "Verificeren" om te controleren of uw DNS instellingen correct zijn</li>
               <li>• Verificatie van een eigen domein kan tot 48 uur duren</li>
               <li>• Beide URLs blijven altijd werken (subdomain en eigen domein)</li>
             </ul>
@@ -284,7 +537,12 @@ export default function DomainSettingsPage() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          disabled={saving || !settings.subdomain}
+          disabled={
+            saving || 
+            !settings.subdomain || 
+            subdomainStatus.checking || 
+            (subdomainStatus.available === false)
+          }
           className="btn-primary"
         >
           {saving ? (
