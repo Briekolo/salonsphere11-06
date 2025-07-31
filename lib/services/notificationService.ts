@@ -1,11 +1,37 @@
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
+import { serializeError } from '@/lib/utils/error-serializer'
+import { logError, debugLog } from '@/lib/utils/error-logger'
 
 type Notification = Database['public']['Tables']['notifications']['Row']
 type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 type NotificationUpdate = Database['public']['Tables']['notifications']['Update']
 
 export class NotificationService {
+  // Test if notifications table exists and is accessible
+  static async testTableAccess(): Promise<{ exists: boolean; error?: any }> {
+    debugLog('NotificationService.testTableAccess', 'Testing notifications table access');
+    
+    try {
+      // Try a simple count query
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .limit(1);
+      
+      if (error) {
+        logError('NotificationService.testTableAccess failed', error);
+        return { exists: false, error: error };
+      }
+      
+      debugLog('NotificationService.testTableAccess', 'Table exists and is accessible', { count });
+      return { exists: true };
+    } catch (error) {
+      logError('NotificationService.testTableAccess exception', error);
+      return { exists: false, error: error };
+    }
+  }
+
   // Get notifications for current user
   static async getNotifications(tenantId: string, userId: string, options?: {
     limit?: number
@@ -85,24 +111,59 @@ export class NotificationService {
 
   // Create notification
   static async create(notification: NotificationInsert) {
+    debugLog('NotificationService.create', 'Starting notification creation', {
+      tenant_id: notification.tenant_id,
+      user_id: notification.user_id,
+      type: notification.type,
+      title: notification.title
+    });
+
+    debugLog('NotificationService.create', 'About to call Supabase');
+
     const { data, error } = await supabase
       .from('notifications')
       .insert(notification)
       .select()
       .single()
 
-    if (error) throw error
+    debugLog('NotificationService.create', 'Supabase call completed', {
+      hasData: !!data,
+      hasError: !!error,
+      errorType: error ? typeof error : 'no error'
+    });
+
+    if (error) {
+      logError('NotificationService.create', error, {
+        notification: notification,
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        timestamp: new Date().toISOString()
+      });
+      throw error
+    }
+    
+    debugLog('NotificationService.create', 'Notification created successfully', data);
     return data
   }
 
   // Create bulk notifications
   static async createBulk(notifications: NotificationInsert[]) {
+    console.log('Creating bulk notifications:', {
+      count: notifications.length,
+      types: notifications.map(n => n.type)
+    })
+
     const { data, error } = await supabase
       .from('notifications')
       .insert(notifications)
       .select()
 
-    if (error) throw error
+    if (error) {
+      console.error('NotificationService.createBulk error:', {
+        errorDetails: serializeError(error),
+        notificationCount: notifications.length
+      })
+      throw error
+    }
     return data
   }
 

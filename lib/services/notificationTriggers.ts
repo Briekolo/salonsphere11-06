@@ -1,6 +1,7 @@
 import { NotificationService } from './notificationService'
 import { Database } from '@/types/database'
 import { supabase } from '@/lib/supabase/client'
+import { debugLog } from '@/lib/utils/error-logger'
 
 type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 
@@ -11,6 +12,12 @@ export class NotificationTriggers {
     staffId: string,
     appointment: any
   ) {
+    debugLog('NotificationTriggers.onNewAppointment', 'Triggered', {
+      tenantId,
+      staffId,
+      appointmentId: appointment.id
+    });
+    
     await NotificationService.create({
       tenant_id: tenantId,
       user_id: staffId,

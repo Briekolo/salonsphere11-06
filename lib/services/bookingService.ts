@@ -1,6 +1,8 @@
 import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import { NotificationTriggers } from './notificationTriggers'
+import { serializeError } from '@/lib/utils/error-serializer'
+import { logError, debugLog } from '@/lib/utils/error-logger'
 
 type Booking = Database['public']['Tables']['bookings']['Row']
 type BookingInsert = Database['public']['Tables']['bookings']['Insert']
@@ -152,6 +154,12 @@ export class BookingService {
     if (error) throw error
 
     // Trigger notification for new appointment
+    debugLog('BookingService.create', 'About to trigger notification', {
+      bookingId: data.id,
+      tenantId: tenantId,
+      staffId: data.staff_id
+    });
+    
     try {
       await NotificationTriggers.onNewAppointment(
         tenantId,
@@ -163,8 +171,12 @@ export class BookingService {
           scheduled_at: data.scheduled_at
         }
       )
-    } catch (notificationError) {
-      console.error('Failed to send notification for new appointment:', notificationError)
+    } catch (notificationError: any) {
+      logError('Failed to send notification for new appointment', notificationError, {
+        bookingId: data.id,
+        tenantId: tenantId,
+        context: 'BookingService.create'
+      });
       // Don't fail the booking creation if notification fails
     }
 
@@ -260,8 +272,13 @@ export class BookingService {
             }
           )
         }
-      } catch (notificationError) {
-        console.error('Failed to send notification for booking update:', notificationError)
+      } catch (notificationError: any) {
+        logError('Failed to send notification for booking update', notificationError, {
+          bookingId: data.id,
+          tenantId: tenantId,
+          updateType: updates.status === 'cancelled' ? 'cancellation' : 'reschedule',
+          context: 'BookingService.update'
+        });
         // Don't fail the update if notification fails
       }
       
@@ -273,11 +290,12 @@ export class BookingService {
   }
 
   static async delete(id: string): Promise<void> {
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
+    try {
+      const tenantId = await getCurrentUserTenantId()
+      if (!tenantId) throw new Error('No tenant found')
 
-    // Get booking details before deletion for notification
-    const bookingToDelete = await this.getById(id)
+      // Get booking details before deletion for notification
+      const bookingToDelete = await this.getById(id)
 
     const { error } = await supabase
       .from('bookings')
@@ -285,7 +303,14 @@ export class BookingService {
       .eq('id', id)
       .eq('tenant_id', tenantId)
 
-    if (error) throw error
+    if (error) {
+      console.error('BookingService.delete error:', {
+        errorDetails: serializeError(error),
+        bookingId: id,
+        tenantId: tenantId
+      })
+      throw error
+    }
 
     // Trigger notification for deleted appointment
     if (bookingToDelete) {
@@ -300,10 +325,18 @@ export class BookingService {
             scheduled_at: bookingToDelete.scheduled_at
           }
         )
-      } catch (notificationError) {
-        console.error('Failed to send notification for booking deletion:', notificationError)
+      } catch (notificationError: any) {
+        logError('Failed to send notification for booking deletion', notificationError, {
+          bookingId: bookingToDelete.id,
+          tenantId: tenantId,
+          context: 'BookingService.delete'
+        });
         // Don't fail the deletion if notification fails
       }
+    }
+    } catch (error) {
+      console.error('BookingService.delete error caught:', error)
+      throw error
     }
   }
 
