@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, MessageSquare, FileText, Tag } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, FileText, Tag, Save, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
-import { useClientById } from '@/lib/hooks/useClients';
+import { useClientById, useUpdateClient } from '@/lib/hooks/useClients';
 import { useClientAppointments } from '@/lib/hooks/useBookings';
 import { useToast } from '@/components/providers/ToastProvider';
 import { ClientStatusBadge } from './ClientStatusBadge';
 import { ClientStatus } from '@/lib/services/clientStatusService';
 import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils';
+import { useTenant } from '@/lib/hooks/useTenant';
 
 interface ClientProfileProps {
   clientId: string
@@ -34,10 +35,124 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'appointments'>('overview')
   const [isEditing, setIsEditing] = useState(false)
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
   const { showToast } = useToast()
+
+  // Form state for editing
+  const [editForm, setEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    date_of_birth: '',
+  })
+  const [notesValue, setNotesValue] = useState('')
 
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
   const { data: appointments, isLoading: appointmentsLoading, error: appointmentsError } = useClientAppointments(clientId);
+  const updateClientMutation = useUpdateClient();
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+
+  // Initialize form when client data is loaded
+  if (client && !editForm.first_name && !isEditing) {
+    setEditForm({
+      first_name: client.first_name || '',
+      last_name: client.last_name || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      date_of_birth: client.date_of_birth ? client.date_of_birth.split('T')[0] : '',
+    })
+    setNotesValue(client.notes || '')
+  }
+
+  // Helper functions
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Save changes
+      handleSaveClient()
+    } else {
+      // Enter edit mode
+      setIsEditing(true)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    if (client) {
+      setEditForm({
+        first_name: client.first_name || '',
+        last_name: client.last_name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        date_of_birth: client.date_of_birth ? client.date_of_birth.split('T')[0] : '',
+      })
+    }
+    setIsEditing(false)
+  }
+
+  const handleSaveClient = async () => {
+    // Validation
+    if (!editForm.first_name.trim() || !editForm.last_name.trim()) {
+      showToast('Voornaam en achternaam zijn verplicht', 'error')
+      return
+    }
+
+    if (!validateEmail(editForm.email)) {
+      showToast('Voer een geldig e-mailadres in', 'error')
+      return
+    }
+
+    try {
+      const updatedClient = await updateClientMutation.mutateAsync({
+        id: clientId,
+        updates: editForm
+      })
+      
+      // Immediately update the specific client in the cache
+      queryClient.setQueryData(['client', tenantId, clientId], updatedClient)
+      
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, clientId] })
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] })
+      
+      showToast('Klantgegevens bijgewerkt', 'success')
+      setIsEditing(false)
+    } catch (error) {
+      showToast('Fout bij het bijwerken van klantgegevens', 'error')
+    }
+  }
+
+  const handleSaveNotes = async () => {
+    try {
+      const updatedClient = await updateClientMutation.mutateAsync({
+        id: clientId,
+        updates: { notes: notesValue }
+      })
+      
+      // Immediately update the specific client in the cache
+      queryClient.setQueryData(['client', tenantId, clientId], updatedClient)
+      
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, clientId] })
+      
+      showToast('Notities bijgewerkt', 'success')
+      setIsEditingNotes(false)
+    } catch (error) {
+      showToast('Fout bij het bijwerken van notities', 'error')
+    }
+  }
+
+  const handleCancelNotes = () => {
+    setNotesValue(client?.notes || '')
+    setIsEditingNotes(false)
+  }
 
   if (clientLoading) return <div>Laden...</div>
   if (clientError) return <div>Fout bij het laden van de klant.</div>
@@ -72,23 +187,29 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         </div>
 
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-          <button className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]">
-            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Bericht</span>
-            <span className="xs:hidden">Bericht</span>
-          </button>
-          <button className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]">
-            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Afspraak</span>
-            <span className="xs:hidden">Afspraak</span>
-          </button>
           <button 
-            onClick={() => setIsEditing(!isEditing)}
-            className="btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]"
+            onClick={handleEditToggle}
+            disabled={updateClientMutation.isPending}
+            className="btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] disabled:opacity-50"
           >
-            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-            {isEditing ? 'Opslaan' : 'Bewerken'}
+            {updateClientMutation.isPending ? (
+              <div className="w-3 h-3 sm:w-4 sm:h-4 animate-spin border-2 border-white border-t-transparent rounded-full" />
+            ) : (
+              <>
+                {isEditing ? <Save className="w-3 h-3 sm:w-4 sm:h-4" /> : <Edit className="w-3 h-3 sm:w-4 sm:h-4" />}
+                {isEditing ? 'Opslaan' : 'Bewerken'}
+              </>
+            )}
           </button>
+          {isEditing && (
+            <button 
+              onClick={handleCancelEdit}
+              className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]"
+            >
+              <X className="w-3 h-3 sm:w-4 sm:h-4" />
+              Annuleren
+            </button>
+          )}
         </div>
       </div>
 
@@ -111,11 +232,48 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           <div className="flex-1">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-3 sm:mb-4">
               <div className="text-center sm:text-left">
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
-                  {client.first_name} {client.last_name}
-                </h2>
-                <p className="text-sm sm:text-base text-gray-600">{client.email}</p>
-                <p className="text-sm sm:text-base text-gray-600">{client.phone}</p>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editForm.first_name}
+                        onChange={(e) => setEditForm({...editForm, first_name: e.target.value})}
+                        placeholder="Voornaam"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.last_name}
+                        onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
+                        placeholder="Achternaam"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                      placeholder="E-mailadres"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                      placeholder="Telefoonnummer"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
+                      {client.first_name} {client.last_name}
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600">{client.email}</p>
+                    <p className="text-sm sm:text-base text-gray-600">{client.phone}</p>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center justify-center sm:justify-start lg:justify-start gap-2 mt-3 sm:mt-4 lg:mt-0">
@@ -132,7 +290,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-4">
               <div className="text-center lg:text-left">
-                <div className="text-xl lg:text-2xl font-bold text-gray-900">{client.appointments_count || 0}</div>
+                <div className="text-xl lg:text-2xl font-bold text-gray-900">{appointments?.length || 0}</div>
                 <div className="text-sm text-gray-600">Afspraken</div>
               </div>
               <div className="text-center lg:text-left">
@@ -158,7 +316,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {client.created_at ? `${Math.floor((new Date().getTime() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30))}m` : 'N.v.t.'}
+                  {client.created_at ? format(new Date(client.created_at), 'dd MMM yyyy', { locale: nl }) : 'N.v.t.'}
                 </div>
                 <div className="text-sm text-gray-600">Klant sinds</div>
               </div>
@@ -240,11 +398,30 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Geboortedatum</label>
-<p>{client.date_of_birth ? format(new Date(client.date_of_birth), 'd MMMM yyyy', { locale: nl }) : 'Onbekend'}</p>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={editForm.date_of_birth}
+                        onChange={(e) => setEditForm({...editForm, date_of_birth: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <p>{client.date_of_birth ? format(new Date(client.date_of_birth), 'd MMMM yyyy', { locale: nl }) : 'Onbekend'}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
-                    <p className="text-gray-900">{client.address}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editForm.address}
+                        onChange={(e) => setEditForm({...editForm, address: e.target.value})}
+                        placeholder="Adres"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{client.address || 'Niet opgegeven'}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Klant sinds</label>
@@ -287,12 +464,48 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               {/* Notes */}
               <div className="card">
                 <h3 className="text-lg font-semibold mb-4">Notities</h3>
-                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800">{client.notes || 'Geen notities.'}</p>
-                </div>
-                <button className="w-full mt-3 btn-outlined text-sm">
-                  Notitie bewerken
-                </button>
+                {isEditingNotes ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={notesValue}
+                      onChange={(e) => setNotesValue(e.target.value)}
+                      placeholder="Voeg notities toe..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={updateClientMutation.isPending}
+                        className="flex-1 btn-primary text-sm disabled:opacity-50"
+                      >
+                        {updateClientMutation.isPending ? (
+                          <div className="w-4 h-4 animate-spin border-2 border-white border-t-transparent rounded-full mx-auto" />
+                        ) : (
+                          'Opslaan'
+                        )}
+                      </button>
+                      <button
+                        onClick={handleCancelNotes}
+                        className="flex-1 btn-outlined text-sm"
+                      >
+                        Annuleren
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <p className="text-sm text-yellow-800">{client.notes || 'Geen notities.'}</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsEditingNotes(true)}
+                      className="w-full mt-3 btn-outlined text-sm"
+                    >
+                      Notitie bewerken
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </>
