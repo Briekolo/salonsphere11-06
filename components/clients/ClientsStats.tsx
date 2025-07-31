@@ -49,7 +49,19 @@ export function ClientsStats() {
 
       const total = await countExact('clients', q => q.eq('tenant_id', tenantId))
       const newClients = await countExact('clients', q=> q.eq('tenant_id', tenantId).gte('created_at', from30.toISOString()))
-      const activeClients = await countExact('clients', q=> q.eq('tenant_id', tenantId).gte('last_visit_date', from90.toISOString()))
+      // Calculate active clients based on bookings in the last 90 days instead of last_visit_date
+      // This is more accurate as it reflects actual client activity (appointments)
+      const { data: distinctData, error: distinctError } = await supabase
+        .from('bookings')
+        .select('client_id')
+        .eq('tenant_id', tenantId)
+        .gte('scheduled_at', from90.toISOString())
+      
+      if (distinctError) throw new Error(distinctError.message)
+      
+      // Count unique client_ids to get active clients count
+      const uniqueClientIds = new Set(distinctData?.map(item => item.client_id) || [])
+      const activeClients = uniqueClientIds.size
       const appointmentsWeek = await countExact('bookings', q=> q.eq('tenant_id', tenantId).gte('scheduled_at', weekStart.toISOString()).lte('scheduled_at', weekEnd.toISOString()))
 
       return { total, newClients, activeClients, appointmentsWeek }

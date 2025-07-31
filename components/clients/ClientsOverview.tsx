@@ -1,23 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Mail, MoreVertical } from 'lucide-react'
+import { Phone, Mail } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { useClients, Client } from '@/lib/hooks/useClients'
+import { Client } from '@/lib/hooks/useClients'
+import { useToast } from '@/components/providers/ToastProvider'
+import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils'
+import { ClientStatusBadge } from './ClientStatusBadge'
+import { ClientStatus } from '@/lib/services/clientStatusService'
 
 interface ClientsOverviewProps {
+  clients: Client[]
   onClientSelect: (clientId: string) => void
   onViewChange: (view: 'overview' | 'list') => void
   searchTerm: string
 }
 
-export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: ClientsOverviewProps) {
-  const { data: clients = [], isLoading } = useClients(searchTerm)
-
-  if (isLoading) {
-    return <div className="card p-6 text-center">Klanten laden...</div>
-  }
+export function ClientsOverview({ clients, onClientSelect, onViewChange, searchTerm }: ClientsOverviewProps) {
+  const { showToast } = useToast()
 
   return (
     <div className="space-y-6">
@@ -52,9 +53,11 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded transition-opacity" onClick={e => e.stopPropagation()}>
-                  <MoreVertical className="w-4 h-4 text-gray-500" />
-                </button>
+                <ClientStatusBadge 
+                  status={(client.status as ClientStatus) || 'inactive'} 
+                  showTooltip={true}
+                  className="text-xs"
+                />
               </div>
             </div>
 
@@ -76,9 +79,10 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
                 className="btn-outlined flex-1 flex items-center justify-center gap-1 text-xs py-2 min-h-[36px]"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (client.phone) {
-                    window.location.href = `tel:${client.phone}`
-                  }
+                  handlePhoneClick(client.phone || '', {
+                    showToast,
+                    debugMode: true
+                  })
                 }}
               >
                 <Phone className="w-3 h-3" />
@@ -86,11 +90,12 @@ export function ClientsOverview({ onClientSelect, onViewChange, searchTerm }: Cl
               </button>
               <button 
                 className="btn-outlined flex-1 flex items-center justify-center gap-1 text-xs py-2 min-h-[36px]"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  if (client.email) {
-                    window.location.href = `mailto:${client.email}`
-                  }
+                  await handleEmailClick(client.email || '', {
+                    showToast,
+                    debugMode: true
+                  })
                 }}
               >
                 <Mail className="w-3 h-3" />

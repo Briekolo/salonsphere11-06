@@ -11,7 +11,7 @@ import { useBookings, useUpdateBooking, Booking } from '@/lib/hooks/useBookings'
 import { BookingFormModal } from './BookingFormModal'
 import { AppointmentCard } from './AppointmentCard'
 import { DropZone } from './DropZone'
-import { useToast } from '@/lib/hooks/useToast'
+import { useToast } from '@/components/providers/ToastProvider'
 
 interface EnhancedCalendarViewProps {
   selectedDate: Date

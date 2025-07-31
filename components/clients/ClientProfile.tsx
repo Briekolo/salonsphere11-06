@@ -1,103 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, MessageSquare, FileText, CreditCard, Tag, Activity } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, FileText, Tag, Save, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
-import { useClientById } from '@/lib/hooks/useClients';
+import { useClientById, useUpdateClient } from '@/lib/hooks/useClients';
+import { useClientAppointments } from '@/lib/hooks/useBookings';
+import { useToast } from '@/components/providers/ToastProvider';
+import { ClientStatusBadge } from './ClientStatusBadge';
+import { ClientStatus } from '@/lib/services/clientStatusService';
+import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils';
+import { useTenant } from '@/lib/hooks/useTenant';
 
 interface ClientProfileProps {
   clientId: string
   onBack: () => void
 }
 
-interface Appointment {
-  id: string
-  date: Date
-  service: string
-  duration: number
-  price: number
-  is_paid: boolean
-  notes?: string
-}
-
-interface Communication {
-  id: string
-  type: 'email' | 'phone' | 'sms'
-  date: Date
-  subject: string
-  content: string
-}
-
-const mockClient = {
-  id: '1',
-  firstName: 'Emma',
-  lastName: 'de Vries',
-  email: 'emma@example.com',
-  phone: '+31 6 12345678',
-  avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-  status: 'vip',
-  segment: 'premium',
-  dateOfBirth: new Date('1985-03-15'),
-  address: 'Hoofdstraat 123, 1234 AB Amsterdam',
-  joinDate: new Date('2022-06-15'),
-  lastVisit: new Date('2024-01-15'),
-  totalSpent: 1250,
-  appointmentsCount: 12,
-  tags: ['VIP', 'Regulier', 'Allergieën'],
-  notes: 'Allergisch voor lavendel. Prefereert afspraken in de ochtend.',
-  preferences: {
-    preferredServices: ['Pedicure', 'Manicure'],
-    preferredStaff: 'Julia',
-    communicationPreference: 'email'
-  }
-}
-
-const mockAppointments: Appointment[] = [
-  {
-    id: '1',
-    date: new Date('2024-01-15'),
-    service: 'Pedicure',
-    duration: 45,
-    price: 65,
-    is_paid: true
-  },
-  {
-    id: '2',
-    date: new Date('2024-01-08'),
-    service: 'Manicure',
-    duration: 60,
-    price: 45,
-    is_paid: true
-  },
-  {
-    id: '3',
-    date: new Date('2024-01-22'),
-    service: 'Pedicure',
-    duration: 45,
-    price: 65,
-    is_paid: false
-  }
-]
-
-const mockCommunications: Communication[] = [
-  {
-    id: '1',
-    type: 'email',
-    date: new Date('2024-01-14'),
-    subject: 'Bevestiging afspraak',
-    content: 'Uw afspraak voor morgen om 10:30 is bevestigd.'
-  },
-  {
-    id: '2',
-    type: 'phone',
-    date: new Date('2024-01-10'),
-    subject: 'Telefonisch contact',
-    content: 'Gebeld voor het verzetten van afspraak.'
-  }
-]
 
 const ProgressBar = ({ value, max }: { value: number; max: number }) => {
   const percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -112,10 +33,126 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 };
 
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'communications' | 'documents'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments'>('overview')
   const [isEditing, setIsEditing] = useState(false)
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const { showToast } = useToast()
+
+  // Form state for editing
+  const [editForm, setEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    date_of_birth: '',
+  })
+  const [notesValue, setNotesValue] = useState('')
 
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
+  const { data: appointments, isLoading: appointmentsLoading, error: appointmentsError } = useClientAppointments(clientId);
+  const updateClientMutation = useUpdateClient();
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+
+  // Initialize form when client data is loaded
+  if (client && !editForm.first_name && !isEditing) {
+    setEditForm({
+      first_name: client.first_name || '',
+      last_name: client.last_name || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      date_of_birth: client.date_of_birth ? client.date_of_birth.split('T')[0] : '',
+    })
+    setNotesValue(client.notes || '')
+  }
+
+  // Helper functions
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Save changes
+      handleSaveClient()
+    } else {
+      // Enter edit mode
+      setIsEditing(true)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    if (client) {
+      setEditForm({
+        first_name: client.first_name || '',
+        last_name: client.last_name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        date_of_birth: client.date_of_birth ? client.date_of_birth.split('T')[0] : '',
+      })
+    }
+    setIsEditing(false)
+  }
+
+  const handleSaveClient = async () => {
+    // Validation
+    if (!editForm.first_name.trim() || !editForm.last_name.trim()) {
+      showToast('Voornaam en achternaam zijn verplicht', 'error')
+      return
+    }
+
+    if (!validateEmail(editForm.email)) {
+      showToast('Voer een geldig e-mailadres in', 'error')
+      return
+    }
+
+    try {
+      const updatedClient = await updateClientMutation.mutateAsync({
+        id: clientId,
+        updates: editForm
+      })
+      
+      // Immediately update the specific client in the cache
+      queryClient.setQueryData(['client', tenantId, clientId], updatedClient)
+      
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, clientId] })
+      queryClient.invalidateQueries({ queryKey: ['clients', tenantId] })
+      
+      showToast('Klantgegevens bijgewerkt', 'success')
+      setIsEditing(false)
+    } catch (error) {
+      showToast('Fout bij het bijwerken van klantgegevens', 'error')
+    }
+  }
+
+  const handleSaveNotes = async () => {
+    try {
+      const updatedClient = await updateClientMutation.mutateAsync({
+        id: clientId,
+        updates: { notes: notesValue }
+      })
+      
+      // Immediately update the specific client in the cache
+      queryClient.setQueryData(['client', tenantId, clientId], updatedClient)
+      
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['client', tenantId, clientId] })
+      
+      showToast('Notities bijgewerkt', 'success')
+      setIsEditingNotes(false)
+    } catch (error) {
+      showToast('Fout bij het bijwerken van notities', 'error')
+    }
+  }
+
+  const handleCancelNotes = () => {
+    setNotesValue(client?.notes || '')
+    setIsEditingNotes(false)
+  }
 
   if (clientLoading) return <div>Laden...</div>
   if (clientError) return <div>Fout bij het laden van de klant.</div>
@@ -150,23 +187,29 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         </div>
 
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-          <button className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]">
-            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Bericht</span>
-            <span className="xs:hidden">Bericht</span>
-          </button>
-          <button className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]">
-            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Afspraak</span>
-            <span className="xs:hidden">Afspraak</span>
-          </button>
           <button 
-            onClick={() => setIsEditing(!isEditing)}
-            className="btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]"
+            onClick={handleEditToggle}
+            disabled={updateClientMutation.isPending}
+            className="btn-primary flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] disabled:opacity-50"
           >
-            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-            {isEditing ? 'Opslaan' : 'Bewerken'}
+            {updateClientMutation.isPending ? (
+              <div className="w-3 h-3 sm:w-4 sm:h-4 animate-spin border-2 border-white border-t-transparent rounded-full" />
+            ) : (
+              <>
+                {isEditing ? <Save className="w-3 h-3 sm:w-4 sm:h-4" /> : <Edit className="w-3 h-3 sm:w-4 sm:h-4" />}
+                {isEditing ? 'Opslaan' : 'Bewerken'}
+              </>
+            )}
           </button>
+          {isEditing && (
+            <button 
+              onClick={handleCancelEdit}
+              className="btn-outlined flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[36px] sm:min-h-[40px]"
+            >
+              <X className="w-3 h-3 sm:w-4 sm:h-4" />
+              Annuleren
+            </button>
+          )}
         </div>
       </div>
 
@@ -189,17 +232,56 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           <div className="flex-1">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-3 sm:mb-4">
               <div className="text-center sm:text-left">
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
-                  {client.first_name} {client.last_name}
-                </h2>
-                <p className="text-sm sm:text-base text-gray-600">{client.email}</p>
-                <p className="text-sm sm:text-base text-gray-600">{client.phone}</p>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editForm.first_name}
+                        onChange={(e) => setEditForm({...editForm, first_name: e.target.value})}
+                        placeholder="Voornaam"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.last_name}
+                        onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
+                        placeholder="Achternaam"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                      placeholder="E-mailadres"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                      placeholder="Telefoonnummer"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
+                      {client.first_name} {client.last_name}
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600">{client.email}</p>
+                    <p className="text-sm sm:text-base text-gray-600">{client.phone}</p>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center justify-center sm:justify-start lg:justify-start gap-2 mt-3 sm:mt-4 lg:mt-0">
-                <span className={`status-chip text-xs sm:text-sm ${getStatusColor(client.status || 'active')}`}>
-                  {client.status?.toUpperCase() || 'ACTIEF'}
-                </span>
+                <ClientStatusBadge 
+                  status={(client.status as ClientStatus) || 'inactive'} 
+                  showTooltip={true}
+                  className="text-xs sm:text-sm"
+                />
                 <button className="p-1 hover:bg-gray-100 rounded min-h-[32px] min-w-[32px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center">
                   <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
                 </button>
@@ -208,7 +290,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-4">
               <div className="text-center lg:text-left">
-                <div className="text-xl lg:text-2xl font-bold text-gray-900">{client.appointments_count || 0}</div>
+                <div className="text-xl lg:text-2xl font-bold text-gray-900">{appointments?.length || 0}</div>
                 <div className="text-sm text-gray-600">Afspraken</div>
               </div>
               <div className="text-center lg:text-left">
@@ -217,13 +299,24 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {client.last_visit_date ? format(new Date(client.last_visit_date), 'd MMM', { locale: nl }) : 'N.v.t.'}
+                  {(() => {
+                    if (!appointments || appointments.length === 0) return 'N.v.t.';
+                    
+                    // Filter past appointments and sort by date (most recent first)
+                    const pastAppointments = appointments
+                      .filter(apt => new Date(apt.scheduled_at) < new Date())
+                      .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                    
+                    if (pastAppointments.length === 0) return 'N.v.t.';
+                    
+                    return format(new Date(pastAppointments[0].scheduled_at), 'd MMM', { locale: nl });
+                  })()}
                 </div>
                 <div className="text-sm text-gray-600">Laatste bezoek</div>
               </div>
               <div className="text-center lg:text-left">
                 <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {client.created_at ? `${Math.floor((new Date().getTime() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30))}m` : 'N.v.t.'}
+                  {client.created_at ? format(new Date(client.created_at), 'dd MMM yyyy', { locale: nl }) : 'N.v.t.'}
                 </div>
                 <div className="text-sm text-gray-600">Klant sinds</div>
               </div>
@@ -239,11 +332,27 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <button className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors min-h-[44px]">
+              <button 
+                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors min-h-[44px]"
+                onClick={() => {
+                  handlePhoneClick(client.phone || '', {
+                    showToast,
+                    debugMode: true
+                  })
+                }}
+              >
                 <Phone className="w-4 h-4" />
                 Bellen
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors min-h-[44px]">
+              <button 
+                className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors min-h-[44px]"
+                onClick={async () => {
+                  await handleEmailClick(client.email || '', {
+                    showToast,
+                    debugMode: true
+                  })
+                }}
+              >
                 <Mail className="w-4 h-4" />
                 E-mail
               </button>
@@ -254,19 +363,17 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 overflow-x-auto">
-        <nav className="flex space-x-4 lg:space-x-8 min-w-max">
+        <nav className="flex min-w-max">
           {[
             { id: 'overview', label: 'Overzicht', icon: FileText },
-            { id: 'appointments', label: 'Afspraken', icon: Calendar },
-            { id: 'communications', label: 'Communicatie', icon: MessageSquare },
-            { id: 'documents', label: 'Documenten', icon: FileText }
+            { id: 'appointments', label: 'Afspraken', icon: Calendar }
           ].map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap min-h-[44px] ${
+                className={`flex items-center justify-center gap-2 py-2 px-4 border-b-2 font-medium text-sm whitespace-nowrap min-h-[44px] flex-1 ${
                   activeTab === tab.id
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -291,11 +398,30 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Geboortedatum</label>
-<p>{client.date_of_birth ? format(new Date(client.date_of_birth), 'd MMMM yyyy', { locale: nl }) : 'Onbekend'}</p>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={editForm.date_of_birth}
+                        onChange={(e) => setEditForm({...editForm, date_of_birth: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <p>{client.date_of_birth ? format(new Date(client.date_of_birth), 'd MMMM yyyy', { locale: nl }) : 'Onbekend'}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
-                    <p className="text-gray-900">{client.address}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editForm.address}
+                        onChange={(e) => setEditForm({...editForm, address: e.target.value})}
+                        placeholder="Adres"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{client.address || 'Niet opgegeven'}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Klant sinds</label>
@@ -338,12 +464,48 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               {/* Notes */}
               <div className="card">
                 <h3 className="text-lg font-semibold mb-4">Notities</h3>
-                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800">{client.notes || 'Geen notities.'}</p>
-                </div>
-                <button className="w-full mt-3 btn-outlined text-sm">
-                  Notitie bewerken
-                </button>
+                {isEditingNotes ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={notesValue}
+                      onChange={(e) => setNotesValue(e.target.value)}
+                      placeholder="Voeg notities toe..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={updateClientMutation.isPending}
+                        className="flex-1 btn-primary text-sm disabled:opacity-50"
+                      >
+                        {updateClientMutation.isPending ? (
+                          <div className="w-4 h-4 animate-spin border-2 border-white border-t-transparent rounded-full mx-auto" />
+                        ) : (
+                          'Opslaan'
+                        )}
+                      </button>
+                      <button
+                        onClick={handleCancelNotes}
+                        className="flex-1 btn-outlined text-sm"
+                      >
+                        Annuleren
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <p className="text-sm text-yellow-800">{client.notes || 'Geen notities.'}</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsEditingNotes(true)}
+                      className="w-full mt-3 btn-outlined text-sm"
+                    >
+                      Notitie bewerken
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </>
@@ -359,92 +521,68 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {mockAppointments.map((appointment) => (
-                  <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-gray-900">
-                          {format(appointment.date, 'd', { locale: nl })}
+              {appointmentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-gray-600">Afspraken laden...</div>
+                </div>
+              ) : appointmentsError ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-red-600">Fout bij het laden van afspraken</div>
+                </div>
+              ) : !appointments || appointments.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Geen afspraken gevonden voor deze klant</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {appointments.map((appointment) => (
+                    <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-gray-900">
+                            {format(new Date(appointment.scheduled_at), 'd', { locale: nl })}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {format(new Date(appointment.scheduled_at), 'MMM', { locale: nl })}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {format(new Date(appointment.scheduled_at), 'HH:mm', { locale: nl })}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {format(appointment.date, 'MMM', { locale: nl })}
+                        <div>
+                          <h4 className="font-medium text-gray-900">
+                            {appointment.services?.name || 'Onbekende service'}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {appointment.duration_minutes || appointment.services?.duration_minutes || 0} minuten
+                          </p>
+                          {appointment.users && (
+                            <p className="text-xs text-gray-500">
+                              Met {appointment.users.first_name} {appointment.users.last_name}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">{appointment.service}</h4>
-                        <p className="text-sm text-gray-600">{appointment.duration} minuten</p>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-4">
-                      <div className="text-center sm:text-right">
-                        <div className="font-semibold text-gray-900">€{appointment.price}</div>
-                        <span className={`status-chip ${getAppointmentStatusColor(appointment.is_paid)}`}>
-                          {appointment.is_paid ? 'Betaald' : 'Nog niet betaald'}
-                        </span>
+                      <div className="flex items-center justify-between sm:justify-end gap-4">
+                        <div className="text-center sm:text-right">
+                          <div className="font-semibold text-gray-900">
+                            €{appointment.price || appointment.services?.price || 0}
+                          </div>
+                          <span className={`status-chip ${getAppointmentStatusColor(appointment.is_paid)}`}>
+                            {appointment.is_paid ? 'Betaald' : 'Nog niet betaald'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {activeTab === 'communications' && (
-          <div className="lg:col-span-12">
-            <div className="card">
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-                <h3 className="text-lg font-semibold">Communicatiegeschiedenis</h3>
-                <button className="btn-primary self-start sm:self-auto">
-                  Nieuwe communicatie
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {mockCommunications.map((comm) => (
-                  <div key={comm.id} className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg">
-                    <div className={`p-2 rounded-lg ${
-                      comm.type === 'email' ? 'bg-blue-100' :
-                      comm.type === 'phone' ? 'bg-green-100' : 'bg-purple-100'
-                    }`}>
-                      {comm.type === 'email' ? <Mail className="w-4 h-4" /> :
-                       comm.type === 'phone' ? <Phone className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{comm.subject}</h4>
-                        <span className="text-sm text-gray-600 mt-1 sm:mt-0">
-                          {format(comm.date, 'd MMM yyyy HH:mm', { locale: nl })}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">{comm.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'documents' && (
-          <div className="lg:col-span-12">
-            <div className="card">
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6">
-                <h3 className="text-lg font-semibold">Documenten</h3>
-                <button className="btn-primary self-start sm:self-auto">
-                  Document uploaden
-                </button>
-              </div>
-
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Nog geen documenten geüpload</p>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>

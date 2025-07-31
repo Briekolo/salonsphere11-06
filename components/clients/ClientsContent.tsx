@@ -1,25 +1,34 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { ClientsOverview } from './ClientsOverview'
 import { ClientsList } from './ClientsList'
 import { ClientProfile } from './ClientProfile'
 import { ClientsStats } from './ClientsStats'
 import { ClientsFilters } from './ClientsFilters'
-import { FileText, Upload, PlusCircle } from 'lucide-react'
+import { FileText, PlusCircle } from 'lucide-react'
 import { useClients as useClientsHook } from '@/lib/hooks/useClients'
 import { useCreateClient } from '@/lib/hooks/useClients'
 import { ClientForm } from './ClientForm'
+import { ClientStatus } from '@/lib/services/clientStatusService'
 
 export function ClientsContent() {
   const [view, setView] = useState<'overview' | 'list' | 'profile' | 'form'>('overview')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all')
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: allClients = [] } = useClientsHook()
+  const { data: allClients = [], isLoading: clientsLoading } = useClientsHook(searchTerm)
   const createMutation = useCreateClient()
+
+  // Filter clients by status
+  const filteredClients = useMemo(() => {
+    if (statusFilter === 'all') {
+      return allClients
+    }
+    return allClients.filter(client => client.status === statusFilter)
+  }, [allClients, statusFilter])
 
   const handleClientSelect = (clientId: string) => {
     setSelectedClientId(clientId)
@@ -32,9 +41,10 @@ export function ClientsContent() {
   }
 
   const handleExport = () => {
-    if (!allClients || allClients.length === 0) return
+    const clientsToExport = allClients
+    if (!clientsToExport || clientsToExport.length === 0) return
     const header = ['first_name','last_name','email','phone']
-    const rows = allClients.map(c=>[
+    const rows = clientsToExport.map(c=>[
       c.first_name,
       c.last_name,
       c.email,
@@ -53,23 +63,6 @@ export function ClientsContent() {
     document.body.removeChild(link)
   }
 
-  const handleImportButton = () => fileInputRef.current?.click()
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if(!file) return
-    const text = await file.text()
-    const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean)
-    const headers = headerLine.split(',')
-    lines.forEach(line => {
-      const values = line.split(',')
-      if(values.length !== headers.length) return
-      const item:any = {}
-      headers.forEach((h,idx)=> item[h] = values[idx])
-      createMutation.mutate(item)
-    })
-    e.target.value=''
-  }
 
   return (
     <div className="mobile-p space-y-4 lg:space-y-6">
@@ -83,7 +76,13 @@ export function ClientsContent() {
           {/* Filters and Actions */}
           <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
             <div className="overflow-x-auto">
-              <ClientsFilters searchTerm={searchTerm} onSearch={setSearchTerm} />
+              <ClientsFilters 
+                searchTerm={searchTerm} 
+                onSearch={setSearchTerm}
+                statusFilter={statusFilter}
+                onStatusFilter={setStatusFilter}
+                isLoading={clientsLoading}
+              />
             </div>
             
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 lg:space-x-3">
@@ -93,12 +92,6 @@ export function ClientsContent() {
                 <span className="hidden sm:inline">Exporteren</span>
               </button>
 
-              {/* Import */}
-              <button onClick={handleImportButton} className="btn-outlined flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">Importeren</span>
-              </button>
-              <input type="file" accept=".csv,text/csv" ref={fileInputRef} onChange={handleImportFile} className="hidden" />
 
               {/* Nieuw */}
               <button onClick={()=>setView('form')} className="btn-primary flex items-center justify-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-h-[44px]">
@@ -113,12 +106,14 @@ export function ClientsContent() {
             <ClientForm clientId={null} onBack={() => setView('overview')} />
           ) : view === 'overview' ? (
             <ClientsOverview
+              clients={filteredClients}
               onClientSelect={handleClientSelect}
               onViewChange={setView}
               searchTerm={searchTerm}
             />
           ) : (
             <ClientsList
+              clients={filteredClients}
               onClientSelect={handleClientSelect}
               onViewChange={setView}
               searchTerm={searchTerm}

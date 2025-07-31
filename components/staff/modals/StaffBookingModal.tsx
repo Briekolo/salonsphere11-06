@@ -47,7 +47,7 @@ import {
   AlertTriangle,
   Lock
 } from 'lucide-react'
-import { useToast } from '@/lib/hooks/useToast'
+import { useToast } from '@/components/providers/ToastProvider'
 import { getBookingStatus, BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS, BookingStatus } from '@/types/booking'
 
 interface StaffBookingModalProps {

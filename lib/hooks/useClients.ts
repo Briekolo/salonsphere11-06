@@ -18,7 +18,6 @@ export type Client = Database['public']['Tables']['clients']['Row'] & {
 
 export function useClients(searchTerm: string = '') {
   const { tenantId } = useTenant()
-
   const queryKey = ['clients', tenantId, searchTerm]
 
   const query = useQuery<Client[]>({

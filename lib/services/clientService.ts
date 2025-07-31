@@ -1,6 +1,7 @@
 import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import { NotificationTriggers } from './notificationTriggers'
+import { ClientStatusService } from './clientStatusService'
 
 type Client = Database['public']['Tables']['clients']['Row']
 type ClientInsert = Database['public']['Tables']['clients']['Insert']
@@ -18,7 +19,22 @@ export class ClientService {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    const clients = data || []
+    
+    // Calculate status for all clients in bulk for efficiency
+    const clientIds = clients.map(c => c.id)
+    const statusMap = await ClientStatusService.calculateBulkClientStatus(clientIds)
+    
+    // Calculate last visit date from bookings for all clients
+    const lastVisitMap = await this.calculateBulkLastVisit(clientIds, tenantId)
+    
+    return clients.map(client => ({
+      ...client,
+      total_spent: client.total_spent || 0,
+      last_visit_date: lastVisitMap[client.id] || null,
+      status: statusMap[client.id] || 'inactive'
+    }))
   }
 
   static async getById(id: string): Promise<Client | null> {
@@ -33,7 +49,19 @@ export class ClientService {
       .single()
 
     if (error) throw error
-    return data
+    if (!data) return null
+
+    // Calculate status for this specific client
+    const status = await ClientStatusService.calculateClientStatus(id)
+    
+    // Calculate last visit from bookings
+    const lastVisitMap = await this.calculateBulkLastVisit([id], tenantId)
+    
+    return {
+      ...data,
+      last_visit_date: lastVisitMap[id] || null,
+      status
+    }
   }
 
   static async create(client: Omit<ClientInsert, 'tenant_id'>): Promise<Client> {
@@ -105,38 +133,62 @@ export class ClientService {
       .from('clients')
       .select('*')
       .eq('tenant_id', tenantId)
-      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,notes.ilike.%${query}%`)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    const clients = data || []
+    
+    // Calculate status for all search results in bulk
+    const clientIds = clients.map(c => c.id)
+    const statusMap = await ClientStatusService.calculateBulkClientStatus(clientIds)
+    
+    // Calculate last visit date from bookings for all clients
+    const lastVisitMap = await this.calculateBulkLastVisit(clientIds, tenantId)
+    
+    return clients.map(client => ({
+      ...client,
+      total_spent: client.total_spent || 0,
+      last_visit_date: lastVisitMap[client.id] || null,
+      status: statusMap[client.id] || 'inactive'
+    }))
   }
 
-  static async getBySegment(segment: string): Promise<Client[]> {
-    const tenantId = await getCurrentUserTenantId()
-    if (!tenantId) throw new Error('No tenant found')
+  // Helper method to calculate last visit dates in bulk for performance
+  static async calculateBulkLastVisit(clientIds: string[], tenantId: string): Promise<Record<string, string | null>> {
+    if (clientIds.length === 0) return {}
 
-    let query = supabase
-      .from('clients')
-      .select('*')
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('client_id, scheduled_at')
       .eq('tenant_id', tenantId)
+      .in('client_id', clientIds)
+      .lt('scheduled_at', new Date().toISOString()) // Only past appointments
+      .order('scheduled_at', { ascending: false })
 
-    // Apply segment-specific filters
-    switch (segment) {
-      case 'vip':
-        query = query.gte('total_spent', 500)
-        break
-      case 'new':
-        query = query.gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        break
-      case 'inactive':
-        query = query.or(`last_visit_date.is.null,last_visit_date.lt.${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()}`)
-        break
+    if (error) {
+      console.error('Error fetching booking data for last visit:', error)
+      return {}
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false })
+    const lastVisitMap: Record<string, string | null> = {}
+    
+    // Initialize all clients to null
+    clientIds.forEach(id => {
+      lastVisitMap[id] = null
+    })
 
-    if (error) throw error
-    return data || []
+    // Find the most recent booking for each client
+    if (data) {
+      data.forEach(booking => {
+        if (!lastVisitMap[booking.client_id]) {
+          lastVisitMap[booking.client_id] = booking.scheduled_at
+        }
+      })
+    }
+
+    return lastVisitMap
   }
+
 }

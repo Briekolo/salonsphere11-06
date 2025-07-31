@@ -4,6 +4,8 @@ import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import ReactQueryProvider from '@/components/providers/ReactQueryProvider'
 import RealtimeProvider from '@/components/providers/RealtimeProvider'
+import { ToastProvider } from '@/components/providers/ToastProvider'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,7 +29,12 @@ export default function RootLayout({
       <body className={`${inter.className} h-full`}>
         <ReactQueryProvider>
           <AuthProvider>
-            <RealtimeProvider>{children}</RealtimeProvider>
+            <RealtimeProvider>
+              <ToastProvider>
+                {children}
+                <ToastContainer />
+              </ToastProvider>
+            </RealtimeProvider>
           </AuthProvider>
         </ReactQueryProvider>
       </body>

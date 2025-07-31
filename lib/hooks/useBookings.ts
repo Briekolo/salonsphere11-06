@@ -71,13 +71,32 @@ return useQuery<Booking | null>({
   })
 }
 
+export function useClientAppointments(clientId: string | null) {
+  const { tenantId } = useTenant()
+
+  return useQuery<Booking[]>({
+    queryKey: ['client-appointments', tenantId, clientId],
+    queryFn: async () => {
+      if (!tenantId || !clientId) return []
+      return BookingService.getByClientId(clientId)
+    },
+    enabled: !!tenantId && !!clientId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useCreateBooking() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: BookingService.create,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
+      // Invalidate client-specific appointments
+      if (data.client_id) {
+        queryClient.invalidateQueries({ queryKey: ['client-appointments', undefined, data.client_id] })
+      }
     },
   })
 }
@@ -125,6 +144,10 @@ export function useUpdateBooking() {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
       queryClient.invalidateQueries({ queryKey: ['booking', tenantId, variables.id] })
+      // Invalidate client-specific appointments
+      if (data.client_id) {
+        queryClient.invalidateQueries({ queryKey: ['client-appointments', tenantId, data.client_id] }) 
+      }
     },
     onError: (error, variables, context) => {
       // Extract meaningful error information
@@ -166,6 +189,8 @@ export function useDeleteBooking() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings-paginated'] })
+      // Invalidate all client appointments (we don't know which client this was for)
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] })
     },
   })
 }
