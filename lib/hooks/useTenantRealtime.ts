@@ -1,22 +1,33 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { useQueryClient } from '@tanstack/react-query'
+import { RealtimeChannel } from '@supabase/supabase-js'
 
 export function useTenantRealtime() {
   const { tenantId } = useTenant()
   const qc = useQueryClient()
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectAttemptsRef = useRef(0)
+  const maxReconnectAttempts = 5
 
-  useEffect(() => {
+  const setupChannel = useCallback(() => {
     if (!tenantId) {
       console.log('[useTenantRealtime] No tenantId, skipping realtime setup')
-      return
+      return null
     }
 
     console.log(`[useTenantRealtime] Setting up realtime for tenant: ${tenantId}`)
-    const channel = supabase.channel('tenant_realtime_' + tenantId)
+    const channel = supabase.channel('tenant_realtime_' + tenantId, {
+      config: {
+        presence: {
+          key: tenantId
+        }
+      }
+    })
 
     const watch = (
       table: string,
@@ -79,19 +90,81 @@ export function useTenantRealtime() {
       }
     )
 
+    return channel
+  }, [tenantId, qc])
+
+  const attemptReconnect = useCallback(() => {
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.error('[useTenantRealtime] Max reconnection attempts reached')
+      return
+    }
+
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000) // Exponential backoff, max 30s
+    console.log(`[useTenantRealtime] Attempting reconnection in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`)
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectAttemptsRef.current++
+      
+      // Clean up existing channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+      
+      // Create new channel
+      const newChannel = setupChannel()
+      if (newChannel) {
+        channelRef.current = newChannel
+        subscribeToChannel(newChannel)
+      }
+    }, delay)
+  }, [setupChannel])
+
+  const subscribeToChannel = useCallback((channel: RealtimeChannel) => {
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         console.log('[useTenantRealtime] Successfully subscribed to realtime updates')
+        reconnectAttemptsRef.current = 0 // Reset reconnection attempts on successful connection
+        
+        // Clear any pending reconnection timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
+        }
       } else if (status === 'CLOSED') {
         console.log('[useTenantRealtime] Realtime subscription closed')
+        attemptReconnect()
       } else if (status === 'CHANNEL_ERROR') {
-        console.error('[useTenantRealtime] Error subscribing to realtime updates')
+        console.warn('[useTenantRealtime] Channel error, attempting reconnection')
+        attemptReconnect()
       }
     })
+  }, [attemptReconnect])
+
+  useEffect(() => {
+    const channel = setupChannel()
+    if (channel) {
+      channelRef.current = channel
+      subscribeToChannel(channel)
+    }
 
     return () => {
       console.log('[useTenantRealtime] Cleaning up realtime subscription')
-      supabase.removeChannel(channel)
+      
+      // Clear reconnection timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      
+      // Remove channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+      
+      // Reset reconnection attempts
+      reconnectAttemptsRef.current = 0
     }
-  }, [tenantId, qc])
+  }, [setupChannel, subscribeToChannel])
 } 

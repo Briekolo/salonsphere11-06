@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface BookingConfirmationRequest {
+interface BookingReminderRequest {
   bookingId: string
   recipientEmail: string
   clientName: string
@@ -41,19 +41,19 @@ serve(async (req) => {
       tenantAddress,
       tenantPhone,
       notes
-    }: BookingConfirmationRequest = await req.json()
+    }: BookingReminderRequest = await req.json()
 
-    console.log('Booking confirmation request:', { bookingId, recipientEmail, clientName, tenantId })
+    console.log('Booking reminder request:', { bookingId, recipientEmail, clientName, tenantId })
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Check if booking confirmation is enabled for this tenant
+    // Check if booking reminder is enabled for this tenant
     const { data: settings, error: settingsError } = await supabase
       .from('email_automation_settings')
-      .select('booking_confirmation_enabled')
+      .select('booking_reminder_enabled')
       .eq('tenant_id', tenantId)
       .single()
 
@@ -62,10 +62,10 @@ serve(async (req) => {
       throw new Error('Could not fetch email automation settings')
     }
 
-    if (!settings?.booking_confirmation_enabled) {
-      console.log('Booking confirmation is disabled for tenant:', tenantId)
+    if (!settings?.booking_reminder_enabled) {
+      console.log('Booking reminder is disabled for tenant:', tenantId)
       return new Response(
-        JSON.stringify({ success: true, message: 'Booking confirmation is disabled' }),
+        JSON.stringify({ success: true, message: 'Booking reminder is disabled' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
@@ -79,6 +79,8 @@ serve(async (req) => {
     if (!RESEND_API_KEY) {
       throw new Error('Email service not configured')
     }
+
+    const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
 
     // Format date and time
     const appointmentDate = new Date(scheduledAt)
@@ -100,7 +102,11 @@ serve(async (req) => {
       minute: '2-digit'
     })
 
-    // Prepare email content
+    // Calculate time until appointment
+    const now = new Date()
+    const hoursUntil = Math.round((appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60))
+
+    // Prepare reminder email content
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -110,24 +116,31 @@ serve(async (req) => {
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background-color: #02011F; color: white; padding: 20px; text-align: center; }
             .content { padding: 20px; background-color: #f9f9f9; }
+            .reminder-box { background-color: #fff3cd; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #ffc107; text-align: center; }
             .appointment-details { background-color: white; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #02011F; }
             .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
             .detail-label { font-weight: bold; color: #666; }
             .detail-value { color: #333; }
-            .important-info { background-color: #fff3cd; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #ffc107; }
+            .important-info { background-color: #d1ecf1; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #17a2b8; }
             .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+            .time-highlight { font-size: 24px; font-weight: bold; color: #02011F; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <h1>${tenantName}</h1>
-              <p>Afspraakbevestiging</p>
+              <h1>⏰ Afspraak Herinnering</h1>
+              <p>${tenantName}</p>
             </div>
             <div class="content">
-              <h2>Uw afspraak is bevestigd!</h2>
+              <div class="reminder-box">
+                <h2>🕐 Over ${hoursUntil} uur heeft u een afspraak!</h2>
+                <div class="time-highlight">${dateFormatted}</div>
+                <div class="time-highlight">${timeFormatted} - ${endTimeFormatted}</div>
+              </div>
+
               <p>Beste ${clientName},</p>
-              <p>Bedankt voor uw boeking. Hierbij bevestigen wij uw afspraak bij ${tenantName}.</p>
+              <p>Dit is een vriendelijke herinnering voor uw aanstaande afspraak bij ${tenantName}.</p>
               
               <div class="appointment-details">
                 <h3>Afspraakgegevens</h3>
@@ -175,28 +188,29 @@ serve(async (req) => {
               ` : ''}
               
               <div class="important-info">
-                <h4>Annulerings- en wijzigingsbeleid:</h4>
-                <p>Afspraken kunnen tot 24 uur van tevoren kosteloos worden geannuleerd of gewijzigd. Neem hiervoor contact met ons op.</p>
+                <h4>📍 Praktische tips:</h4>
+                <ul>
+                  <li>Plan voldoende reistijd in</li>
+                  <li>Kom graag 5 minuten eerder aan</li>
+                  <li>Voor wijzigingen kunt u ons bellen</li>
+                </ul>
               </div>
               
-              <p>We kijken ernaar uit u te mogen verwelkomen!</p>
+              <p>We kijken ernaar uit u morgen te zien!</p>
               
               <p>Met vriendelijke groet,<br>${tenantName}</p>
               
-              ${tenantPhone ? `<p>Voor vragen: ${tenantPhone}</p>` : ''}
+              ${tenantPhone ? `<p><strong>Voor vragen of wijzigingen:</strong> ${tenantPhone}</p>` : ''}
             </div>
             <div class="footer">
-              <p>Deze e-mail is automatisch gegenereerd. Voor wijzigingen kunt u contact met ons opnemen.</p>
+              <p>Deze herinnering is automatisch verzonden 24 uur voor uw afspraak.</p>
             </div>
           </div>
         </body>
       </html>
     `
 
-    // Use Resend test email if domain not verified
-    const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
-    
-    // Send email using Resend
+    // Send reminder email using Resend
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -206,7 +220,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: `${tenantName} <${RESEND_FROM_EMAIL}>`,
         to: recipientEmail,
-        subject: `Afspraakbevestiging - ${serviceName} op ${dateFormatted}`,
+        subject: `⏰ Herinnering: ${serviceName} morgen om ${timeFormatted}`,
         html: emailHtml
       }),
     })
@@ -214,14 +228,14 @@ serve(async (req) => {
     const emailResult = await emailResponse.json()
 
     if (!emailResponse.ok) {
-      console.error('Failed to send booking confirmation:', emailResult)
+      console.error('Failed to send booking reminder:', emailResult)
       
       // Log failed email
       await supabase
         .from('email_automation_logs')
         .insert({
           tenant_id: tenantId,
-          email_type: 'booking_confirmation',
+          email_type: 'booking_reminder',
           recipient_email: recipientEmail,
           booking_id: bookingId,
           status: 'failed',
@@ -229,7 +243,7 @@ serve(async (req) => {
           created_at: new Date().toISOString()
         })
 
-      throw new Error(`Failed to send booking confirmation: ${emailResult.message}`)
+      throw new Error(`Failed to send booking reminder: ${emailResult.message}`)
     }
 
     // Log successful email
@@ -237,7 +251,7 @@ serve(async (req) => {
       .from('email_automation_logs')
       .insert({
         tenant_id: tenantId,
-        email_type: 'booking_confirmation',
+        email_type: 'booking_reminder',
         recipient_email: recipientEmail,
         booking_id: bookingId,
         status: 'sent',
@@ -246,12 +260,12 @@ serve(async (req) => {
         created_at: new Date().toISOString()
       })
 
-    console.log(`Booking confirmation sent successfully to ${recipientEmail}: ${emailResult.id}`)
+    console.log(`Booking reminder sent successfully to ${recipientEmail}: ${emailResult.id}`)
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Booking confirmation sent successfully',
+        message: 'Booking reminder sent successfully',
         email_id: emailResult.id
       }),
       {
@@ -260,7 +274,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error sending booking confirmation:', error)
+    console.error('Error sending booking reminder:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {

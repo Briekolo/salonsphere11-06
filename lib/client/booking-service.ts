@@ -73,6 +73,18 @@ export class BookingService {
       .single();
 
     if (createError) throw createError;
+
+    // Send welcome email if enabled for new clients created during booking
+    try {
+      const isWelcomeEmailEnabled = await EmailService.checkEmailAutomationEnabled(data.tenantId, 'welcome')
+      if (isWelcomeEmailEnabled && newClient.email) {
+        await EmailService.sendWelcomeEmail(newClient, data.tenantId)
+      }
+    } catch (emailError) {
+      console.error('Failed to send welcome email for new client during booking:', emailError)
+      // Don't fail the client creation if welcome email fails
+    }
+
     return newClient;
   }
 

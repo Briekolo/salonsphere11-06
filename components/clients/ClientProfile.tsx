@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, FileText, Tag, Save, X } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Calendar, Star, Edit, Trash2, FileText, Tag, Save, X, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClientService } from '@/lib/services/clientService';
-import { useClientById, useUpdateClient } from '@/lib/hooks/useClients';
+import { useClientById, useUpdateClient, useDeleteClient } from '@/lib/hooks/useClients';
 import { useClientAppointments } from '@/lib/hooks/useBookings';
 import { useToast } from '@/components/providers/ToastProvider';
 import { ClientStatusBadge } from './ClientStatusBadge';
@@ -36,6 +36,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'appointments'>('overview')
   const [isEditing, setIsEditing] = useState(false)
   const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { showToast } = useToast()
 
   // Form state for editing
@@ -52,6 +53,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
   const { data: appointments, isLoading: appointmentsLoading, error: appointmentsError } = useClientAppointments(clientId);
   const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
   const queryClient = useQueryClient();
   const { tenantId } = useTenant();
 
@@ -152,6 +154,35 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const handleCancelNotes = () => {
     setNotesValue(client?.notes || '')
     setIsEditingNotes(false)
+  }
+
+  const handleDeleteClient = async () => {
+    if (!client) return
+
+    const confirmMessage = `Weet je zeker dat je klant "${client.first_name} ${client.last_name}" wilt verwijderen?\n\nDeze actie kan niet ongedaan worden gemaakt. Alle gekoppelde boekingen, betalingen en marketing gegevens worden ook verwijderd.`
+    
+    if (window.confirm(confirmMessage)) {
+      setIsDeleting(true)
+      
+      try {
+        await deleteClientMutation.mutateAsync(clientId)
+        
+        showToast(`Klant "${client.first_name} ${client.last_name}" is succesvol verwijderd.`, 'success')
+        
+        // Go back to the clients list
+        onBack()
+        
+      } catch (error) {
+        console.error('Error deleting client:', error)
+        
+        // Show specific error message
+        const errorMessage = error instanceof Error ? error.message : 'Er is een onbekende fout opgetreden bij het verwijderen van de klant.'
+        showToast(errorMessage, 'error')
+        
+      } finally {
+        setIsDeleting(false)
+      }
+    }
   }
 
   if (clientLoading) return <div>Laden...</div>
@@ -282,8 +313,20 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                   showTooltip={true}
                   className="text-xs sm:text-sm"
                 />
-                <button className="p-1 hover:bg-gray-100 rounded min-h-[32px] min-w-[32px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center">
-                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+                <button 
+                  onClick={handleDeleteClient}
+                  disabled={isDeleting}
+                  className={`p-1 rounded min-h-[32px] min-w-[32px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center transition-colors ${
+                    isDeleting 
+                      ? 'bg-gray-100 cursor-not-allowed' 
+                      : 'hover:bg-red-50'
+                  }`}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+                  )}
                 </button>
               </div>
             </div>

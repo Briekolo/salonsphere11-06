@@ -32,7 +32,15 @@ export function ToastContainer() {
           className={`flex items-center justify-between p-4 rounded-lg border-l-4 shadow-lg min-w-[300px] max-w-[400px] ${getToastStyles(toast.type)}`}
         >
           <div className="flex-1">
-            <p className="text-sm font-medium">{toast.message}</p>
+            {toast.title && (
+              <p className="text-sm font-semibold mb-1">{toast.title}</p>
+            )}
+            {toast.description && (
+              <p className="text-sm">{toast.description}</p>
+            )}
+            {toast.message && !toast.title && !toast.description && (
+              <p className="text-sm font-medium">{toast.message}</p>
+            )}
           </div>
           <button
             onClick={() => removeToast(toast.id)}
