@@ -72,8 +72,8 @@ export class CampaignService {
         email_templates (
           id,
           name,
-          html_content,
-          text_content
+          body_html,
+          body_text
         ),
         customer_segments (
           id,
@@ -132,6 +132,48 @@ export class CampaignService {
       .eq('id', campaignId)
 
     if (error) throw error
+  }
+
+  // Terminate/Cancel an active campaign
+  static async terminateCampaign(campaignId: string) {
+    // First get the campaign to check its status
+    const campaign = await this.getCampaign(campaignId)
+    if (!campaign) throw new Error('Campaign not found')
+
+    // Update campaign status to cancelled
+    const { error: updateError } = await supabase
+      .from('marketing_campaigns')
+      .update({ 
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', campaignId)
+      .in('status', ['sending', 'scheduled', 'paused'])
+
+    if (updateError) throw updateError
+
+    // Remove any pending emails from the queue
+    const { error: queueError } = await supabase
+      .from('email_queue')
+      .delete()
+      .eq('campaign_id', campaignId)
+      .eq('status', 'pending')
+
+    if (queueError) throw queueError
+
+    // Update any processing emails to failed
+    const { error: processingError } = await supabase
+      .from('email_queue')
+      .update({ 
+        status: 'failed',
+        error_message: 'Campaign terminated by user'
+      })
+      .eq('campaign_id', campaignId)
+      .eq('status', 'processing')
+
+    if (processingError) throw processingError
+
+    return { success: true }
   }
 
   // Add recipients to campaign
@@ -254,8 +296,8 @@ export class CampaignService {
       subject: recipient.variant === 'b' && campaign.subject_line_b 
         ? campaign.subject_line_b 
         : campaign.subject_line,
-      html_content: campaign.content,
-      text_content: null, // TODO: Generate plain text version
+      html_content: campaign.email_templates?.body_html || campaign.content || '',
+      text_content: campaign.email_templates?.body_text || null,
       scheduled_for: new Date().toISOString()
     }))
 
@@ -274,16 +316,20 @@ export class CampaignService {
       .in('id', recipientIds)
 
     // Trigger edge function to process queue
-    const { error: functionError } = await supabase.functions.invoke('send-marketing-campaign', {
+    const { data: functionData, error: functionError } = await supabase.functions.invoke('send-marketing-campaign', {
       body: { campaign_id: campaignId }
     })
 
     if (functionError) {
       console.error('Error triggering edge function:', functionError)
-      // Don't throw - emails are queued and can be processed later
+      throw new Error(functionError.message || 'Failed to trigger email sending. Check if the email service is configured.')
     }
 
-    return { queued: recipients.length }
+    if (!functionData || functionData.error) {
+      throw new Error(functionData?.error || 'Failed to send emails. Check Supabase Edge Function logs for details.')
+    }
+
+    return { queued: recipients.length, ...functionData }
   }
 
   // Schedule campaign

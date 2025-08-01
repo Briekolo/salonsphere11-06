@@ -37,8 +37,8 @@ serve(async (req) => {
       .select(`
         *,
         email_templates (
-          html_content,
-          text_content,
+          body_html,
+          body_text,
           variables
         )
       `)
@@ -108,8 +108,8 @@ serve(async (req) => {
       const client = recipient.clients
 
       // Use template content or campaign content
-      let htmlContent = campaign.email_templates?.html_content || campaign.content
-      let textContent = campaign.email_templates?.text_content || null
+      let htmlContent = campaign.email_templates?.body_html || campaign.content
+      let textContent = campaign.email_templates?.body_text || null
 
       // Replace variables
       const variables = {
@@ -137,9 +137,17 @@ serve(async (req) => {
         ? campaign.subject_line_b
         : campaign.subject_line
 
+      // Use Resend test email if domain not verified
+      const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
+      const fromName = tenant?.name || 'SalonSphere'
+      
+      // For testing with Resend, use the account owner's email
+      const isTestMode = RESEND_FROM_EMAIL === 'onboarding@resend.dev'
+      const toEmail = isTestMode ? 'tobias@dessaro.be' : client.email
+      
       return {
-        from: `${tenant?.name || 'SalonSphere'} <noreply@salonsphere.nl>`,
-        to: client.email,
+        from: `${fromName} <${RESEND_FROM_EMAIL}>`,
+        to: toEmail,
         subject: subject,
         html: htmlContent,
         text: textContent,
@@ -149,30 +157,55 @@ serve(async (req) => {
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
         },
         tags: [
-          { name: 'campaign_id', value: campaign_id },
-          { name: 'tenant_id', value: campaign.tenant_id },
-          { name: 'recipient_id', value: recipient.id }
+          { name: 'campaign_id', value: campaign_id.replace(/-/g, '_') },
+          { name: 'tenant_id', value: campaign.tenant_id.replace(/-/g, '_') },
+          { name: 'recipient_id', value: recipient.id.replace(/-/g, '_') },
+          { name: 'original_recipient', value: client.email.replace(/@/g, '_at_').replace(/\./g, '_') }
         ]
       }
     })
 
-    // Send emails using Resend batch API
-    const batchResponse = await fetch('https://api.resend.com/emails/batch', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emails),
-    })
+    // Send emails individually instead of batch
+    const sendResults = []
+    
+    // Helper function to delay execution
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+    
+    for (let i = 0; i < emails.length; i++) {
+      const email = emails[i]
+      
+      // Add delay after first email to respect rate limit (2 requests per second = 500ms between requests)
+      if (i > 0) {
+        await delay(600) // Add 600ms delay to be safe
+      }
+      
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(email),
+        })
 
-    if (!batchResponse.ok) {
-      const error = await batchResponse.text()
-      throw new Error(`Failed to send emails: ${error}`)
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('Resend API error for', email.to, ':', errorText)
+          sendResults.push({ error: errorText })
+        } else {
+          const result = await response.json()
+          console.log('Email sent to', email.to, ':', result)
+          sendResults.push(result)
+        }
+      } catch (error) {
+        console.error('Error sending to', email.to, ':', error)
+        sendResults.push({ error: error.message })
+      }
     }
 
-    const batchResult = await batchResponse.json()
-    console.log('Batch send result:', batchResult)
+    const batchResult = { data: sendResults }
+    console.log('Send results:', batchResult)
 
     // Update queue items and recipients
     const successfulIds = []
@@ -232,12 +265,21 @@ serve(async (req) => {
     }
 
     // Update campaign sent count
-    await supabase.rpc('increment', {
-      table_name: 'marketing_campaigns',
-      column_name: 'total_sent',
-      row_id: campaign_id,
-      increment_value: successfulIds.length
-    })
+    try {
+      await supabase.rpc('increment', {
+        table_name: 'marketing_campaigns',
+        column_name: 'total_sent',
+        row_id: campaign_id,
+        increment_value: successfulIds.length
+      })
+    } catch (error) {
+      console.error('Error incrementing sent count:', error)
+      // Fallback to direct update
+      await supabase
+        .from('marketing_campaigns')
+        .update({ total_sent: campaign.total_sent + successfulIds.length })
+        .eq('id', campaign_id)
+    }
 
     // Check if there are more emails to send
     const { count: remainingCount } = await supabase

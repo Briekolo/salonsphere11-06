@@ -36,17 +36,26 @@ export class EmailTemplateService {
       .from('email_templates')
       .select('*')
       .eq('tenant_id', effectiveTenantId)
-      .eq('is_active', true)
+      .eq('active', true)
       .order('created_at', { ascending: false })
 
     if (category) {
-      query = query.eq('category', category)
+      query = query.eq('type', category)
     }
 
     const { data, error } = await query
 
     if (error) throw error
-    return data
+    
+    // Map the existing table structure to the expected interface
+    return data?.map(template => ({
+      ...template,
+      category: template.type,
+      subject_line: template.subject,
+      html_content: template.body_html,
+      text_content: template.body_text,
+      is_active: template.active
+    })) || []
   }
 
   // Get single template
@@ -72,20 +81,33 @@ export class EmailTemplateService {
     // Extract variables from HTML content
     const variables = this.extractVariables(template.html_content || '')
 
+    // Map to existing table structure
     const { data, error } = await supabase
       .from('email_templates')
       .insert({
-        ...template,
         tenant_id: tenantId,
-        created_by: user.user.id,
+        name: template.name,
+        type: template.category || 'custom',
+        subject: template.subject_line,
+        body_html: template.html_content,
+        body_text: template.text_content,
         variables: variables,
-        is_active: true
+        active: true
       })
       .select()
       .single()
 
     if (error) throw error
-    return data
+    
+    // Map back to expected structure
+    return {
+      ...data,
+      category: data.type,
+      subject_line: data.subject,
+      html_content: data.body_html,
+      text_content: data.body_text,
+      is_active: data.active
+    }
   }
 
   // Update template
@@ -214,236 +236,34 @@ export class EmailTemplateService {
   static async createDefaultTemplates(tenantId: string) {
     const templates = [
       {
-        name: 'Welkom E-mail',
-        category: 'automated' as const,
-        subject_line: 'Welkom bij {{salon_name}}!',
-        html_content: `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #02011F; color: white; padding: 30px; text-align: center; }
-    .content { padding: 30px; background-color: #f9f9f9; }
-    .button { display: inline-block; padding: 12px 30px; background-color: #02011F; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>{{salon_name}}</h1>
-    </div>
-    <div class="content">
-      <h2>Welkom {{first_name}}!</h2>
-      <p>We zijn blij dat je hebt gekozen voor {{salon_name}}. We kijken ernaar uit om je te verwelkomen in onze salon.</p>
-      
-      <p>Bij ons kun je terecht voor:</p>
-      <ul>
-        <li>Professionele haarbehandelingen</li>
-        <li>Persoonlijk advies</li>
-        <li>Een ontspannen ervaring</li>
-      </ul>
-      
-      <p style="text-align: center;">
-        <a href="#" class="button">Boek je eerste afspraak</a>
-      </p>
-      
-      <p>Heb je vragen? Neem gerust contact met ons op!</p>
-      
-      <p>Met vriendelijke groet,<br>
-      Het team van {{salon_name}}</p>
-    </div>
-    <div class="footer">
-      <p><a href="{{unsubscribe_link}}">Uitschrijven</a> | <a href="{{view_online_link}}">Bekijk online</a></p>
-    </div>
-  </div>
-</body>
-</html>
-        `
+        name: 'Welkom',
+        type: 'welcome',
+        subject: 'Welkom bij {{salon_name}}!',
+        body_html: '<p>Beste {{first_name}},</p><p>Welkom bij {{salon_name}}!</p><p>Met vriendelijke groet,<br>Het team</p>'
       },
       {
-        name: 'Lente Aanbieding',
-        category: 'promotional' as const,
-        subject_line: '🌸 Lente Special - 20% korting op alle behandelingen!',
-        html_content: `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #02011F; color: white; padding: 30px; text-align: center; }
-    .content { padding: 30px; background-color: #f9f9f9; }
-    .offer-box { background-color: #fff; padding: 20px; border: 2px solid #02011F; border-radius: 10px; margin: 20px 0; text-align: center; }
-    .offer-code { font-size: 24px; font-weight: bold; color: #02011F; }
-    .button { display: inline-block; padding: 12px 30px; background-color: #02011F; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Lente Specials bij {{salon_name}}</h1>
-    </div>
-    <div class="content">
-      <p>Beste {{first_name}},</p>
-      
-      <p>De lente is begonnen! Tijd voor een frisse start met een nieuwe look.</p>
-      
-      <div class="offer-box">
-        <h2>20% KORTING</h2>
-        <p>op alle behandelingen</p>
-        <p class="offer-code">Code: LENTE2024</p>
-        <p><small>Geldig t/m 30 april 2024</small></p>
-      </div>
-      
-      <p style="text-align: center;">
-        <a href="#" class="button">Boek Nu</a>
-      </p>
-      
-      <p>Wacht niet te lang, want vol = vol!</p>
-      
-      <p>Tot snel in de salon!</p>
-      
-      <p>Met vriendelijke groet,<br>
-      {{salon_name}}</p>
-    </div>
-    <div class="footer">
-      <p><a href="{{unsubscribe_link}}">Uitschrijven</a> | <a href="{{view_online_link}}">Bekijk online</a></p>
-    </div>
-  </div>
-</body>
-</html>
-        `
+        name: 'Aanbieding',
+        type: 'custom',
+        subject: 'Speciale aanbieding van {{salon_name}}!',
+        body_html: '<p>Beste {{first_name}},</p><p>We hebben een speciale aanbieding voor u!</p><p>Met vriendelijke groet,<br>{{salon_name}}</p>'
       },
       {
-        name: 'Maandelijkse Nieuwsbrief',
-        category: 'newsletter' as const,
-        subject_line: '{{salon_name}} Nieuwsbrief - {{month}} {{year}}',
-        html_content: `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #02011F; color: white; padding: 30px; text-align: center; }
-    .content { padding: 30px; background-color: #f9f9f9; }
-    .section { background-color: white; padding: 20px; margin: 20px 0; border-radius: 10px; }
-    .button { display: inline-block; padding: 12px 30px; background-color: #02011F; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>{{salon_name}} Nieuwsbrief</h1>
-      <p>{{month}} {{year}}</p>
-    </div>
-    <div class="content">
-      <p>Beste {{first_name}},</p>
-      
-      <div class="section">
-        <h2>🌟 Nieuws uit de salon</h2>
-        <p>Dit gebeurt er deze maand in onze salon...</p>
-        <ul>
-          <li>Nieuwe behandelingen toegevoegd</li>
-          <li>Verlengde openingstijden op vrijdag</li>
-          <li>Team uitbreiding - welkom Sarah!</li>
-        </ul>
-      </div>
-      
-      <div class="section">
-        <h2>💡 Beauty Tips</h2>
-        <p>Deze maand delen we onze beste tips voor gezond haar in de lente...</p>
-      </div>
-      
-      <div class="section">
-        <h2>🎁 Speciale Aanbieding</h2>
-        <p>Exclusief voor nieuwsbrief abonnees: 10% korting op je volgende behandeling!</p>
-        <p style="text-align: center;">
-          <a href="#" class="button">Claim je korting</a>
-        </p>
-      </div>
-      
-      <p>Tot ziens in de salon!</p>
-      
-      <p>Met vriendelijke groet,<br>
-      Het team van {{salon_name}}</p>
-    </div>
-    <div class="footer">
-      <p><a href="{{unsubscribe_link}}">Uitschrijven</a> | <a href="{{view_online_link}}">Bekijk online</a></p>
-    </div>
-  </div>
-</body>
-</html>
-        `
-      },
-      {
-        name: 'Verjaardag Wensen',
-        category: 'automated' as const,
-        subject_line: '🎉 Gefeliciteerd {{first_name}}! Speciale verjaardagsaanbieding',
-        html_content: `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #02011F; color: white; padding: 30px; text-align: center; }
-    .content { padding: 30px; background-color: #f9f9f9; }
-    .birthday-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin: 20px 0; }
-    .gift-code { background-color: white; color: #02011F; padding: 15px 30px; border-radius: 5px; display: inline-block; font-size: 20px; font-weight: bold; margin: 10px 0; }
-    .button { display: inline-block; padding: 12px 30px; background-color: white; color: #02011F; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🎂 Gefeliciteerd!</h1>
-    </div>
-    <div class="content">
-      <p>Beste {{first_name}},</p>
-      
-      <p>Het hele team van {{salon_name}} wenst je een fantastische verjaardag!</p>
-      
-      <div class="birthday-box">
-        <h2>🎁 Ons cadeau voor jou</h2>
-        <p>25% KORTING op een behandeling naar keuze!</p>
-        <div class="gift-code">BDAY-{{client_code}}</div>
-        <p><small>Geldig tot 30 dagen na je verjaardag</small></p>
-        <a href="#" class="button">Boek je verjaardagsbehandeling</a>
-      </div>
-      
-      <p>We hopen je snel te zien om samen je verjaardag te vieren met een heerlijke behandeling!</p>
-      
-      <p>Nogmaals gefeliciteerd en een fijne dag gewenst!</p>
-      
-      <p>Liefs,<br>
-      Het team van {{salon_name}}</p>
-    </div>
-    <div class="footer">
-      <p><a href="{{unsubscribe_link}}">Uitschrijven</a> | <a href="{{view_online_link}}">Bekijk online</a></p>
-    </div>
-  </div>
-</body>
-</html>
-        `
+        name: 'Afspraak Herinnering',
+        type: 'appointment_reminder',
+        subject: 'Herinnering: Uw afspraak bij {{salon_name}}',
+        body_html: '<p>Beste {{first_name}},</p><p>Dit is een herinnering voor uw afspraak bij {{salon_name}}.</p><p>Met vriendelijke groet,<br>Het team</p>'
       }
     ]
 
-    // Insert all templates
+    // Insert all templates using existing table structure
     for (const template of templates) {
       await supabase
         .from('email_templates')
         .insert({
           ...template,
           tenant_id: tenantId,
-          is_active: true,
-          variables: this.extractVariables(template.html_content)
+          active: true,
+          variables: this.extractVariables(template.body_html)
         })
     }
   }

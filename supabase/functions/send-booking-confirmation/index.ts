@@ -166,6 +166,9 @@ serve(async (req) => {
       </html>
     `
 
+    // Use Resend test email if domain not verified
+    const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
+    
     // Send email using Resend
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -174,7 +177,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `${tenantName} <noreply@salonsphere.nl>`,
+        from: `${tenantName} <${RESEND_FROM_EMAIL}>`,
         to: recipientEmail,
         subject: `Afspraakbevestiging - ${serviceName} op ${dateFormatted}`,
         html: emailHtml

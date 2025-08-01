@@ -244,3 +244,26 @@ export function useAddRecipientsFromSegment() {
     },
   })
 }
+
+export function useTerminateCampaign() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (id: string) => CampaignService.terminateCampaign(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
+      toast({
+        title: 'Campagne beëindigd',
+        description: 'De campagne is succesvol beëindigd en alle wachtende e-mails zijn verwijderd.',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Fout',
+        description: 'Er is een fout opgetreden bij het beëindigen van de campagne.',
+        variant: 'destructive',
+      })
+    },
+  })
+}

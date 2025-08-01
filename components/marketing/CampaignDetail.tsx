@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Mail, Eye, MousePointer, Users, Clock, TrendingUp, Calendar, Download } from 'lucide-react'
+import { ArrowLeft, Mail, Eye, MousePointer, Users, Clock, TrendingUp, Calendar, Download, Trash2, XCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { useCampaign, useCampaignAnalytics, useCampaignRecipients } from '@/lib/hooks/useCampaigns'
+import { useCampaign, useCampaignAnalytics, useCampaignRecipients, useDeleteCampaign, useTerminateCampaign } from '@/lib/hooks/useCampaigns'
 import { useEmailMetrics } from '@/lib/hooks/useCampaignAnalytics'
+import { useRouter } from 'next/navigation'
 
 interface CampaignDetailProps {
   campaignId: string
@@ -12,13 +13,18 @@ interface CampaignDetailProps {
 }
 
 export function CampaignDetail({ campaignId, onBack }: CampaignDetailProps) {
+  const router = useRouter()
   const [recipientPage, setRecipientPage] = useState(1)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false)
   
   // React Query hooks
   const { data: campaign, isLoading: campaignLoading } = useCampaign(campaignId)
   const { data: analytics, isLoading: analyticsLoading } = useCampaignAnalytics(campaignId)
   const { data: recipients, isLoading: recipientsLoading } = useCampaignRecipients(campaignId, recipientPage, 10)
   const { data: metrics, isLoading: metricsLoading } = useEmailMetrics(campaignId)
+  const deleteCampaign = useDeleteCampaign()
+  const terminateCampaign = useTerminateCampaign()
 
   // Device data for pie chart
   const deviceData = [
@@ -64,6 +70,24 @@ export function CampaignDetail({ campaignId, onBack }: CampaignDetailProps) {
   const clickRate = campaign.total_sent > 0 ? ((campaign.total_clicked || 0) / campaign.total_sent * 100) : 0
   const bounceRate = campaign.total_sent > 0 ? ((campaign.total_bounced || 0) / campaign.total_sent * 100) : 0
 
+  const handleDeleteCampaign = async () => {
+    await deleteCampaign.mutateAsync(campaignId)
+    onBack()
+  }
+
+  const handleTerminateCampaign = async () => {
+    await terminateCampaign.mutateAsync(campaignId)
+    setShowTerminateConfirm(false)
+  }
+
+  const canDelete = (status: string) => {
+    return ['draft', 'sent', 'cancelled'].includes(status)
+  }
+
+  const canTerminate = (status: string) => {
+    return ['sending', 'scheduled', 'paused'].includes(status)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -80,10 +104,30 @@ export function CampaignDetail({ campaignId, onBack }: CampaignDetailProps) {
             <p className="text-gray-600">{campaign.subject}</p>
           </div>
         </div>
-        <button className="btn-outlined flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Rapport Exporteren
-        </button>
+        <div className="flex items-center gap-3">
+          {canTerminate(campaign.status) && (
+            <button 
+              onClick={() => setShowTerminateConfirm(true)}
+              className="btn-outlined text-orange-600 border-orange-600 hover:bg-orange-50 flex items-center gap-2"
+            >
+              <XCircle className="w-4 h-4" />
+              Beëindigen
+            </button>
+          )}
+          {canDelete(campaign.status) && (
+            <button 
+              onClick={() => setShowDeleteConfirm(true)}
+              className="btn-outlined text-red-600 border-red-600 hover:bg-red-50 flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Verwijderen
+            </button>
+          )}
+          <button className="btn-outlined flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Rapport Exporteren
+          </button>
+        </div>
       </div>
 
       {/* Key Metrics */}
@@ -361,6 +405,60 @@ export function CampaignDetail({ campaignId, onBack }: CampaignDetailProps) {
           <p className="text-sm text-gray-600 text-center py-8">Geen ontvangers gevonden</p>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Campagne Verwijderen</h3>
+            <p className="text-gray-600 mb-4">
+              Weet u zeker dat u deze campagne wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt. 
+              Alle bijbehorende gegevens en statistieken zullen permanent worden verwijderd.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="btn-outlined"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleDeleteCampaign}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terminate Confirmation Dialog */}
+      {showTerminateConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowTerminateConfirm(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Campagne Beëindigen</h3>
+            <p className="text-gray-600 mb-4">
+              Weet u zeker dat u deze campagne wilt beëindigen? Alle e-mails die nog niet verzonden zijn worden geannuleerd.
+              U kunt de campagne hierna wel verwijderen als u dat wilt.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setShowTerminateConfirm(false)}
+                className="btn-outlined"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleTerminateCampaign}
+                className="btn-primary bg-orange-600 hover:bg-orange-700"
+              >
+                Beëindigen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

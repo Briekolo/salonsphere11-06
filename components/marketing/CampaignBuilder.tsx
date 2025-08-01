@@ -3,22 +3,28 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Send, Eye, Users, Calendar, Settings, Mail, Target, Clock, TestTube } from 'lucide-react'
-import { useCreateCampaign, useSendCampaign, useScheduleCampaign } from '@/lib/hooks/useCampaigns'
+import { useCreateCampaign, useSendCampaign, useScheduleCampaign, useAddRecipientsFromSegment, useAddRecipients } from '@/lib/hooks/useCampaigns'
+import { supabase } from '@/lib/supabase/browser-client'
 import { useEmailTemplates } from '@/lib/hooks/useEmailTemplates'
 import { useCustomerSegments } from '@/lib/hooks/useCustomerSegments'
 import { useEmailSubscriptions } from '@/lib/hooks/useEmailSubscriptions'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { useToast } from '@/components/providers/ToastProvider'
 
-export function CampaignBuilder() {
+interface CampaignBuilderProps {
+  preSelectedTemplate?: string | null
+  onBack?: () => void
+}
+
+export function CampaignBuilder({ preSelectedTemplate, onBack }: CampaignBuilderProps) {
   const router = useRouter()
-  const { tenant } = useTenant()
-  const { toast } = useToast()
-  const [step, setStep] = useState(1)
+  const { tenantId } = useTenant()
+  const { showToast, toast } = useToast()
+  const [step, setStep] = useState(preSelectedTemplate ? 2 : 1) // Skip to template step if pre-selected
   const [campaignData, setCampaignData] = useState({
     name: '',
     subject: '',
-    template: '',
+    template: preSelectedTemplate || '',
     segment: '',
     sendTime: 'now',
     scheduledDate: '',
@@ -35,6 +41,8 @@ export function CampaignBuilder() {
   const createCampaign = useCreateCampaign()
   const sendCampaign = useSendCampaign()
   const scheduleCampaign = useScheduleCampaign()
+  const addRecipientsFromSegment = useAddRecipientsFromSegment()
+  const addRecipients = useAddRecipients()
   
   // Add 'all_subscribers' as a special segment
   const allSegments = [
@@ -75,28 +83,24 @@ export function CampaignBuilder() {
 
   const handleSaveDraft = async () => {
     if (!campaignData.name || !campaignData.subject) {
-      toast({
-        title: 'Fout',
-        description: 'Vul eerst de campagne naam en onderwerpsregel in.',
-        variant: 'destructive'
-      })
+      showToast('Vul eerst de campagne naam en onderwerpsregel in.', 'warning')
       return
     }
 
     try {
       const campaign = await createCampaign.mutateAsync({
         name: campaignData.name,
-        subject: campaignData.subject,
+        subject_line: campaignData.subject,
         template_id: campaignData.template || undefined,
         segment_id: campaignData.segment || undefined,
         status: 'draft',
-        tenant_id: tenant?.id,
+        tenant_id: tenantId!,
         ab_test_enabled: campaignData.abTest,
         ab_test_subject_b: campaignData.subjectB || undefined,
         ab_test_percentage: campaignData.testPercentage
       })
 
-      router.push('/marketing/campaigns')
+      onBack ? onBack() : router.push('/marketing')
     } catch (error) {
       console.error('Error saving campaign draft:', error)
     }
@@ -104,8 +108,8 @@ export function CampaignBuilder() {
 
   const handleSendCampaign = async () => {
     if (!campaignData.name || !campaignData.subject || !campaignData.template || !campaignData.segment) {
-      toast({
-        title: 'Fout',
+      toast({ 
+        title: 'Vereiste velden ontbreken',
         description: 'Vul alle vereiste velden in voordat u de campagne verzendt.',
         variant: 'destructive'
       })
@@ -113,18 +117,57 @@ export function CampaignBuilder() {
     }
 
     try {
+      // Handle special "all_subscribers" segment
+      const segmentId = campaignData.segment === 'all_subscribers' ? null : campaignData.segment
+      
       // Create campaign first
       const campaign = await createCampaign.mutateAsync({
         name: campaignData.name,
-        subject: campaignData.subject,
+        subject_line: campaignData.subject,
         template_id: campaignData.template,
-        segment_id: campaignData.segment,
+        segment_id: segmentId || undefined,
         status: 'draft',
-        tenant_id: tenant?.id,
+        tenant_id: tenantId!,
         ab_test_enabled: campaignData.abTest,
         ab_test_subject_b: campaignData.subjectB || undefined,
         ab_test_percentage: campaignData.testPercentage
       })
+
+      // Add recipients based on segment type
+      let recipientCount = 0
+      if (campaignData.segment === 'all_subscribers') {
+        // For all subscribers, we need to add all clients with email
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .not('email', 'is', null)
+        
+        if (clients && clients.length > 0) {
+          const clientIds = clients.map(c => c.id)
+          const result = await addRecipients.mutateAsync({
+            campaignId: campaign.id,
+            clientIds
+          })
+          recipientCount = result.count
+        }
+      } else {
+        // Add recipients from specific segment
+        const result = await addRecipientsFromSegment.mutateAsync({
+          campaignId: campaign.id,
+          segmentId: campaignData.segment
+        })
+        recipientCount = result.count
+      }
+
+      if (recipientCount === 0) {
+        toast({
+          title: 'Geen ontvangers',
+          description: 'Er zijn geen actieve ontvangers in het geselecteerde segment.',
+          variant: 'destructive'
+        })
+        return
+      }
 
       // Then send or schedule it
       if (campaignData.sendTime === 'now') {
@@ -134,9 +177,23 @@ export function CampaignBuilder() {
         await scheduleCampaign.mutateAsync({ id: campaign.id, scheduledAt })
       }
 
-      router.push('/marketing/campaigns')
-    } catch (error) {
+      onBack ? onBack() : router.push('/marketing')
+    } catch (error: any) {
       console.error('Error sending campaign:', error)
+      
+      // Log more details
+      if (error.response) {
+        console.error('Response data:', error.response.data)
+        console.error('Response status:', error.response.status)
+      }
+      
+      const errorMessage = error?.message || error?.response?.data?.message || 'Er is een fout opgetreden bij het verzenden van de campagne. Controleer of de email service is geconfigureerd.'
+      
+      toast({
+        title: 'Fout bij verzenden',
+        description: errorMessage,
+        variant: 'destructive'
+      })
     }
   }
 
@@ -146,7 +203,7 @@ export function CampaignBuilder() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => router.push('/marketing/campaigns')}
+            onClick={() => onBack ? onBack() : router.push('/marketing')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -290,38 +347,104 @@ export function CampaignBuilder() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {templates?.map((template) => (
-                    <div
-                      key={template.id}
-                      onClick={() => setCampaignData(prev => ({ ...prev, template: template.id }))}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                        campaignData.template === template.id
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                        <Mail className="w-12 h-12 text-gray-400" />
-                      </div>
-                      <h3 className="font-medium text-gray-900">{template.name}</h3>
-                      <span className="text-sm text-primary-600 bg-primary-100 px-2 py-1 rounded-full">
-                        {templateCategories[template.category] || template.category}
-                      </span>
+                <div className="space-y-6">
+                  <p className="text-sm text-gray-600">
+                    Kies uit onze professioneel ontworpen e-mailsjablonen. Elk sjabloon is volledig gepersonaliseerd met uw salon gegevens en klantinformatie.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-6">
+                    {templates?.map((template) => {
+                      const isSelected = campaignData.template === template.id
+                      
+                      // Template preview icons based on category
+                      const categoryIcons: Record<string, string> = {
+                        'promotional': '🎯',
+                        'transactional': '📧',
+                        'newsletter': '📰',
+                        'automated': '🤖',
+                        'general': '✉️'
+                      }
+                      
+                      const categoryDescriptions: Record<string, string> = {
+                        'promotional': 'Voor aanbiedingen en acties',
+                        'transactional': 'Voor afspraken en bevestigingen',
+                        'newsletter': 'Voor periodieke updates',
+                        'automated': 'Voor automatische berichten',
+                        'general': 'Voor algemene communicatie'
+                      }
+                      
+                      return (
+                        <div
+                          key={template.id}
+                          onClick={() => setCampaignData(prev => ({ ...prev, template: template.id }))}
+                          className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] ${
+                            isSelected
+                              ? 'border-primary-500 bg-primary-50 shadow-lg'
+                              : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 bg-primary-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                              Geselecteerd
+                            </div>
+                          )}
+                          
+                          <div className="p-5">
+                            <div className="flex items-start gap-4 mb-4">
+                              <div className="text-3xl">
+                                {categoryIcons[template.category] || '✉️'}
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900 mb-1">
+                                  {template.name}
+                                </h3>
+                                <p className="text-xs text-gray-600">
+                                  {categoryDescriptions[template.category] || template.category}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="text-xs text-gray-600">
+                                <span className="font-medium">Onderwerp:</span>
+                                <p className="text-gray-800 truncate">
+                                  {template.subject_line}
+                                </p>
+                              </div>
+                              
+                              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  isSelected 
+                                    ? 'bg-primary-500 text-white' 
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {templateCategories[template.category] || template.category}
+                                </span>
+                                
+                                {template.times_used && template.times_used > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    {template.times_used}x gebruikt
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  
+                  {(!templates || templates.length === 0) && (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <Mail className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-600">Geen sjablonen beschikbaar</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        E-mailsjablonen worden automatisch geladen voor uw salon.
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Aangepast Sjabloon</h4>
-                <p className="text-sm text-blue-800 mb-3">
-                  Wilt u een volledig aangepast sjabloon maken? Gebruik onze drag-and-drop editor.
-                </p>
-                <button className="btn-outlined text-sm">
-                  Aangepast Sjabloon Maken
-                </button>
-              </div>
             </div>
           )}
 
