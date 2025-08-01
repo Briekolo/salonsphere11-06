@@ -88,7 +88,7 @@ export function NotificationPopup() {
     } else if (isYesterday(date)) {
       return `Gisteren om ${format(date, 'HH:mm')}`
     } else {
-      return format(date, 'd MMM om HH:mm', { locale: nl })
+      return format(date, 'd MMM \'om\' HH:mm', { locale: nl })
     }
   }
 
@@ -262,7 +262,7 @@ function NotificationContent({ notification, Icon, isUnread }: any) {
     } else if (isYesterday(date)) {
       return `Gisteren om ${format(date, 'HH:mm')}`
     } else {
-      return format(date, 'd MMM om HH:mm', { locale: nl })
+      return format(date, 'd MMM \'om\' HH:mm', { locale: nl })
     }
   }
 

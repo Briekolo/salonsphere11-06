@@ -50,7 +50,7 @@ export default function NotificationsPage() {
     } else if (isYesterday(date)) {
       return `Gisteren om ${format(date, 'HH:mm')}`;
     } else {
-      return format(date, 'd MMMM yyyy om HH:mm', { locale: nl });
+      return format(date, 'd MMMM yyyy \'om\' HH:mm', { locale: nl });
     }
   };
 
