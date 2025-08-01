@@ -27,7 +27,7 @@ const navigationItems = [
   { name: 'Klantbeheer', href: '/clients', icon: Users },
   { name: 'Behandelingen', href: '/treatments', icon: Sparkles },
   { name: 'Voorraadbeheer', href: '/inventory', icon: Package },
-  { name: 'Marketing', href: '/marketing', icon: Mail },
+  { name: 'E-mail Automatisering', href: '/email-automation', icon: Mail },
 ]
 
 export function Sidebar() {

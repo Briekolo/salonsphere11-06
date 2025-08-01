@@ -169,8 +169,8 @@ export default function BookingConfirmationPage({
         scheduledAt: scheduledAt.toISOString(),
         durationMinutes: service.duration_minutes,
         notes: bookingData.notes,
-        createInvoice: true, // Automatically create invoice for bookings
-        sendConfirmationEmail: true // Send booking confirmation email
+        sendConfirmationEmail: true, // Send booking confirmation email
+        source: 'client' // Always send confirmation emails for client bookings
       });
       
       setBookingId(booking.id);

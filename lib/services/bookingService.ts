@@ -3,6 +3,7 @@ import { Database } from '@/types/database'
 import { NotificationTriggers } from './notificationTriggers'
 import { serializeError } from '@/lib/utils/error-serializer'
 import { logError, debugLog } from '@/lib/utils/error-logger'
+import { EmailService } from '@/lib/services/emailService'
 
 type Booking = Database['public']['Tables']['bookings']['Row']
 type BookingInsert = Database['public']['Tables']['bookings']['Insert']
@@ -158,13 +159,16 @@ export class BookingService {
     return data || []
   }
 
-  static async create(booking: Omit<BookingInsert, 'tenant_id'>): Promise<Booking> {
+  static async create(booking: Omit<BookingInsert, 'tenant_id'> & { sendConfirmationEmail?: boolean }): Promise<Booking> {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // Extract sendConfirmationEmail from booking data before insert
+    const { sendConfirmationEmail, ...insertData } = booking as any
+
     const { data, error } = await supabase
       .from('bookings')
-      .insert({ ...booking, tenant_id: tenantId })
+      .insert({ ...insertData, tenant_id: tenantId })
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
@@ -174,6 +178,29 @@ export class BookingService {
       .single()
 
     if (error) throw error
+
+    // Send booking confirmation email for staff bookings if enabled in settings
+    if (sendConfirmationEmail) {
+      try {
+        const isConfirmationEnabled = await EmailService.checkEmailAutomationEnabled(tenantId, 'booking_confirmation')
+        
+        if (isConfirmationEnabled) {
+          // Fetch tenant information for email
+          const { data: tenant, error: tenantError } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('id', tenantId)
+            .single()
+
+          if (!tenantError && tenant) {
+            await EmailService.sendBookingConfirmation(data, tenant)
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending booking confirmation email for staff booking:', emailError)
+        // Don't throw - booking is still created successfully
+      }
+    }
 
     // Trigger notification for new appointment
     debugLog('BookingService.create', 'About to trigger notification', {

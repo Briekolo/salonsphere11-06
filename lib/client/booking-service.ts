@@ -14,6 +14,7 @@ export interface CreateBookingData {
   isPaid?: boolean;
   paymentMethod?: string;
   sendConfirmationEmail?: boolean;
+  source?: 'client' | 'staff';
 }
 
 export interface ClientData {
@@ -128,8 +129,14 @@ export class BookingService {
 
     if (error) throw error;
 
-    // Send booking confirmation email if requested
-    if (data.sendConfirmationEmail) {
+    // Send booking confirmation email based on source and settings
+    const shouldSendEmail = data.sendConfirmationEmail && (
+      data.source === 'client' || // Always send for client bookings
+      data.source === 'staff' ? await EmailService.checkEmailAutomationEnabled(data.tenantId, 'booking_confirmation') : // Check setting for staff bookings
+      await EmailService.checkEmailAutomationEnabled(data.tenantId, 'booking_confirmation') // Default to checking setting if no source specified
+    );
+
+    if (shouldSendEmail) {
       try {
         // Fetch tenant information for email
         const { data: tenant, error: tenantError } = await supabase

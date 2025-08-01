@@ -171,7 +171,8 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         if (!bookingId) return
         await updateMutation.mutateAsync({ id: bookingId, updates: payload })
       } else {
-        await createMutation.mutateAsync(payload)
+        // Add sendConfirmationEmail for staff bookings (will respect marketing toggle setting)
+        await createMutation.mutateAsync({ ...payload, sendConfirmationEmail: true })
       }
       onClose()
     } catch (error: any) {

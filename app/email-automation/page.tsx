@@ -1,15 +1,15 @@
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
-import { EmailAutomationSettings } from '@/components/marketing/EmailAutomationSettings'
+import { EmailAutomationContent } from '@/components/email-automation/EmailAutomationContent'
 
-export default function MarketingSubscriptionsPage() {
+export default function EmailAutomationPage() {
   return (
     <div className="h-screen flex bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-auto">
-          <EmailAutomationSettings />
+          <EmailAutomationContent />
         </main>
       </div>
     </div>

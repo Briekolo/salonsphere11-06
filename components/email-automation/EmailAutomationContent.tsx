@@ -2,6 +2,6 @@
 
 import { EmailAutomationSettings } from './EmailAutomationSettings'
 
-export function MarketingContent() {
+export function EmailAutomationContent() {
   return <EmailAutomationSettings />
 }

@@ -181,7 +181,7 @@ export function EmailAutomationSettings() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mb-3">
-                  Stuur direct een bevestiging wanneer een klant een afspraak maakt.
+                  Stuur een bevestiging wanneer een medewerker een afspraak maakt. Klanten die zelf boeken krijgen altijd een bevestiging.
                 </p>
                 {!statsLoading && (
                   <div className="flex items-center gap-4 text-sm">
