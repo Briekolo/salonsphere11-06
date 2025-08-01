@@ -15,9 +15,10 @@ interface ClientsOverviewProps {
   onClientSelect: (clientId: string) => void
   onViewChange: (view: 'overview' | 'list') => void
   searchTerm: string
+  onDeleteClient?: (clientId: string) => void
 }
 
-export function ClientsOverview({ clients, onClientSelect, onViewChange, searchTerm }: ClientsOverviewProps) {
+export function ClientsOverview({ clients, onClientSelect, onViewChange, searchTerm, onDeleteClient }: ClientsOverviewProps) {
   const { showToast } = useToast()
 
   return (
