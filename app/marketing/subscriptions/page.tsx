@@ -1,6 +1,6 @@
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
-import { CustomerSegmentation } from '@/components/marketing/CustomerSegmentation'
+import { EmailAutomationSettings } from '@/components/marketing/EmailAutomationSettings'
 
 export default function MarketingSubscriptionsPage() {
   return (
@@ -9,7 +9,7 @@ export default function MarketingSubscriptionsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-auto">
-          <CustomerSegmentation />
+          <EmailAutomationSettings />
         </main>
       </div>
     </div>
