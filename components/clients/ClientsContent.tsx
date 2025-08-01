@@ -8,7 +8,7 @@ import { ClientsStats } from './ClientsStats'
 import { ClientsFilters } from './ClientsFilters'
 import { FileText, PlusCircle } from 'lucide-react'
 import { useClients as useClientsHook } from '@/lib/hooks/useClients'
-import { useCreateClient } from '@/lib/hooks/useClients'
+import { useCreateClient, useDeleteClient } from '@/lib/hooks/useClients'
 import { ClientForm } from './ClientForm'
 import { ClientStatus } from '@/lib/services/clientStatusService'
 
@@ -17,10 +17,12 @@ export function ClientsContent() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all')
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null)
 
 
   const { data: allClients = [], isLoading: clientsLoading } = useClientsHook(searchTerm)
   const createMutation = useCreateClient()
+  const deleteMutation = useDeleteClient()
 
   // Filter clients by status
   const filteredClients = useMemo(() => {
@@ -38,6 +40,40 @@ export function ClientsContent() {
   const handleBackToList = () => {
     setView('overview')
     setSelectedClientId(null)
+  }
+
+  const handleDeleteClient = async (clientId: string) => {
+    const client = allClients.find(c => c.id === clientId)
+    if (!client) return
+
+    const confirmMessage = `Weet je zeker dat je klant "${client.first_name} ${client.last_name}" wilt verwijderen?\n\nDeze actie kan niet ongedaan worden gemaakt. Alle gekoppelde boekingen, betalingen en marketing gegevens worden ook verwijderd.`
+    
+    if (window.confirm(confirmMessage)) {
+      setDeletingClientId(clientId)
+      
+      try {
+        await deleteMutation.mutateAsync(clientId)
+        
+        // Show success message
+        alert(`Klant "${client.first_name} ${client.last_name}" is succesvol verwijderd.`)
+        
+        // If we were viewing this client's profile, go back to the list
+        if (selectedClientId === clientId) {
+          setView('overview')
+          setSelectedClientId(null)
+        }
+        
+      } catch (error) {
+        console.error('Error deleting client:', error)
+        
+        // Show specific error message
+        const errorMessage = error instanceof Error ? error.message : 'Er is een onbekende fout opgetreden bij het verwijderen van de klant.'
+        alert(errorMessage)
+        
+      } finally {
+        setDeletingClientId(null)
+      }
+    }
   }
 
   const handleExport = () => {
@@ -110,6 +146,7 @@ export function ClientsContent() {
               onClientSelect={handleClientSelect}
               onViewChange={setView}
               searchTerm={searchTerm}
+              onDeleteClient={handleDeleteClient}
             />
           ) : (
             <ClientsList
@@ -117,6 +154,8 @@ export function ClientsContent() {
               onClientSelect={handleClientSelect}
               onViewChange={setView}
               searchTerm={searchTerm}
+              onDeleteClient={handleDeleteClient}
+              deletingClientId={deletingClientId}
             />
           )}
         </>

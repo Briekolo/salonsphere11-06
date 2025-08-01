@@ -2,6 +2,7 @@ import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import { NotificationTriggers } from './notificationTriggers'
 import { ClientStatusService } from './clientStatusService'
+import { EmailService } from './emailService'
 
 type Client = Database['public']['Tables']['clients']['Row']
 type ClientInsert = Database['public']['Tables']['clients']['Insert']
@@ -93,6 +94,17 @@ export class ClientService {
       // Don't fail the client creation if notification fails
     }
 
+    // Send welcome email if enabled
+    try {
+      const isWelcomeEmailEnabled = await EmailService.checkEmailAutomationEnabled(tenantId, 'welcome')
+      if (isWelcomeEmailEnabled && data.email) {
+        await EmailService.sendWelcomeEmail(data, tenantId)
+      }
+    } catch (emailError) {
+      console.error('Failed to send welcome email for new client:', emailError)
+      // Don't fail the client creation if welcome email fails
+    }
+
     return data
   }
 
@@ -116,13 +128,105 @@ export class ClientService {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // First, check what related data exists
+    const relatedData = await this.checkRelatedData(id, tenantId)
+    
+    if (relatedData.hasBlockingData) {
+      throw new Error(`Kan klant niet verwijderen: ${relatedData.blockingReasons.join(', ')}`)
+    }
+
+    // If we have non-blocking related data, warn but proceed
+    if (relatedData.hasRelatedData) {
+      console.warn(`Deleting client with related data: ${relatedData.relatedDataTypes.join(', ')}`)
+    }
+
     const { error } = await supabase
       .from('clients')
       .delete()
       .eq('id', id)
       .eq('tenant_id', tenantId)
 
-    if (error) throw error
+    if (error) {
+      // Provide more specific error messages based on the error code
+      if (error.code === '23503') {
+        throw new Error('Kan klant niet verwijderen: er zijn nog gekoppelde records (boekingen, facturen of betalingen). Verwijder eerst deze gegevens.')
+      } else if (error.code === '42501') {
+        throw new Error('Geen toestemming om deze klant te verwijderen.')
+      } else {
+        throw new Error(`Fout bij verwijderen van klant: ${error.message}`)
+      }
+    }
+  }
+
+  // Helper method to check for related data before deletion
+  static async checkRelatedData(clientId: string, tenantId: string): Promise<{
+    hasBlockingData: boolean
+    hasRelatedData: boolean
+    blockingReasons: string[]
+    relatedDataTypes: string[]
+  }> {
+    const blockingReasons: string[] = []
+    const relatedDataTypes: string[] = []
+
+    try {
+      // Check for invoices (these block deletion due to ON DELETE RESTRICT)
+      const { data: invoices, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('tenant_id', tenantId)
+        .limit(1)
+
+      if (!invoiceError && invoices && invoices.length > 0) {
+        blockingReasons.push('er zijn nog facturen gekoppeld aan deze klant')
+      }
+
+      // Check for bookings (these should cascade delete, but good to know)
+      const { data: bookings, error: bookingError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('tenant_id', tenantId)
+        .limit(1)
+
+      if (!bookingError && bookings && bookings.length > 0) {
+        relatedDataTypes.push('boekingen')
+      }
+
+      // Check for payments (these should cascade delete)
+      const { data: payments, error: paymentError } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('tenant_id', tenantId)
+        .limit(1)
+
+      if (!paymentError && payments && payments.length > 0) {
+        relatedDataTypes.push('betalingen')
+      }
+
+      // Check for marketing campaigns (these should cascade delete)
+      const { data: campaigns, error: campaignError } = await supabase
+        .from('marketing_campaign_recipients')
+        .select('id')
+        .eq('client_id', clientId)
+        .limit(1)
+
+      if (!campaignError && campaigns && campaigns.length > 0) {
+        relatedDataTypes.push('marketing campagnes')
+      }
+
+    } catch (error) {
+      console.warn('Error checking related data:', error)
+      // Don't block deletion if we can't check related data
+    }
+
+    return {
+      hasBlockingData: blockingReasons.length > 0,
+      hasRelatedData: relatedDataTypes.length > 0,
+      blockingReasons,
+      relatedDataTypes
+    }
   }
 
   static async search(query: string): Promise<Client[]> {

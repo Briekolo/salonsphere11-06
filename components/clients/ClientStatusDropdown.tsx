@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MoreVertical, UserCheck, UserX, Crown, UserPlus, Eye, Edit, Trash2 } from 'lucide-react'
+import { MoreVertical, UserCheck, UserX, Crown, UserPlus, Eye, Edit, Trash2, Loader2 } from 'lucide-react'
 import { ClientStatus } from '@/lib/services/clientStatusService'
 
 interface ClientStatusDropdownProps {
@@ -11,6 +11,7 @@ interface ClientStatusDropdownProps {
   onViewClient?: (clientId: string) => void
   onEditClient?: (clientId: string) => void  
   onDeleteClient?: (clientId: string) => void
+  isDeleting?: boolean
 }
 
 export function ClientStatusDropdown({ 
@@ -19,7 +20,8 @@ export function ClientStatusDropdown({
   onStatusChange, 
   onViewClient,
   onEditClient,
-  onDeleteClient 
+  onDeleteClient,
+  isDeleting = false
 }: ClientStatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -143,13 +145,24 @@ export function ClientStatusDropdown({
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onDeleteClient?.(clientId)
-                setIsOpen(false)
+                if (!isDeleting) {
+                  onDeleteClient?.(clientId)
+                  setIsOpen(false)
+                }
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 rounded hover:bg-red-50 transition-colors"
+              disabled={isDeleting}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded transition-colors ${
+                isDeleting 
+                  ? 'text-gray-400 bg-gray-50 cursor-not-allowed' 
+                  : 'text-red-600 hover:bg-red-50'
+              }`}
             >
-              <Trash2 className="w-4 h-4" />
-              <span>Verwijderen</span>
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              <span>{isDeleting ? 'Verwijderen...' : 'Verwijderen'}</span>
             </button>
           </div>
         </div>

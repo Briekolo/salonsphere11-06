@@ -35,6 +35,8 @@ interface ClientsListProps {
   onClientSelect: (clientId: string) => void
   onViewChange: (view: 'overview' | 'list') => void
   searchTerm: string
+  onDeleteClient?: (clientId: string) => void
+  deletingClientId?: string | null
 }
 
 // Helper function for highlighting matches
@@ -56,7 +58,7 @@ const getMatchedField = (client: Client, query: string): string | null => {
   return null
 }
 
-export function ClientsList({ clients, onClientSelect, onViewChange, searchTerm }: ClientsListProps) {
+export function ClientsList({ clients, onClientSelect, onViewChange, searchTerm, onDeleteClient, deletingClientId }: ClientsListProps) {
 
   // Empty state for no results
   if (clients.length === 0 && searchTerm.trim()) {
@@ -289,6 +291,8 @@ export function ClientsList({ clients, onClientSelect, onViewChange, searchTerm 
                       clientId={client.id}
                       currentStatus={(client.status as ClientStatus) || 'inactive'}
                       onViewClient={onClientSelect}
+                      onDeleteClient={onDeleteClient}
+                      isDeleting={deletingClientId === client.id}
                       onStatusChange={(clientId, newStatus) => {
                         // TODO: Implement status change functionality
                         console.log('Status change:', clientId, newStatus)
