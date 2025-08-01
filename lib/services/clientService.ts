@@ -65,17 +65,28 @@ export class ClientService {
     }
   }
 
-  static async create(client: Omit<ClientInsert, 'tenant_id'>): Promise<Client> {
+  static async create(client: Omit<ClientInsert, 'tenant_id'>): Promise<{
+    client: Client;
+    warnings?: string[];
+  }> {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // Sanitize date fields - convert empty strings to null
+    const sanitizedClient = {
+      ...client,
+      date_of_birth: client.date_of_birth || null
+    }
+
     const { data, error } = await supabase
       .from('clients')
-      .insert({ ...client, tenant_id: tenantId })
+      .insert({ ...sanitizedClient, tenant_id: tenantId })
       .select()
       .single()
 
     if (error) throw error
+
+    const warnings: string[] = []
 
     // Trigger notification for new client registration
     try {
@@ -91,7 +102,7 @@ export class ClientService {
       )
     } catch (notificationError) {
       console.error('Failed to send notification for new client registration:', notificationError)
-      // Don't fail the client creation if notification fails
+      warnings.push('Interne notificatie kon niet worden verzonden')
     }
 
     // Send welcome email if enabled
@@ -102,19 +113,36 @@ export class ClientService {
       }
     } catch (emailError) {
       console.error('Failed to send welcome email for new client:', emailError)
-      // Don't fail the client creation if welcome email fails
+      // Check if it's an email validation error
+      const errorMessage = emailError instanceof Error ? emailError.message : String(emailError)
+      if (errorMessage.includes('Edge Function returned a non-2xx status code') || 
+          errorMessage.includes('invalid email') || 
+          errorMessage.includes('email')) {
+        warnings.push('Welkomst-e-mail kon niet worden verzonden (controleer e-mailadres)')
+      } else {
+        warnings.push('Welkomst-e-mail kon niet worden verzonden')
+      }
     }
 
-    return data
+    return {
+      client: data,
+      ...(warnings.length > 0 && { warnings })
+    }
   }
 
   static async update(id: string, updates: Omit<ClientUpdate, 'tenant_id'>): Promise<Client> {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // Sanitize date fields - convert empty strings to null
+    const sanitizedUpdates = {
+      ...updates,
+      ...(updates.date_of_birth !== undefined && { date_of_birth: updates.date_of_birth || null })
+    }
+
     const { data, error } = await supabase
       .from('clients')
-      .update(updates)
+      .update(sanitizedUpdates)
       .eq('id', id)
       .eq('tenant_id', tenantId)
       .select()
