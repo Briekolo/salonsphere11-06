@@ -21,7 +21,7 @@ export async function createTestNotifications(tenantId: string, userId: string) 
       message: 'Herinnering: Emma de Vries komt om 14:30',
       type: 'appointment' as const,
       severity: 'warning' as const,
-      action_url: '/appointments',
+      action_url: '/staff/appointments',
     },
     {
       tenant_id: tenantId,

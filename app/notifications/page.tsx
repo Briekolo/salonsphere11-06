@@ -203,14 +203,6 @@ export default function NotificationsPage() {
                                       {notification.action_label || 'Bekijken'}
                                     </Link>
                                   )}
-                                  {!isUnread && (
-                                    <button
-                                      onClick={() => markAsRead(notification.id)}
-                                      className="text-sm text-gray-500 hover:text-gray-700"
-                                    >
-                                      Als ongelezen markeren
-                                    </button>
-                                  )}
                                   <button
                                     onClick={() => dismiss(notification.id)}
                                     className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"

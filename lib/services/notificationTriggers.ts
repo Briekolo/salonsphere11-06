@@ -25,7 +25,7 @@ export class NotificationTriggers {
       message: `${appointment.client_name} heeft een afspraak geboekt voor ${appointment.service_name}`,
       type: 'appointment',
       severity: 'info',
-      action_url: `/appointments/${appointment.id}`,
+      action_url: `/staff/appointments/${appointment.id}`,
       action_label: 'Bekijken',
       metadata: { appointment_id: appointment.id }
     })
@@ -44,7 +44,7 @@ export class NotificationTriggers {
       message: `De afspraak met ${appointment.client_name} is geannuleerd`,
       type: 'appointment',
       severity: 'warning',
-      action_url: `/appointments`,
+      action_url: `/staff/appointments`,
       metadata: { appointment_id: appointment.id }
     })
   }
@@ -62,7 +62,7 @@ export class NotificationTriggers {
       message: `Herinnering: ${appointment.client_name} komt over 30 minuten`,
       type: 'appointment',
       severity: 'warning',
-      action_url: `/appointments/${appointment.id}`,
+      action_url: `/staff/appointments/${appointment.id}`,
       action_label: 'Bekijken',
       metadata: { appointment_id: appointment.id }
     })
@@ -87,8 +87,8 @@ export class NotificationTriggers {
       message,
       type: 'client',
       severity: 'success',
-      action_url: `/clients/${client.id}`,
-      action_label: 'Klant bekijken',
+      action_url: `/clients`,
+      action_label: 'Klanten bekijken',
       metadata: { 
         client_id: client.id,
         source: client.source || 'manual',
@@ -110,7 +110,7 @@ export class NotificationTriggers {
       message: `${product.name} heeft een lage voorraad (${product.current_stock} stuks)`,
       type: 'inventory',
       severity: 'warning',
-      action_url: `/inventory/${product.id}`,
+      action_url: `/inventory`,
       action_label: 'Voorraad beheren',
       metadata: { product_id: product.id, current_stock: product.current_stock }
     })
@@ -128,7 +128,7 @@ export class NotificationTriggers {
       message: `${product.name} is uitverkocht`,
       type: 'inventory',
       severity: 'error',
-      action_url: `/inventory/${product.id}`,
+      action_url: `/inventory`,
       action_label: 'Voorraad bijvullen',
       metadata: { product_id: product.id }
     })

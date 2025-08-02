@@ -42,6 +42,7 @@ export function NotificationPopup({ instanceId, instanceType = 'desktop' }: Noti
     markAllAsRead,
     dismiss,
     isMarkingAllAsRead,
+    isDismissing,
   } = useNotifications({ 
     limit: 20,
     instanceId,
@@ -241,10 +242,15 @@ export function NotificationPopup({ instanceId, instanceType = 'desktop' }: Noti
                             e.stopPropagation()
                             dismiss(notification.id)
                           }}
-                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded"
+                          disabled={isDismissing}
+                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Dismiss notification"
                         >
-                          <X className="w-4 h-4" />
+                          {isDismissing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     )

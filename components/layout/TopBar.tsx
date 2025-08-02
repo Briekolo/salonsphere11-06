@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Bell, Plus, HelpCircle, MoreVertical, Menu, User, LogOut } from 'lucide-react'
+import { Bell, Plus, HelpCircle, MoreVertical, Menu, User, LogOut } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { usePathname, useRouter } from 'next/navigation'
@@ -317,11 +317,6 @@ export function TopBar({ onMobileSidebarToggle }: TopBarProps) {
 
           {/* Right side - Actions */}
           <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-            {/* Search */}
-            <button className="flex p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] items-center justify-center">
-              <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            
             {/* Notifications */}
             <SafeNotificationComponent instanceType="desktop" />
 

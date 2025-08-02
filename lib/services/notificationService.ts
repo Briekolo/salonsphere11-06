@@ -43,6 +43,7 @@ export class NotificationService {
       .select('*')
       .or(`user_id.eq.${userId},user_id.is.null`)
       .eq('tenant_id', tenantId)
+      .is('dismissed_at', null)
       .order('created_at', { ascending: false })
 
     if (options?.unreadOnly) {
