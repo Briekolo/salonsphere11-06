@@ -171,10 +171,16 @@ export class NotificationService {
   static subscribeToNotifications(
     tenantId: string,
     userId: string,
-    callback: (notification: Notification) => void
+    callback: (notification: Notification) => void,
+    instanceId?: string
   ) {
+    // Create unique channel name with instance ID to prevent duplicate subscriptions
+    const channelName = instanceId 
+      ? `notifications:${tenantId}:${userId}:${instanceId}`
+      : `notifications:${tenantId}:${userId}`
+      
     return supabase
-      .channel(`notifications:${tenantId}:${userId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

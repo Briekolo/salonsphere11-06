@@ -20,7 +20,6 @@ import clsx from 'clsx'
 import { LogoDynamic } from '@/components/layout/LogoDynamic'
 import { useIsAdmin } from '@/lib/hooks/use-admin'
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo'
-import { useSidebar } from '@/components/providers/SidebarProvider'
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: BarChart3 },
@@ -31,33 +30,34 @@ const navigationItems = [
   { name: 'E-mail Automatisering', href: '/email-automation', icon: Mail },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  isMobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
-  const { isSidebarOpen, closeSidebar } = useSidebar()
   const { isAdmin, isLoading } = useIsAdmin()
   const { logoUrl, salonName } = useBusinessLogo()
 
-  // Close sidebar on desktop when pathname changes
-  useEffect(() => {
-    if (window.innerWidth < 1024) {
-      closeSidebar()
-    }
-  }, [pathname, closeSidebar])
+  const closeMobileMenu = () => {
+    onMobileClose?.()
+  }
 
   return (
     <>
       {/* Mobile Overlay */}
-      {isSidebarOpen && (
+      {isMobileOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeSidebar}
+          onClick={closeMobileMenu}
         />
       )}
 
       {/* Sidebar */}
       <div className={clsx(
         "fixed lg:static inset-y-0 left-0 z-40 w-sidebar bg-sidebar-bg border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         {/* Logo */}
         <div className="p-4 lg:p-6 border-b border-sidebar-border">
@@ -78,7 +78,7 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={closeSidebar}
+                onClick={closeMobileMenu}
                 className={clsx(
                   'sidebar-item min-h-[44px]', // Minimum touch target size
                   isActive && 'active'
@@ -107,7 +107,7 @@ export function Sidebar() {
                 'sidebar-item min-h-[44px]',
                 pathname.startsWith('/admin') && 'active'
               )}
-              onClick={closeSidebar}
+              onClick={closeMobileMenu}
               tabIndex={isAdmin ? 0 : -1} // Prevent keyboard navigation when hidden
             >
               <Shield className="w-5 h-5 flex-shrink-0" />
@@ -117,7 +117,7 @@ export function Sidebar() {
           <Link 
             href={isAdmin ? "/admin/settings" : "/settings"} 
             className="sidebar-item min-h-[44px]"
-            onClick={closeSidebar}
+            onClick={closeMobileMenu}
           >
             <Settings className="w-5 h-5 flex-shrink-0" />
             <span className="truncate">Instellingen</span>
@@ -125,7 +125,7 @@ export function Sidebar() {
           <Link 
             href="/help" 
             className="sidebar-item min-h-[44px]"
-            onClick={closeSidebar}
+            onClick={closeMobileMenu}
           >
             <HelpCircle className="w-5 h-5 flex-shrink-0" />
             <span className="truncate">Hulp</span>

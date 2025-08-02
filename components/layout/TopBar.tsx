@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Bell, Plus, HelpCircle, MoreVertical, User, LogOut } from 'lucide-react'
+import { Search, Bell, Plus, HelpCircle, MoreVertical, Menu, User, LogOut } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { usePathname, useRouter } from 'next/navigation'
@@ -8,12 +8,18 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown'
-import { NotificationPopup } from '@/components/notifications/NotificationPopup'
-import { useSidebar } from '@/components/providers/SidebarProvider'
+import { NotificationWrapper } from '@/components/notifications/NotificationWrapper'
+import { SafeNotificationButton } from '@/components/ui/SafeNotificationButton'
+import { SafeProfileButton } from '@/components/ui/SafeProfileButton'
+import { SafeComponentWrapper } from '@/components/ui/SafeComponentWrapper'
 import { LogoDynamic } from '@/components/layout/LogoDynamic'
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo'
 
-export function TopBar() {
+interface TopBarProps {
+  onMobileSidebarToggle?: () => void
+}
+
+export function TopBar({ onMobileSidebarToggle }: TopBarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const today = new Date()
@@ -21,9 +27,8 @@ export function TopBar() {
   const { user, signOut } = useAuth()
   const [firstName, setFirstName] = useState<string | null>(null)
   const [isLoadingName, setIsLoadingName] = useState(true)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { toggleSidebar } = useSidebar()
   const { logoUrl, salonName } = useBusinessLogo()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
   
@@ -35,8 +40,10 @@ export function TopBar() {
   
   const handleSidebarToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    toggleSidebar()
-  }, [toggleSidebar])
+    if (onMobileSidebarToggle) {
+      onMobileSidebarToggle()
+    }
+  }, [onMobileSidebarToggle])
 
   useEffect(() => {
     async function fetchFirstName() {
@@ -129,6 +136,35 @@ export function TopBar() {
   }, [isMobileMenuOpen])
   
   const isDashboard = pathname === '/'
+
+  // Safe component wrappers with error boundaries
+  const SafeNotificationComponent = ({ instanceType = 'desktop' }: { instanceType?: 'desktop' | 'mobile' }) => (
+    <SafeComponentWrapper 
+      fallback={<SafeNotificationButton />}
+      errorName="NotificationPopup"
+    >
+      <NotificationWrapper instanceType={instanceType} />
+    </SafeComponentWrapper>
+  )
+
+  const SafeProfileComponent = () => (
+    <SafeComponentWrapper 
+      fallback={
+        <SafeProfileButton 
+          initials={initials}
+          firstName={firstName}
+          userEmail={user?.email}
+        />
+      }
+      errorName="ProfileDropdown"
+    >
+      <ProfileDropdown 
+        initials={initials}
+        firstName={firstName}
+        userEmail={user?.email}
+      />
+    </SafeComponentWrapper>
+  )
   
   return (
     <>
@@ -287,14 +323,10 @@ export function TopBar() {
             </button>
             
             {/* Notifications */}
-            <NotificationPopup />
+            <SafeNotificationComponent instanceType="desktop" />
 
             {/* Profile */}
-            <ProfileDropdown 
-              initials={initials}
-              firstName={firstName}
-              userEmail={user?.email}
-            />
+            <SafeProfileComponent />
             
             {/* New Appointment Button */}
             {isDashboard && (

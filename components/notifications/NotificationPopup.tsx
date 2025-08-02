@@ -24,7 +24,12 @@ const severityColors = {
   success: 'text-green-600 bg-green-50',
 }
 
-export function NotificationPopup() {
+interface NotificationPopupProps {
+  instanceId?: string
+  instanceType?: 'desktop' | 'mobile'
+}
+
+export function NotificationPopup({ instanceId, instanceType = 'desktop' }: NotificationPopupProps) {
   const [isOpen, setIsOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -37,7 +42,12 @@ export function NotificationPopup() {
     markAllAsRead,
     dismiss,
     isMarkingAllAsRead,
-  } = useNotifications({ limit: 20 })
+  } = useNotifications({ 
+    limit: 20,
+    instanceId,
+    // Only subscribe to realtime on desktop to avoid duplicate subscriptions
+    enableRealtime: instanceType === 'desktop'
+  })
 
   // Handle clicks outside the popup to close it
   useEffect(() => {

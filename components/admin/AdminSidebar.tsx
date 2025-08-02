@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LogoDynamic } from '@/components/layout/LogoDynamic';
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo';
-import { useSidebar } from '@/components/providers/SidebarProvider';
 import clsx from 'clsx';
 import {
   LayoutDashboard,
@@ -58,10 +57,18 @@ const navigation: NavItem[] = [
   { name: 'Beveiliging', href: '/admin/security', icon: Shield },
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  isMobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export function AdminSidebar({ isMobileOpen = false, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const { logoUrl, salonName } = useBusinessLogo();
-  const { isSidebarOpen, closeSidebar } = useSidebar();
+  
+  const closeMobileMenu = () => {
+    onMobileClose?.();
+  };
   
   // Automatically expand settings if on a settings page
   const initialExpanded = pathname.startsWith('/admin/settings') ? ['Instellingen'] : [];
@@ -70,9 +77,9 @@ export function AdminSidebar() {
   // Close sidebar on mobile when pathname changes
   useEffect(() => {
     if (window.innerWidth < 1024) {
-      closeSidebar();
+      closeMobileMenu();
     }
-  }, [pathname, closeSidebar]);
+  }, [pathname]);
 
   const toggleExpanded = (itemName: string) => {
     setExpandedItems(prev =>
@@ -111,7 +118,7 @@ export function AdminSidebar() {
         ) : (
           <Link
             href={item.href}
-            onClick={closeSidebar}
+            onClick={closeMobileMenu}
             className={cn(
               'sidebar-item group flex items-center rounded-xl',
               isActive && 'active'
@@ -130,7 +137,7 @@ export function AdminSidebar() {
                 <Link
                   key={child.name}
                   href={child.href}
-                  onClick={closeSidebar}
+                  onClick={closeMobileMenu}
                   className={cn(
                     'sidebar-item group flex items-center rounded-xl pl-2',
                     isChildActive && 'active'
@@ -150,17 +157,17 @@ export function AdminSidebar() {
   return (
     <>
       {/* Mobile Overlay */}
-      {isSidebarOpen && (
+      {isMobileOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeSidebar}
+          onClick={closeMobileMenu}
         />
       )}
 
       {/* Sidebar */}
       <div className={clsx(
         "fixed lg:static inset-y-0 left-0 z-40 w-sidebar bg-sidebar-bg border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         {/* Logo Section */}
         <div className="p-4 lg:p-6 border-b border-sidebar-border">
@@ -176,7 +183,7 @@ export function AdminSidebar() {
           <h2 className="text-base font-semibold text-sidebar-text">Admin Panel</h2>
           <Link
             href="/"
-            onClick={closeSidebar}
+            onClick={closeMobileMenu}
             className="text-sidebar-icon hover:text-primary-700 transition-colors"
             title="Terug naar dashboard"
           >

@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useTenant } from '@/lib/hooks/useTenant';
 import { supabase } from '@/lib/supabase';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { TopBar } from '@/components/layout/TopBar';
-import { SidebarProvider } from '@/components/providers/SidebarProvider';
 
 export default function AdminLayout({
   children,
@@ -17,6 +16,11 @@ export default function AdminLayout({
   const router = useRouter();
   const { user, loading } = useAuth();
   const { tenantId } = useTenant();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(prev => !prev);
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -54,16 +58,17 @@ export default function AdminLayout({
   }
 
   return (
-    <SidebarProvider>
-      <div className="h-screen flex bg-background">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
-        </div>
+    <div className="h-screen flex bg-background">
+      <AdminSidebar 
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileClose={() => setIsMobileSidebarOpen(false)}
+      />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopBar onMobileSidebarToggle={toggleMobileSidebar} />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

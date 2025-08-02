@@ -10,6 +10,8 @@ import { useAuth } from '@/components/auth/AuthProvider'
 export function useNotifications(options?: {
   limit?: number
   unreadOnly?: boolean
+  instanceId?: string
+  enableRealtime?: boolean
 }) {
   const { tenantId } = useTenant()
   const { user } = useAuth()
@@ -77,7 +79,10 @@ export function useNotifications(options?: {
 
   // Real-time subscription
   useEffect(() => {
-    if (!tenantId || !user?.id) return
+    // Only subscribe if realtime is enabled (default to true for backward compatibility)
+    const shouldEnableRealtime = options?.enableRealtime !== false
+    
+    if (!tenantId || !user?.id || !shouldEnableRealtime) return
 
     const channel = NotificationService.subscribeToNotifications(
       tenantId,
@@ -89,13 +94,14 @@ export function useNotifications(options?: {
         
         // Show console log for new notification (toast removed)
         console.log('New notification:', notification.title, notification.message)
-      }
+      },
+      options?.instanceId // Pass instance ID to create unique channel
     )
 
     return () => {
       channel.unsubscribe()
     }
-  }, [tenantId, user?.id, queryClient])
+  }, [tenantId, user?.id, queryClient, options?.enableRealtime, options?.instanceId])
 
   return {
     notifications,
