@@ -13,7 +13,8 @@ import {
 } from 'recharts'
 import { useRevenueData } from '@/lib/hooks/useRevenueData'
 import { useExpectedRevenueData } from '@/lib/hooks/useExpectedRevenueData'
-import { TrendingUp, TrendingDown, Euro, Eye, EyeOff } from 'lucide-react'
+import { useScheduledAppointments } from '@/lib/hooks/useScheduledAppointments'
+import { TrendingUp, TrendingDown, Euro, Eye, EyeOff, Calendar } from 'lucide-react'
 import { format, subDays, startOfDay, endOfDay, addDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
 
@@ -29,6 +30,7 @@ interface ChartDataPoint {
 export function RevenueChart() {
   const [period, setPeriod] = useState<Period>('30d')
   const [showExpected, setShowExpected] = useState(true)
+  const [showAppointmentsPopup, setShowAppointmentsPopup] = useState(false)
   
   // Calculate date ranges - memoized to prevent unnecessary re-renders
   const dateRanges = useMemo(() => {
@@ -52,6 +54,11 @@ export function RevenueChart() {
     startDate: today,
     endDate: addDays(today, 30) // Show expected revenue for next 30 days
   })
+
+  const { data: scheduledAppointments = [], isLoading: appointmentsLoading } = useScheduledAppointments()
+  
+  console.log('[RevenueChart] Scheduled appointments:', scheduledAppointments)
+  console.log('[RevenueChart] Appointments loading:', appointmentsLoading)
 
   // Combine revenue and expected data with validation
   const chartData = useMemo(() => {
@@ -97,8 +104,16 @@ export function RevenueChart() {
   const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint
+      const selectedDate = data.date
+      
+      // Filter appointments for the selected date
+      const appointmentsForDate = scheduledAppointments.filter(appointment => {
+        const appointmentDate = format(new Date(appointment.scheduled_at), 'yyyy-MM-dd')
+        return appointmentDate === selectedDate
+      })
+      
       return (
-        <div className="bg-gray-900 text-white shadow-xl rounded-lg px-4 py-3">
+        <div className="bg-gray-900 text-white shadow-xl rounded-lg px-4 py-3 max-w-xs">
           <div className="text-xs opacity-80 mb-2">
             {format(new Date(data.date), 'd MMM yyyy', { locale: nl })}
           </div>
@@ -111,10 +126,37 @@ export function RevenueChart() {
             </div>
           )}
           {showExpected && data.expectedRevenue > 0 && (
-            <div>
+            <div className="mb-3">
               <span className="text-xs opacity-70">Verwachte omzet</span>
               <div className="text-lg font-semibold text-blue-300">
                 €{data.expectedRevenue.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+          )}
+          
+          {/* Scheduled Appointments for this date */}
+          {appointmentsForDate.length > 0 && (
+            <div className="border-t border-gray-700 pt-2 mt-2">
+              <div className="flex items-center gap-1 mb-2">
+                <Calendar className="w-3 h-3 text-blue-400" />
+                <span className="text-xs opacity-70">Geplande afspraken</span>
+              </div>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {appointmentsForDate.map((appointment) => (
+                  <div key={appointment.id} className="text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="truncate">
+                        {appointment.clients?.first_name} {appointment.clients?.last_name}
+                      </span>
+                      <span className="text-green-400 ml-2">
+                        €{appointment.services?.price?.toFixed(0) || '0'}
+                      </span>
+                    </div>
+                    <div className="text-gray-400 truncate">
+                      {appointment.services?.name} - {format(new Date(appointment.scheduled_at), 'HH:mm')}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -337,14 +379,71 @@ export function RevenueChart() {
               €{metrics.average.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Euro className="w-3 h-3 text-gray-400" />
-              <p className="text-xs text-gray-500">Werkelijk totaal</p>
+          <div className="relative">
+            <div 
+              className="cursor-pointer"
+              onMouseEnter={() => setShowAppointmentsPopup(true)}
+              onMouseLeave={() => setShowAppointmentsPopup(false)}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Euro className="w-3 h-3 text-gray-400" />
+                <p className="text-xs text-gray-500">Werkelijk totaal</p>
+              </div>
+              <p className="text-lg font-semibold text-gray-900">
+                €{metrics.total.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </p>
             </div>
-            <p className="text-lg font-semibold text-gray-900">
-              €{metrics.total.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            </p>
+            
+            {/* Scheduled Appointments Popup */}
+            {showAppointmentsPopup && (
+              <div className="absolute bottom-full mb-2 left-0 z-50 w-80 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="w-4 h-4 text-blue-500" />
+                  <h3 className="font-semibold text-gray-900">Geplande Afspraken</h3>
+                </div>
+                
+                {appointmentsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                  </div>
+                ) : scheduledAppointments.length > 0 ? (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {scheduledAppointments.map((appointment) => (
+                      <div key={appointment.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {appointment.clients?.first_name} {appointment.clients?.last_name}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {appointment.services?.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {format(new Date(appointment.scheduled_at), 'd MMM HH:mm', { locale: nl })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-green-600">
+                            €{appointment.services?.price?.toFixed(2) || '0.00'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-gray-100">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium text-gray-600">Totaal verwacht:</p>
+                        <p className="text-sm font-semibold text-blue-600">
+                          €{scheduledAppointments.reduce((sum, apt) => sum + (apt.services?.price || 0), 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 py-4 text-center">
+                    Geen geplande afspraken gevonden
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
         

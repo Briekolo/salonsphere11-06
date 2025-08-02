@@ -113,7 +113,10 @@ export function NotificationPopup() {
     <div className="relative">
       <button
         ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation()
+          setIsOpen(!isOpen)
+        }}
         className="p-1.5 sm:p-2 text-[#02011F] hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#02011F]"
         aria-label="Notifications"
         aria-expanded={isOpen}
@@ -137,19 +140,23 @@ export function NotificationPopup() {
       <div
         ref={popupRef}
         className={cn(
-          'absolute right-0 z-50 mt-2 w-80 sm:w-96 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200',
+          'absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] sm:w-80 lg:w-96 max-w-[24rem] origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-200',
           isOpen 
             ? 'opacity-100 scale-100 translate-y-0' 
             : 'opacity-0 scale-95 translate-y-1 pointer-events-none'
         )}
         style={{ transformOrigin: 'top right' }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Meldingen</h3>
             {unreadCount > 0 && (
               <button
-                onClick={() => markAllAsRead()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  markAllAsRead()
+                }}
                 disabled={isMarkingAllAsRead}
                 className="text-sm text-[#02011F] hover:text-gray-700 font-medium disabled:opacity-50"
               >

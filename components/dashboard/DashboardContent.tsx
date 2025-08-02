@@ -326,7 +326,7 @@ export function DashboardContent() {
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {dashboardMetrics.map((metric, index) => (
           <div key={`dashboard-metric-${index}-${metric.title}`} className="metric-card" suppressHydrationWarning={true}>
             <div className={`metric-icon ${metric.bgColor}`}>

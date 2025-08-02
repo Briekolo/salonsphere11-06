@@ -42,7 +42,8 @@ export function ProfileDropdown({ initials, firstName, userEmail }: ProfileDropd
   }, [isOpen])
 
   // Handle logout
-  const handleLogout = async () => {
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
     if (isLoggingOut) return
 
     setIsLoggingOut(true)
@@ -108,7 +109,10 @@ export function ProfileDropdown({ initials, firstName, userEmail }: ProfileDropd
       {/* Profile Button */}
       <button
         ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation()
+          setIsOpen(!isOpen)
+        }}
         className="w-8 h-8 lg:w-10 lg:h-10 bg-[#02011F] rounded-full flex items-center justify-center text-white text-sm font-medium hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -146,7 +150,8 @@ export function ProfileDropdown({ initials, firstName, userEmail }: ProfileDropd
             {/* Profile Option (future enhancement) */}
             <button
               className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 // Future: navigate to profile page
                 setIsOpen(false)
               }}

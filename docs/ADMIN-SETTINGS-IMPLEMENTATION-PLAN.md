@@ -39,30 +39,30 @@ The `tenants` table contains all necessary fields for the settings pages:
 
 ### 2. Domein Instellingen Page
 **Current Issues:**
-- Domain verification is manual (no actual verification logic)
-- Missing DNS record validation
-- No subdomain availability check
+- ✅ Domain verification is manual (no actual verification logic)
+- ✅ Missing DNS record validation
+- ✅ No subdomain availability check
 
 **Implementation Steps:**
-1. Add subdomain availability check before save
-2. Implement actual domain verification process
-3. Add DNS record verification status checker
-4. Add copy-to-clipboard feedback
-5. Add domain preview URLs
-6. Implement subdomain validation (alphanumeric + hyphens only)
+1. ✅ Add subdomain availability check before save
+2. ✅ Implement actual domain verification process
+3. ✅ Add DNS record verification status checker
+4.✅  Add copy-to-clipboard feedback
+5. ✅ Add domain preview URLs
+6.✅ Implement subdomain validation (alphanumeric + hyphens only)
 
 ### 3. Openingstijden Page
 **Current Issues:**
-- No validation for time ranges (close time should be after open time)
-- Missing break time functionality
-- No holiday/special hours management
+- ✅No validation for time ranges (close time should be after open time)
+- ✅Missing break time functionality
+- ✅No holiday/special hours management
 
 **Implementation Steps:**
-1. Add time validation (ensure close > open)
-2. Add break time slots functionality
-3. Create holiday management section
-4. Add quick presets (e.g., "Standard business hours")
-5. Add visual timeline view of hours
+1. ✅Add time validation (ensure close > open)
+2. ✅Add break time slots functionality
+3. ✅Create holiday management section
+4. ✅Add quick presets (e.g., "Standard business hours")
+5. ✅Add visual timeline view of hours
 
 ### 4. BTW Instellingen Page
 **Current Issues:**

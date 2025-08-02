@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LogoDynamic } from '@/components/layout/LogoDynamic';
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo';
+import { useSidebar } from '@/components/providers/SidebarProvider';
+import clsx from 'clsx';
 import {
   LayoutDashboard,
   Settings,
@@ -59,10 +61,18 @@ const navigation: NavItem[] = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const { logoUrl, salonName } = useBusinessLogo();
+  const { isSidebarOpen, closeSidebar } = useSidebar();
   
   // Automatically expand settings if on a settings page
   const initialExpanded = pathname.startsWith('/admin/settings') ? ['Instellingen'] : [];
   const [expandedItems, setExpandedItems] = useState<string[]>(initialExpanded);
+
+  // Close sidebar on mobile when pathname changes
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      closeSidebar();
+    }
+  }, [pathname, closeSidebar]);
 
   const toggleExpanded = (itemName: string) => {
     setExpandedItems(prev =>
@@ -101,6 +111,7 @@ export function AdminSidebar() {
         ) : (
           <Link
             href={item.href}
+            onClick={closeSidebar}
             className={cn(
               'sidebar-item group flex items-center rounded-xl',
               isActive && 'active'
@@ -119,6 +130,7 @@ export function AdminSidebar() {
                 <Link
                   key={child.name}
                   href={child.href}
+                  onClick={closeSidebar}
                   className={cn(
                     'sidebar-item group flex items-center rounded-xl pl-2',
                     isChildActive && 'active'
@@ -136,30 +148,45 @@ export function AdminSidebar() {
   };
 
   return (
-    <div className="flex h-full w-sidebar flex-col bg-sidebar-bg border-r border-sidebar-border">
-      {/* Logo Section */}
-      <div className="p-4 lg:p-6 border-b border-sidebar-border">
-        <LogoDynamic 
-          size="sm" 
-          customLogoUrl={logoUrl}
-          salonName={salonName}
+    <>
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={closeSidebar}
         />
+      )}
+
+      {/* Sidebar */}
+      <div className={clsx(
+        "fixed lg:static inset-y-0 left-0 z-40 w-sidebar bg-sidebar-bg border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        {/* Logo Section */}
+        <div className="p-4 lg:p-6 border-b border-sidebar-border">
+          <LogoDynamic 
+            size="sm" 
+            customLogoUrl={logoUrl}
+            salonName={salonName}
+          />
+        </div>
+        
+        {/* Header */}
+        <div className="flex h-12 items-center justify-between px-4 border-b border-sidebar-border">
+          <h2 className="text-base font-semibold text-sidebar-text">Admin Panel</h2>
+          <Link
+            href="/"
+            onClick={closeSidebar}
+            className="text-sidebar-icon hover:text-primary-700 transition-colors"
+            title="Terug naar dashboard"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </div>
+        <nav className="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
+          {navigation.map(renderNavItem)}
+        </nav>
       </div>
-      
-      {/* Header */}
-      <div className="flex h-12 items-center justify-between px-4 border-b border-sidebar-border">
-        <h2 className="text-base font-semibold text-sidebar-text">Admin Panel</h2>
-        <Link
-          href="/"
-          className="text-sidebar-icon hover:text-primary-700 transition-colors"
-          title="Terug naar dashboard"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-      </div>
-      <nav className="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
-        {navigation.map(renderNavItem)}
-      </nav>
-    </div>
+    </>
   );
 }
