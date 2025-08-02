@@ -11,6 +11,7 @@ export function useTenantRealtime() {
   const qc = useQueryClient()
   const channelRef = useRef<RealtimeChannel | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 5
 
@@ -95,7 +96,12 @@ export function useTenantRealtime() {
 
   const attemptReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.error('[useTenantRealtime] Max reconnection attempts reached')
+      console.warn('[useTenantRealtime] Max reconnection attempts reached, disabling realtime updates')
+      // Clear any pending timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
       return
     }
 
@@ -105,17 +111,29 @@ export function useTenantRealtime() {
     reconnectTimeoutRef.current = setTimeout(() => {
       reconnectAttemptsRef.current++
       
-      // Clean up existing channel
+      // Clean up existing channel safely
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
+        try {
+          supabase.removeChannel(channelRef.current)
+        } catch (error) {
+          console.warn('[useTenantRealtime] Error removing channel:', error)
+        }
         channelRef.current = null
       }
       
       // Create new channel
-      const newChannel = setupChannel()
-      if (newChannel) {
-        channelRef.current = newChannel
-        subscribeToChannel(newChannel)
+      try {
+        const newChannel = setupChannel()
+        if (newChannel) {
+          channelRef.current = newChannel
+          subscribeToChannel(newChannel)
+        }
+      } catch (error) {
+        console.error('[useTenantRealtime] Error setting up new channel:', error)
+        // Try again with next attempt if we haven't reached max
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          attemptReconnect()
+        }
       }
     }, delay)
   }, [setupChannel])
@@ -131,6 +149,16 @@ export function useTenantRealtime() {
           clearTimeout(reconnectTimeoutRef.current)
           reconnectTimeoutRef.current = null
         }
+        
+        // Set a timeout to reset attempts after successful connection period (5 minutes)
+        if (resetTimeoutRef.current) {
+          clearTimeout(resetTimeoutRef.current)
+        }
+        resetTimeoutRef.current = setTimeout(() => {
+          reconnectAttemptsRef.current = 0
+          console.log('[useTenantRealtime] Connection stable, reset reconnection attempts')
+        }, 5 * 60 * 1000)
+        
       } else if (status === 'CLOSED') {
         console.log('[useTenantRealtime] Realtime subscription closed')
         attemptReconnect()
@@ -151,15 +179,23 @@ export function useTenantRealtime() {
     return () => {
       console.log('[useTenantRealtime] Cleaning up realtime subscription')
       
-      // Clear reconnection timeout
+      // Clear all timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
         reconnectTimeoutRef.current = null
       }
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current)
+        resetTimeoutRef.current = null
+      }
       
-      // Remove channel
+      // Remove channel safely
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
+        try {
+          supabase.removeChannel(channelRef.current)
+        } catch (error) {
+          console.warn('[useTenantRealtime] Error during cleanup:', error)
+        }
         channelRef.current = null
       }
       

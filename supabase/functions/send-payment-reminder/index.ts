@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { formatBelgiumDate } from '../_shared/timezone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,8 +55,9 @@ serve(async (req) => {
     const reminderType = isOverdue ? 'overdue' : 'reminder'
     const urgencyClass = daysOverdue > 14 ? 'urgent' : daysOverdue > 0 ? 'overdue' : 'reminder'
 
-    // Format due date
-    const dueDateFormatted = new Date(dueDate).toLocaleDateString('nl-NL')
+    // Format due date for Belgium
+    const dueDateObj = new Date(dueDate)
+    const dueDateFormatted = formatBelgiumDate(dueDateObj)
 
     // Subject line based on urgency
     let subject = ''
@@ -159,6 +161,7 @@ serve(async (req) => {
             </div>
             <div class="footer">
               <p>Deze e-mail is automatisch gegenereerd. Voor vragen kunt u contact met ons opnemen.</p>
+              <p style="margin-top: 10px; font-style: italic;">Alle datums zijn weergegeven in Belgische tijd (Europe/Brussels)</p>
             </div>
           </div>
         </body>

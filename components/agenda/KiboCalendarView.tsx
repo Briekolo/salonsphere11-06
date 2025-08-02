@@ -1911,7 +1911,16 @@ export function KiboCalendarView({ selectedDate, onDateSelect, filters }: KiboCa
   // Modal handlers
   const openModalForNew = (date?: Date) => {
     setSelectedBookingId(null)
-    setInitialModalDate(date)
+    
+    // If date is provided and time is midnight (from month view), set to 7:00 AM
+    if (date && date.getHours() === 0 && date.getMinutes() === 0) {
+      const adjustedDate = new Date(date)
+      adjustedDate.setHours(7, 0, 0, 0) // Set to 7:00 AM
+      setInitialModalDate(adjustedDate)
+    } else {
+      setInitialModalDate(date)
+    }
+    
     setIsModalOpen(true)
   }
 

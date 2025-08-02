@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { formatAppointmentTimeRange, logTimezoneConversion } from '../_shared/timezone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,25 +83,15 @@ serve(async (req) => {
 
     const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
 
-    // Format date and time
+    // Format date and time using Belgium timezone
     const appointmentDate = new Date(scheduledAt)
-    const dateFormatted = appointmentDate.toLocaleDateString('nl-NL', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-    const timeFormatted = appointmentDate.toLocaleTimeString('nl-NL', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-
-    // Calculate end time
-    const endTime = new Date(appointmentDate.getTime() + durationMinutes * 60000)
-    const endTimeFormatted = endTime.toLocaleTimeString('nl-NL', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    
+    // Use the shared timezone utility for Belgium
+    const timeInfo = formatAppointmentTimeRange(appointmentDate, durationMinutes)
+    const { timeFormatted, endTimeFormatted, dateFormatted, timezoneAbbr, timezoneNotice } = timeInfo
+    
+    // Log for debugging
+    logTimezoneConversion(appointmentDate, 'Booking Reminder')
 
     // Calculate time until appointment
     const now = new Date()
@@ -136,7 +127,7 @@ serve(async (req) => {
               <div class="reminder-box">
                 <h2>🕐 Over ${hoursUntil} uur heeft u een afspraak!</h2>
                 <div class="time-highlight">${dateFormatted}</div>
-                <div class="time-highlight">${timeFormatted} - ${endTimeFormatted}</div>
+                <div class="time-highlight">${timeFormatted} - ${endTimeFormatted} ${timezoneAbbr}</div>
               </div>
 
               <p>Beste ${clientName},</p>
@@ -154,7 +145,7 @@ serve(async (req) => {
                 </div>
                 <div class="detail-row">
                   <span class="detail-label">Tijd:</span>
-                  <span class="detail-value">${timeFormatted} - ${endTimeFormatted}</span>
+                  <span class="detail-value">${timeFormatted} - ${endTimeFormatted} ${timezoneAbbr}</span>
                 </div>
                 <div class="detail-row">
                   <span class="detail-label">Duur:</span>
@@ -204,6 +195,7 @@ serve(async (req) => {
             </div>
             <div class="footer">
               <p>Deze herinnering is automatisch verzonden 24 uur voor uw afspraak.</p>
+              <p style="margin-top: 10px; font-style: italic;">${timezoneNotice}</p>
             </div>
           </div>
         </body>
@@ -220,7 +212,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: `${tenantName} <${RESEND_FROM_EMAIL}>`,
         to: recipientEmail,
-        subject: `⏰ Herinnering: ${serviceName} morgen om ${timeFormatted}`,
+        subject: `⏰ Herinnering: ${serviceName} morgen om ${timeFormatted} ${timezoneAbbr}`,
         html: emailHtml
       }),
     })
