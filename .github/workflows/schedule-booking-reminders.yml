@@ -1,0 +1,23 @@
+name: Schedule Booking Reminders
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Booking Reminder Scheduler
+        run: |
+          curl -X POST ${{ secrets.SUPABASE_URL }}/functions/v1/booking-reminder-scheduler \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+      
+      - name: Log Result
+        if: always()
+        run: echo "Booking reminder scheduler triggered at $(date)"
