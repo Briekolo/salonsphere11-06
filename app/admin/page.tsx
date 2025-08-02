@@ -517,30 +517,30 @@ export default function AdminDashboard() {
 
   const metricCards = [
     {
-      title: 'Totaal Medewerkers',
-      value: metrics.totalStaff,
-      icon: <Users className="w-5 h-5" />,
+      title: 'Verwachte Omzet Deze Maand',
+      value: `€${metrics.totalRevenue.toFixed(2)}`,
+      icon: <Euro className="w-5 h-5" />,
       color: 'text-icon-blue',
       bgColor: 'bg-icon-blue-bg',
     },
     {
-      title: 'Afspraken Deze Maand',
+      title: 'Afspraken',
       value: metrics.totalBookings,
       icon: <Calendar className="w-5 h-5" />,
       color: 'text-icon-green',
       bgColor: 'bg-icon-green-bg',
     },
     {
-      title: 'Omzet Deze Maand',
-      value: `€${metrics.totalRevenue.toFixed(2)}`,
-      icon: <Euro className="w-5 h-5" />,
+      title: 'Gemiddelde Waarde',
+      value: metrics.totalBookings > 0 ? `€${(metrics.totalRevenue / metrics.totalBookings).toFixed(2)}` : '€0.00',
+      icon: <TrendingUp className="w-5 h-5" />,
       color: 'text-icon-purple',
       bgColor: 'bg-icon-purple-bg',
     },
     {
-      title: 'Actieve Medewerkers',
+      title: 'Nieuwe Klanten',
       value: metrics.activeStaff,
-      icon: <CheckCircle className="w-5 h-5" />,
+      icon: <Users className="w-5 h-5" />,
       color: 'text-icon-orange',
       bgColor: 'bg-icon-orange-bg',
     },
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {metricCards.map((metric, index) => (
           <div key={`metric-${index}-${metric.title}`} className="metric-card" suppressHydrationWarning={true}>
             <div className={`metric-icon ${metric.bgColor}`}>
