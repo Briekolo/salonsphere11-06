@@ -211,6 +211,9 @@ export type Database = {
           status: string | null
           tenant_id: string
           updated_at: string | null
+          series_id: string | null
+          series_session_number: number | null
+          is_series_booking: boolean | null
         }
         Insert: {
           actual_duration_minutes?: number | null
@@ -229,6 +232,9 @@ export type Database = {
           status?: string | null
           tenant_id: string
           updated_at?: string | null
+          series_id?: string | null
+          series_session_number?: number | null
+          is_series_booking?: boolean | null
         }
         Update: {
           actual_duration_minutes?: number | null
@@ -247,6 +253,9 @@ export type Database = {
           status?: string | null
           tenant_id?: string
           updated_at?: string | null
+          series_id?: string | null
+          series_session_number?: number | null
+          is_series_booking?: boolean | null
         }
         Relationships: [
           {
@@ -2006,6 +2015,95 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_series: {
+        Row: {
+          id: string
+          tenant_id: string
+          client_id: string
+          service_id: string
+          staff_id: string | null
+          total_sessions: number
+          completed_sessions: number
+          interval_weeks: number | null
+          package_discount_percentage: number | null
+          total_price: number
+          paid_amount: number | null
+          status: string
+          notes: string | null
+          created_at: string | null
+          updated_at: string | null
+          completed_at: string | null
+          cancelled_at: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          client_id: string
+          service_id: string
+          staff_id?: string | null
+          total_sessions: number
+          completed_sessions?: number
+          interval_weeks?: number | null
+          package_discount_percentage?: number | null
+          total_price: number
+          paid_amount?: number | null
+          status?: string
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          completed_at?: string | null
+          cancelled_at?: string | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          client_id?: string
+          service_id?: string
+          staff_id?: string | null
+          total_sessions?: number
+          completed_sessions?: number
+          interval_weeks?: number | null
+          package_discount_percentage?: number | null
+          total_price?: number
+          paid_amount?: number | null
+          status?: string
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          completed_at?: string | null
+          cancelled_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_series_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_series_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_series_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_series_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       treatment_categories: {
         Row: {
           active: boolean | null
@@ -2117,7 +2215,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      treatment_series_details: {
+        Row: {
+          id: string
+          tenant_id: string
+          client_id: string
+          service_id: string
+          staff_id: string | null
+          total_sessions: number
+          completed_sessions: number
+          interval_weeks: number | null
+          package_discount_percentage: number | null
+          total_price: number
+          paid_amount: number | null
+          status: string
+          notes: string | null
+          created_at: string | null
+          updated_at: string | null
+          completed_at: string | null
+          cancelled_at: string | null
+          client_name: string | null
+          client_email: string | null
+          client_phone: string | null
+          service_name: string | null
+          service_duration: number | null
+          service_price: number | null
+          staff_name: string | null
+          total_booked_sessions: number | null
+          next_appointment_date: string | null
+        }
+      }
     }
     Functions: {
       adjust_inventory_and_log: {

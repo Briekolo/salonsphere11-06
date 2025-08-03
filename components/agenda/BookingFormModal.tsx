@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users, ExternalLink, Euro } from 'lucide-react'
+import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users, ExternalLink, Euro, AlertCircle, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useCreateBooking, useUpdateBooking, useDeleteBooking, useBooking } from '@/lib/hooks/useBookings'
 import { useClients } from '@/lib/hooks/useClients'
@@ -10,6 +10,8 @@ import { useUsers } from '@/lib/hooks/useUsers'
 import { useAvailableStaff } from '@/lib/hooks/useAvailableStaff'
 import { StaffMember, StaffService } from '@/types/staff'
 import { debugLog, debugError } from '@/lib/utils/debug'
+import { useClientTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
+import { CreateTreatmentSeriesModal } from '@/components/treatments/CreateTreatmentSeriesModal'
 
 interface BookingFormModalProps {
   bookingId?: string | null
@@ -40,6 +42,8 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isCustomDuration, setIsCustomDuration] = useState(false) // Track if user wants custom duration
+  const [showTreatmentSeriesModal, setShowTreatmentSeriesModal] = useState(false)
+  const [showSeriesAlert, setShowSeriesAlert] = useState(false)
   
   const hasInitialized = useRef(false)
   const isInitializingRef = useRef(false)
@@ -57,6 +61,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   const { data: clients = [], isLoading: isLoadingClients } = useClients()
   const { data: services = [], isLoading: isLoadingServices } = useServices()
   const { data: existingBooking, isLoading: isLoadingBooking } = useBooking(bookingId || null)
+  const { data: clientTreatmentSeries = [] } = useClientTreatmentSeries(formData.client_id)
   
   // Use custom hook for available staff
   const { 
@@ -95,6 +100,25 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
       }
     }
   }, [formData.service_id, formData.user_id, formData.duration_minutes, getStaffServiceAssignment, services, isCustomDuration])
+
+  // Check for active treatment series when client changes
+  useEffect(() => {
+    if (formData.client_id && clientTreatmentSeries.length > 0 && !isEditing) {
+      // Check if any active series have remaining sessions
+      const activeSeries = clientTreatmentSeries.filter(series => 
+        series.status === 'active' && 
+        series.completed_sessions < series.total_sessions
+      )
+      
+      if (activeSeries.length > 0) {
+        setShowSeriesAlert(true)
+      } else {
+        setShowSeriesAlert(false)
+      }
+    } else {
+      setShowSeriesAlert(false)
+    }
+  }, [formData.client_id, clientTreatmentSeries, isEditing])
 
   // Populate form when editing an existing booking
   useEffect(() => {
@@ -299,6 +323,48 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                 </select>
               </div>
             </div>
+
+            {/* Active Treatment Series Alert */}
+            {showSeriesAlert && clientTreatmentSeries.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-900 mb-1">
+                      Deze klant heeft actieve behandelreeksen
+                    </p>
+                    <p className="text-sm text-amber-700 mb-3">
+                      Er zijn nog openstaande sessies in een of meer behandelreeksen. 
+                      Controleer of deze afspraak deel uitmaakt van een bestaande reeks.
+                    </p>
+                    <div className="space-y-2 mb-3">
+                      {clientTreatmentSeries
+                        .filter(series => series.status === 'active' && series.completed_sessions < series.total_sessions)
+                        .map(series => (
+                          <div key={series.id} className="bg-white p-2 rounded-lg border border-amber-200">
+                            <p className="text-sm font-medium text-gray-900">{series.service_name}</p>
+                            <p className="text-xs text-gray-600">
+                              {series.completed_sessions} van {series.total_sessions} sessies voltooid
+                              {series.next_appointment_date && (
+                                <span> • Volgende: {new Date(series.next_appointment_date).toLocaleDateString('nl-NL')}</span>
+                              )}
+                            </p>
+                          </div>
+                        ))
+                      }
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSeriesAlert(false)}
+                      className="text-sm text-amber-700 hover:text-amber-800 font-medium"
+                    >
+                      Begrepen, doorgaan met losse afspraak
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Staff Member */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -612,6 +678,14 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
           </div>
         </form>
       </div>
+
+      {/* Treatment Series Modal */}
+      <CreateTreatmentSeriesModal
+        isOpen={showTreatmentSeriesModal}
+        onClose={() => setShowTreatmentSeriesModal(false)}
+        preselectedClientId={formData.client_id}
+        preselectedServiceId={formData.service_id}
+      />
     </div>
   )
 } 

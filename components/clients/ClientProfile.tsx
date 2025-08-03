@@ -13,6 +13,8 @@ import { ClientStatusBadge } from './ClientStatusBadge';
 import { ClientStatus } from '@/lib/services/clientStatusService';
 import { handleEmailClick, handlePhoneClick } from '@/lib/utils/emailUtils';
 import { useTenant } from '@/lib/hooks/useTenant';
+import { useClientTreatmentSeries } from '@/lib/hooks/useTreatmentSeries';
+import { TreatmentSeriesCard } from './TreatmentSeriesCard';
 
 interface ClientProfileProps {
   clientId: string
@@ -52,6 +54,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
   const { data: client, isLoading: clientLoading, error: clientError } = useClientById(clientId);
   const { data: appointments, isLoading: appointmentsLoading, error: appointmentsError } = useClientAppointments(clientId);
+  const { data: treatmentSeries, isLoading: treatmentSeriesLoading, refetch: refetchTreatmentSeries } = useClientTreatmentSeries(clientId);
   const updateClientMutation = useUpdateClient();
   const deleteClientMutation = useDeleteClient();
   const queryClient = useQueryClient();
@@ -435,6 +438,22 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         {activeTab === 'overview' && (
           <>
             <div className="lg:col-span-8 space-y-4 lg:space-y-6">
+              {/* Treatment Series */}
+              {treatmentSeries && treatmentSeries.length > 0 && (
+                <div className="card">
+                  <h3 className="text-lg font-semibold mb-4">Behandelreeksen</h3>
+                  <div className="space-y-3">
+                    {treatmentSeries.map((series) => (
+                      <TreatmentSeriesCard 
+                        key={series.id} 
+                        series={series} 
+                        onRefresh={refetchTreatmentSeries}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Personal Information */}
               <div className="card">
                 <h3 className="text-lg font-semibold mb-4">Persoonlijke informatie</h3>

@@ -10,6 +10,7 @@ import { PricingCalculator } from './PricingCalculator'
 import { CategoryManagement } from './CategoryManagement'
 import { StaffAssignments } from './StaffAssignments'
 import { StaffAssignmentsV2 } from './StaffAssignmentsV2'
+import { TreatmentSeriesManagement } from './TreatmentSeriesManagement'
 import { Calculator, Upload, Plus, Settings, Users, Package, Tag } from 'lucide-react'
 import { useServices } from '@/lib/hooks/useServices'
 
@@ -113,12 +114,10 @@ export function TreatmentsContent() {
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            disabled
           >
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4" />
-              Pakketten
-              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Binnenkort</span>
+              Behandelreeksen
             </div>
           </button>
           <button
@@ -223,15 +222,7 @@ export function TreatmentsContent() {
       
       {activeTab === 'staff' && <StaffAssignmentsV2 />}
       
-      {activeTab === 'packages' && (
-        <div className="text-center py-12">
-          <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Pakketten komen binnenkort</h3>
-          <p className="text-gray-600">
-            Stel behandelingspakketten samen met kortingen en bundels.
-          </p>
-        </div>
-      )}
+      {activeTab === 'packages' && <TreatmentSeriesManagement />}
       
       {activeTab === 'pricing' && (
         <div className="text-center py-12">
