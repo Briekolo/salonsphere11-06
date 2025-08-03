@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
+import { EmailService } from '@/lib/services/emailService'
 
 type TreatmentSeries = Database['public']['Tables']['treatment_series']['Row']
 type TreatmentSeriesInsert = Database['public']['Tables']['treatment_series']['Insert']
@@ -44,6 +45,8 @@ export class TreatmentSeriesService {
       throw new Error('Could not fetch tenant information')
     }
 
+    let seriesId: string
+
     // If custom dates are provided, use the new function
     if (params.custom_dates && params.custom_dates.length > 0) {
       // Convert datetime-local strings to ISO format with timezone
@@ -71,27 +74,106 @@ export class TreatmentSeriesService {
         }
         throw error
       }
-      return data
+      seriesId = data
+    } else {
+      // Otherwise use the existing interval-based function
+      // Convert start date to ISO format
+      const isoStartDate = new Date(params.start_date).toISOString()
+      
+      const { data, error } = await supabase.rpc('create_treatment_series_with_appointments', {
+        p_tenant_id: userProfile.tenant_id,
+        p_client_id: params.client_id,
+        p_service_id: params.service_id,
+        p_staff_id: params.staff_id || null,
+        p_start_date: isoStartDate,
+        p_total_sessions: params.total_sessions,
+        p_interval_weeks: params.interval_weeks || null,
+        p_package_discount: params.package_discount || 0,
+        p_notes: params.notes || null
+      })
+
+      if (error) throw error
+      seriesId = data
     }
 
-    // Otherwise use the existing interval-based function
-    // Convert start date to ISO format
-    const isoStartDate = new Date(params.start_date).toISOString()
-    
-    const { data, error } = await supabase.rpc('create_treatment_series_with_appointments', {
-      p_tenant_id: userProfile.tenant_id,
-      p_client_id: params.client_id,
-      p_service_id: params.service_id,
-      p_staff_id: params.staff_id || null,
-      p_start_date: isoStartDate,
-      p_total_sessions: params.total_sessions,
-      p_interval_weeks: params.interval_weeks || null,
-      p_package_discount: params.package_discount || 0,
-      p_notes: params.notes || null
-    })
+    // After series creation, send confirmation emails for each booking if enabled
+    try {
+      await this.sendSeriesConfirmationEmails(seriesId, userProfile.tenant_id)
+    } catch (emailError) {
+      console.error('Error sending series confirmation emails:', emailError)
+      // Don't throw - series is still created successfully
+    }
 
-    if (error) throw error
-    return data
+    return seriesId
+  }
+
+  private static async sendSeriesConfirmationEmails(seriesId: string, tenantId: string): Promise<void> {
+    // Check if booking confirmation is enabled for this tenant
+    const isConfirmationEnabled = await EmailService.checkEmailAutomationEnabled(tenantId, 'booking_confirmation')
+    
+    if (!isConfirmationEnabled) {
+      console.log('Booking confirmation is disabled for tenant:', tenantId)
+      return
+    }
+
+    // Get tenant information for emails
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('*')
+      .eq('id', tenantId)
+      .single()
+
+    if (tenantError || !tenant) {
+      console.error('Error fetching tenant information for emails:', tenantError)
+      return
+    }
+
+    // Get series information for email context
+    const { data: seriesData, error: seriesError } = await supabase
+      .from('treatment_series')
+      .select('total_sessions')
+      .eq('id', seriesId)
+      .single()
+
+    if (seriesError || !seriesData) {
+      console.error('Error fetching series information for emails:', seriesError)
+      return
+    }
+
+    // Fetch all bookings for this series with related data
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        clients:client_id (first_name, last_name, email, phone),
+        services:service_id (name, duration_minutes, price),
+        users:staff_id (first_name, last_name)
+      `)
+      .eq('series_id', seriesId)
+      .order('series_session_number', { ascending: true })
+
+    if (bookingsError || !bookings) {
+      console.error('Error fetching series bookings for emails:', bookingsError)
+      return
+    }
+
+    // Send confirmation email for each booking with series context
+    for (const booking of bookings) {
+      try {
+        // Prepare series information for this booking
+        const seriesInfo = {
+          seriesId: seriesId,
+          seriesSessionNumber: booking.series_session_number,
+          totalSessions: seriesData.total_sessions
+        }
+
+        await EmailService.sendBookingConfirmation(booking, tenant, seriesInfo)
+        console.log(`Confirmation email sent for booking ${booking.id} (session ${booking.series_session_number})`)
+      } catch (emailError) {
+        console.error(`Error sending confirmation email for booking ${booking.id}:`, emailError)
+        // Continue with other bookings even if one fails
+      }
+    }
   }
 
   static async getSeriesByClient(clientId: string): Promise<TreatmentSeriesWithDetails[]> {
@@ -206,6 +288,16 @@ export class TreatmentSeriesService {
     const { error } = await supabase
       .from('treatment_series')
       .update({ status: 'active' })
+      .eq('id', seriesId)
+
+    if (error) throw error
+  }
+
+  static async deleteSeries(seriesId: string): Promise<void> {
+    // Delete the treatment series - bookings will have series_id set to NULL due to foreign key constraint
+    const { error } = await supabase
+      .from('treatment_series')
+      .delete()
       .eq('id', seriesId)
 
     if (error) throw error

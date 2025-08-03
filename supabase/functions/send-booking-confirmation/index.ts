@@ -20,6 +20,9 @@ interface BookingConfirmationRequest {
   tenantAddress?: string
   tenantPhone?: string
   notes?: string
+  seriesId?: string
+  seriesSessionNumber?: number
+  totalSessions?: number
 }
 
 serve(async (req) => {
@@ -41,7 +44,10 @@ serve(async (req) => {
       tenantName,
       tenantAddress,
       tenantPhone,
-      notes
+      notes,
+      seriesId,
+      seriesSessionNumber,
+      totalSessions
     }: BookingConfirmationRequest = await req.json()
 
     console.log('Booking confirmation request:', { bookingId, recipientEmail, clientName, tenantId })
@@ -118,7 +124,11 @@ serve(async (req) => {
             <div class="content">
               <h2>Uw afspraak is bevestigd!</h2>
               <p>Beste ${clientName},</p>
+              ${seriesId ? `
+              <p>Bedankt voor uw boeking. Hierbij bevestigen wij afspraak ${seriesSessionNumber} van ${totalSessions} uit uw behandelreeks bij ${tenantName}.</p>
+              ` : `
               <p>Bedankt voor uw boeking. Hierbij bevestigen wij uw afspraak bij ${tenantName}.</p>
+              `}
               
               <div class="appointment-details">
                 <h3>Afspraakgegevens</h3>
@@ -154,6 +164,12 @@ serve(async (req) => {
                 <div class="detail-row">
                   <span class="detail-label">Telefoon:</span>
                   <span class="detail-value">${tenantPhone}</span>
+                </div>
+                ` : ''}
+                ${seriesId ? `
+                <div class="detail-row">
+                  <span class="detail-label">Behandelreeks:</span>
+                  <span class="detail-value">Afspraak ${seriesSessionNumber} van ${totalSessions}</span>
                 </div>
                 ` : ''}
               </div>

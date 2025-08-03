@@ -151,3 +151,22 @@ export function useResumeTreatmentSeries() {
     },
   })
 }
+
+export function useDeleteTreatmentSeries() {
+  const queryClient = useQueryClient()
+  const { tenantId } = useTenant()
+  const { showToast } = useToast()
+
+  return useMutation({
+    mutationFn: (seriesId: string) => TreatmentSeriesService.deleteSeries(seriesId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['treatment-series', tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', tenantId] })
+      showToast('Behandelreeks succesvol verwijderd', 'success')
+    },
+    onError: (error) => {
+      console.error('Error deleting treatment series:', error)
+      showToast('Fout bij het verwijderen van behandelreeks', 'error')
+    },
+  })
+}

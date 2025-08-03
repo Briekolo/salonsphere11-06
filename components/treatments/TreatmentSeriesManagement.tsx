@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Package, Calendar, Euro, Users, Filter, Search } from 'lucide-react'
-import { useAllTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
+import { Plus, Package, Calendar, Euro, Users, Filter, Search, Trash2 } from 'lucide-react'
+import { useAllTreatmentSeries, useDeleteTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
 import { CreateTreatmentSeriesModalWrapper } from './CreateTreatmentSeriesModalWrapper'
 
 export function TreatmentSeriesManagement() {
@@ -11,6 +11,7 @@ export function TreatmentSeriesManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   
   const { data: treatmentSeries = [], isLoading, refetch } = useAllTreatmentSeries()
+  const deleteMutation = useDeleteTreatmentSeries()
   
   // Filter series based on search and status
   const filteredSeries = treatmentSeries.filter(series => {
@@ -30,6 +31,12 @@ export function TreatmentSeriesManagement() {
     active: treatmentSeries.filter(s => s.status === 'active').length,
     completed: treatmentSeries.filter(s => s.status === 'completed').length,
     revenue: treatmentSeries.reduce((sum, s) => sum + (s.total_price || 0), 0)
+  }
+
+  const handleDelete = (seriesId: string) => {
+    if (window.confirm('Weet je zeker dat je deze behandelreeks wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+      deleteMutation.mutate(seriesId)
+    }
   }
 
   return (
@@ -165,7 +172,7 @@ export function TreatmentSeriesManagement() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredSeries.map((series) => (
-            <div key={series.id} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div key={series.id} className="bg-white rounded-lg border border-gray-200 p-4 relative group">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h4 className="font-medium text-gray-900">{series.service_name}</h4>
@@ -173,15 +180,25 @@ export function TreatmentSeriesManagement() {
                     {series.client_name} • {series.total_sessions} sessies
                   </p>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  series.status === 'active' ? 'bg-green-100 text-green-800' :
-                  series.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                  series.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {series.status === 'active' ? 'Actief' : 
-                   series.status === 'completed' ? 'Voltooid' :
-                   series.status === 'cancelled' ? 'Geannuleerd' : 'Gepauzeerd'}
+                <div className="flex items-center gap-2">
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    series.status === 'active' ? 'bg-green-100 text-green-800' :
+                    series.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                    series.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {series.status === 'active' ? 'Actief' : 
+                     series.status === 'completed' ? 'Voltooid' :
+                     series.status === 'cancelled' ? 'Geannuleerd' : 'Gepauzeerd'}
+                  </div>
+                  <button
+                    onClick={() => handleDelete(series.id)}
+                    disabled={deleteMutation.isPending}
+                    className="p-1 text-gray-600 hover:text-red-600 disabled:opacity-50 transition-colors duration-200"
+                    title="Behandelreeks verwijderen"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
               
