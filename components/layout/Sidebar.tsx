@@ -70,7 +70,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
 
       {/* Sidebar */}
       <div className={clsx(
-        "fixed lg:static inset-y-0 left-0 z-50 w-sidebar bg-sidebar-bg border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-sidebar bg-sidebar-bg border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
         isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         {/* Logo and Close Button */}

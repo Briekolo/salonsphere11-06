@@ -18,7 +18,7 @@ export default function EmailAutomationPage() {
         isMobileOpen={isMobileSidebarOpen}
         onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-sidebar">
         <TopBar onMobileSidebarToggle={toggleMobileSidebar} />
         <main className="flex-1 overflow-auto">
           <EmailAutomationContent />
