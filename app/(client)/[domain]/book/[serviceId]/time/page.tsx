@@ -450,7 +450,7 @@ export default function BookingCalendarPage({
                   </div>
                 ) : availableSlots && availableSlots.length > 0 ? (
                   <div className="space-y-2 max-h-[400px] sm:max-h-[500px] overflow-y-auto">
-                    {availableSlots.map((slot, index) => (
+                    {availableSlots.map((slot: any, index: number) => (
                       <button
                         key={`${slot.time}-${slot.staffId}-${index}`}
                         onClick={() => handleSlotSelect(slot)}
