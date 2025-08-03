@@ -8,9 +8,11 @@ import { useClients } from '@/lib/hooks/useClients'
 import { useServices } from '@/lib/hooks/useServices'
 import { useUsers } from '@/lib/hooks/useUsers'
 import { useAvailableStaff } from '@/lib/hooks/useAvailableStaff'
+import { useBusinessHours } from '@/lib/hooks/useBusinessHours'
 import { StaffMember, StaffService } from '@/types/staff'
 import { debugLog, debugError } from '@/lib/utils/debug'
 import { useClientTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
+import { getEarliestOpenTime, getLatestCloseTime, timeToMinutes, isTimeWithinBusinessHours } from '@/lib/utils/business-hours'
 // Dynamically import to prevent circular dependency
 const CreateTreatmentSeriesModal = lazy(() => import('@/components/treatments/CreateTreatmentSeriesModal').then(module => ({
   default: module.CreateTreatmentSeriesModal || module.default
@@ -60,11 +62,68 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
 
   const isEditing = Boolean(bookingId)
 
+  // Generate available time slots based on business hours
+  const getAvailableTimeSlots = () => {
+    if (!businessHours || !formData.scheduled_at) {
+      // Fallback to default hours (7:00 - 22:00) if no business hours loaded
+      return Array.from({ length: 61 }, (_, i) => {
+        const totalMinutes = 420 + (i * 15) // Start at 7:00 (420 minutes)
+        const hours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        return { value: timeString, label: timeString, disabled: false }
+      })
+    }
+
+    const selectedDate = new Date(formData.scheduled_at)
+    const dayOfWeek = selectedDate.getDay()
+    
+    // Check if the selected day is within business hours
+    const isWithinBusiness = isTimeWithinBusinessHours(businessHours, dayOfWeek, '12:00') // Check if day is open at all
+    
+    if (!isWithinBusiness) {
+      // If the salon is closed on this day, show all times but disabled
+      return Array.from({ length: 61 }, (_, i) => {
+        const totalMinutes = 420 + (i * 15)
+        const hours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        return { value: timeString, label: `${timeString} (Gesloten)`, disabled: true }
+      })
+    }
+
+    // Get the earliest and latest times across all days for the full range
+    const earliestOpen = getEarliestOpenTime(businessHours)
+    const latestClose = getLatestCloseTime(businessHours)
+    
+    const startMinutes = Math.max(420, timeToMinutes(earliestOpen) - 60) // Start 1 hour before earliest, but not before 7:00
+    const endMinutes = Math.min(1320, timeToMinutes(latestClose) + 60) // End 1 hour after latest, but not after 22:00
+    
+    const totalSlots = Math.ceil((endMinutes - startMinutes) / 15)
+    
+    return Array.from({ length: totalSlots }, (_, i) => {
+      const totalMinutes = startMinutes + (i * 15)
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      
+      // Check if this specific time is within business hours for the selected day
+      const isTimeAvailable = isTimeWithinBusinessHours(businessHours, dayOfWeek, timeString)
+      
+      return {
+        value: timeString,
+        label: isTimeAvailable ? timeString : `${timeString} (Buiten openingstijden)`,
+        disabled: !isTimeAvailable
+      }
+    })
+  }
+
   // Data fetching hooks
   const { data: clients = [], isLoading: isLoadingClients } = useClients()
   const { data: services = [], isLoading: isLoadingServices } = useServices()
   const { data: existingBooking, isLoading: isLoadingBooking } = useBooking(bookingId || null)
   const { data: clientTreatmentSeries = [] } = useClientTreatmentSeries(formData.client_id)
+  const { businessHours, isLoading: isLoadingBusinessHours } = useBusinessHours()
   
   // Use custom hook for available staff
   const { 
@@ -428,7 +487,7 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                 <Calendar className="w-4 h-4 text-gray-400" />
                 Datum & Tijd
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 mb-8">
                 {/* Date input */}
                 <div className="relative">
                   <input 
@@ -462,22 +521,44 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                     }}
                     className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#02011F]/20 focus:border-[#02011F] transition-all"
                     required
-                    disabled={isLoading}
+                    disabled={isLoading || isLoadingBusinessHours}
                   >
-                    {/* Generate time options from 7:00 to 22:00 in 15-minute intervals */}
-                    {Array.from({ length: 61 }, (_, i) => {
-                      const totalMinutes = 420 + (i * 15) // Start at 7:00 (420 minutes)
-                      const hours = Math.floor(totalMinutes / 60)
-                      const minutes = totalMinutes % 60
-                      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-                      return (
-                        <option key={timeString} value={timeString}>
-                          {timeString}
-                        </option>
-                      )
-                    })}
+                    {/* Generate time options based on business hours */}
+                    {getAvailableTimeSlots().map((slot) => (
+                      <option 
+                        key={slot.value} 
+                        value={slot.value}
+                        disabled={slot.disabled}
+                        className={slot.disabled ? 'text-gray-400' : ''}
+                      >
+                        {slot.label}
+                      </option>
+                    ))}
                   </select>
                   <Clock className="absolute left-4 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                  
+                  {/* Business hours info */}
+                  {businessHours && formData.scheduled_at && (
+                    <div className="absolute -bottom-6 left-0 text-xs text-gray-500">
+                      {(() => {
+                        const selectedDate = new Date(formData.scheduled_at)
+                        const dayOfWeek = selectedDate.getDay()
+                        const dayNames = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag']
+                        const dayName = dayNames[dayOfWeek]
+                        const selectedTime = `${selectedDate.getHours().toString().padStart(2, '0')}:${selectedDate.getMinutes().toString().padStart(2, '0')}`
+                        const isAvailable = isTimeWithinBusinessHours(businessHours, dayOfWeek, selectedTime)
+                        
+                        if (!isAvailable) {
+                          return (
+                            <span className="text-amber-600 font-medium">
+                              ⚠️ Buiten openingstijden op {dayName}
+                            </span>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

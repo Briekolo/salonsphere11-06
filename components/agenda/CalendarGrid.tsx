@@ -4,11 +4,13 @@ import { useMemo, useRef } from 'react'
 import { format, eachDayOfInterval, isSameDay, isToday } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { Booking } from '@/lib/hooks/useBookings'
+import { useBusinessHours } from '@/lib/hooks/useBusinessHours'
 import { useSwipeGesture } from '@/lib/hooks/useSwipeGesture'
 import { EventCard } from './EventCard'
 import { CalendarSkeleton } from './CalendarSkeleton'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus, Clock } from 'lucide-react'
 import { getAppointmentsForTimeSlot, AppointmentWithOverlap } from '@/lib/utils/appointment-overlap'
+import { getEarliestOpenTime, getLatestCloseTime, timeToMinutes } from '@/lib/utils/business-hours'
 
 interface CalendarGridProps {
   startDate: Date
@@ -46,23 +48,60 @@ export function CalendarGrid({
   onDrop
 }: CalendarGridProps) {
   const gridRef = useRef<HTMLDivElement>(null)
+  const { businessHours, isLoading: businessHoursLoading } = useBusinessHours()
   
   // Generate all days in the range
   const days = useMemo(() => {
     return eachDayOfInterval({ start: startDate, end: endDate })
   }, [startDate, endDate])
   
-  // Generate time slots (business hours: 08:00 - 18:00)
+  // Generate time slots based on business hours
   const timeSlots = useMemo(() => {
+    if (!businessHours) {
+      // Fallback to default hours if business hours not loaded
+      const slots = []
+      for (let hour = 8; hour < 18; hour++) {
+        slots.push({
+          time: `${hour.toString().padStart(2, '0')}:00`,
+          hour: hour
+        })
+      }
+      return slots
+    }
+
+    // Get the earliest opening time and latest closing time across all days
+    const earliestOpen = getEarliestOpenTime(businessHours)
+    const latestClose = getLatestCloseTime(businessHours)
+    
+    const startHour = Math.floor(timeToMinutes(earliestOpen) / 60)
+    const endHour = Math.ceil(timeToMinutes(latestClose) / 60)
+    
     const slots = []
-    for (let hour = 8; hour < 18; hour++) {
+    for (let hour = startHour; hour < endHour; hour++) {
       slots.push({
         time: `${hour.toString().padStart(2, '0')}:00`,
         hour: hour
       })
     }
     return slots
-  }, [])
+  }, [businessHours])
+  
+  // Helper function to check if a time slot is within business hours for a specific day
+  const isSlotWithinBusinessHours = (day: Date, slotHour: number): boolean => {
+    if (!businessHours) return true // Default to available if no business hours
+    
+    const dayOfWeek = day.getDay()
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+    const dayName = dayNames[dayOfWeek]
+    
+    const dayHours = businessHours[dayName]
+    if (dayHours?.closed) return false
+    
+    const openHour = Math.floor(timeToMinutes(dayHours.open) / 60)
+    const closeHour = Math.floor(timeToMinutes(dayHours.close) / 60)
+    
+    return slotHour >= openHour && slotHour < closeHour
+  }
   
   // Helper function to calculate appointment position within time slot
   const getAppointmentPosition = (scheduledAt: string) => {
@@ -241,13 +280,26 @@ export function CalendarGrid({
                   <div className="space-y-0">
                     {timeSlots.map((slot, slotIndex) => {
                       const slotBookings = dayData.byTimeSlot[slotIndex] || []
+                      const isWithinBusinessHours = isSlotWithinBusinessHours(day, slot.hour)
                       
                       return (
-                        <div key={slot.time} className="relative min-h-[60px] border-b border-gray-100 last:border-b-0 group">
+                        <div key={slot.time} className={`relative min-h-[60px] border-b border-gray-100 last:border-b-0 group ${
+                          !isWithinBusinessHours ? 'bg-gray-50/50' : ''
+                        }`}>
                           {/* Time indicator */}
-                          <div className="absolute left-1 top-1 text-xs text-gray-400 font-mono z-10 pointer-events-none">
+                          <div className={`absolute left-1 top-1 text-xs font-mono z-10 pointer-events-none ${
+                            isWithinBusinessHours ? 'text-gray-400' : 'text-gray-300'
+                          }`}>
                             {slot.time}
                           </div>
+                          
+                          {/* Business hours indicator */}
+                          {!isWithinBusinessHours && (
+                            <div className="absolute left-1 top-6 text-xs text-gray-300 z-10 pointer-events-none flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>Gesloten</span>
+                            </div>
+                          )}
                           
                           {/* Clickable slot area */}
                           {slotBookings.length === 0 && (
@@ -257,9 +309,19 @@ export function CalendarGrid({
                                 slotDate.setHours(slot.hour, 0, 0, 0)
                                 onEmptySlotClick(slotDate)
                               }}
-                              className="absolute inset-0 w-full h-full min-h-[60px] rounded border-2 border-dashed border-transparent hover:border-gray-300 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                              disabled={!isWithinBusinessHours}
+                              className={`absolute inset-0 w-full h-full min-h-[60px] rounded border-2 border-dashed transition-colors flex items-center justify-center ${
+                                isWithinBusinessHours 
+                                  ? 'border-transparent hover:border-gray-300 hover:bg-gray-50' 
+                                  : 'border-transparent cursor-not-allowed'
+                              }`}
+                              title={!isWithinBusinessHours ? 'Buiten openingstijden' : ''}
                             >
-                              <span className="text-xl text-gray-300 group-hover:text-gray-400 transition-colors">
+                              <span className={`text-xl transition-colors ${
+                                isWithinBusinessHours 
+                                  ? 'text-gray-300 group-hover:text-gray-400' 
+                                  : 'text-gray-200'
+                              }`}>
                                 <Plus className="w-6 h-6" />
                               </span>
                             </button>

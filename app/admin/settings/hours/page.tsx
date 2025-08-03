@@ -17,20 +17,12 @@ import {
   Coffee
 } from 'lucide-react';
 
-interface BreakTime {
-  start: string;
-  end: string;
-}
-
-interface BusinessHours {
-  monday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-  tuesday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-  wednesday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-  thursday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-  friday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-  saturday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-  sunday: { open: string; close: string; closed: boolean; breaks?: BreakTime[] };
-}
+import { 
+  BusinessHours, 
+  BreakTime, 
+  transformDbToFrontend, 
+  transformFrontendToDb 
+} from '@/lib/utils/business-hours';
 
 const defaultHours = {
   open: '09:00',
@@ -85,7 +77,9 @@ export default function BusinessHoursPage() {
         .single();
 
       if (!error && data?.business_hours) {
-        setHours(data.business_hours);
+        // Transform database format to frontend format
+        const transformedHours = transformDbToFrontend(data.business_hours);
+        setHours(transformedHours);
       }
     } catch (error) {
       console.error('Error fetching business hours:', error);
@@ -280,10 +274,13 @@ export default function BusinessHoursPage() {
     setMessage(null);
     
     try {
+      // Transform frontend format back to database format
+      const dbHours = transformFrontendToDb(hours);
+      
       const { error } = await supabase
         .from('tenants')
         .update({
-          business_hours: hours,
+          business_hours: dbHours,
           updated_at: new Date().toISOString()
         })
         .eq('id', tenantId);

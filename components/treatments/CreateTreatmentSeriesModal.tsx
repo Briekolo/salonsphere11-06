@@ -10,6 +10,7 @@ import { useUsers } from '@/lib/hooks/useUsers'
 import { useCreateTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
 import { useBusinessHours } from '@/lib/hooks/useBusinessHours'
 import { CreateTreatmentSeriesParams } from '@/lib/services/treatmentSeriesService'
+import { getEarliestOpenTime, getLatestCloseTime, timeToMinutes, isTimeWithinBusinessHours } from '@/lib/utils/business-hours'
 
 interface CreateTreatmentSeriesModalProps {
   isOpen: boolean
@@ -283,15 +284,126 @@ function CreateTreatmentSeriesModal({
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                       <Calendar className="w-4 h-4 text-gray-400" />
-                      Startdatum
+                      Startdatum & Tijd
                     </label>
-                    <input
-                      type="datetime-local"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                      required
-                    />
+                    <div className="space-y-4">
+                      {/* Date Section */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-600">
+                          Datum
+                        </label>
+                        <div className="relative">
+                          <input 
+                            type="date"
+                            value={formData.start_date ? new Date(formData.start_date).toISOString().split('T')[0] : ''}
+                            onChange={(e) => {
+                              const currentTime = new Date(formData.start_date)
+                              const newDate = new Date(e.target.value)
+                              newDate.setHours(currentTime.getHours(), currentTime.getMinutes(), 0, 0)
+                              setFormData({...formData, start_date: format(newDate, "yyyy-MM-dd'T'HH:mm")})
+                            }}
+                            className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                            required
+                          />
+                          <Calendar className="absolute left-4 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Time Section */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-600">
+                          Tijd
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={(() => {
+                              const date = new Date(formData.start_date)
+                              return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+                            })()}
+                            onChange={(e) => {
+                              const [hours, minutes] = e.target.value.split(':').map(Number)
+                              const newDate = new Date(formData.start_date)
+                              newDate.setHours(hours, minutes, 0, 0)
+                              setFormData({...formData, start_date: format(newDate, "yyyy-MM-dd'T'HH:mm")})
+                            }}
+                            className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                            required
+                          >
+                          {/* Generate time options based on business hours */}
+                          {(() => {
+                            if (!businessHours || !formData.start_date) {
+                              // Fallback to default hours
+                              return Array.from({ length: 61 }, (_, i) => {
+                                const totalMinutes = 420 + (i * 15)
+                                const hours = Math.floor(totalMinutes / 60)
+                                const minutes = totalMinutes % 60
+                                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                                return (
+                                  <option key={timeString} value={timeString}>
+                                    {timeString}
+                                  </option>
+                                )
+                              })
+                            }
+
+                            const selectedDate = new Date(formData.start_date)
+                            const dayOfWeek = selectedDate.getDay()
+                            
+                            // Get time range
+                            const earliestOpen = getEarliestOpenTime(businessHours)
+                            const latestClose = getLatestCloseTime(businessHours)
+                            const startMinutes = Math.max(420, timeToMinutes(earliestOpen) - 60)
+                            const endMinutes = Math.min(1320, timeToMinutes(latestClose) + 60)
+                            const totalSlots = Math.ceil((endMinutes - startMinutes) / 15)
+                            
+                            return Array.from({ length: totalSlots }, (_, i) => {
+                              const totalMinutes = startMinutes + (i * 15)
+                              const hours = Math.floor(totalMinutes / 60)
+                              const minutes = totalMinutes % 60
+                              const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                              
+                              const isTimeAvailable = isTimeWithinBusinessHours(businessHours, dayOfWeek, timeString)
+                              
+                              return (
+                                <option 
+                                  key={timeString} 
+                                  value={timeString}
+                                  disabled={!isTimeAvailable}
+                                  className={!isTimeAvailable ? 'text-gray-400' : ''}
+                                >
+                                  {isTimeAvailable ? timeString : `${timeString} (Buiten openingstijden)`}
+                                </option>
+                              )
+                            })
+                          })()}
+                        </select>
+                        <Clock className="absolute left-4 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
+                        
+                        {/* Business hours warning */}
+                        {businessHours && formData.start_date && (
+                          <div className="absolute -bottom-6 left-0 text-xs text-gray-500">
+                            {(() => {
+                              const selectedDate = new Date(formData.start_date)
+                              const dayOfWeek = selectedDate.getDay()
+                              const dayNames = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag']
+                              const dayName = dayNames[dayOfWeek]
+                              const selectedTime = `${selectedDate.getHours().toString().padStart(2, '0')}:${selectedDate.getMinutes().toString().padStart(2, '0')}`
+                              const isAvailable = isTimeWithinBusinessHours(businessHours, dayOfWeek, selectedTime)
+                              
+                              if (!isAvailable) {
+                                return (
+                                  <span className="text-amber-600 font-medium">
+                                    ⚠️ Buiten openingstijden op {dayName}
+                                  </span>
+                                )
+                              }
+                              return null
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   </div>
 
                   <div className="space-y-2">
@@ -361,23 +473,132 @@ function CreateTreatmentSeriesModal({
                         <label className="text-xs font-medium text-gray-600">
                           Sessie {index + 1}
                         </label>
-                        <div className="space-y-1">
-                          <input
-                            type="datetime-local"
-                            value={date}
-                            onChange={(e) => updateCustomDate(index, e.target.value)}
-                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 transition-all ${
-                              businessHours && !isDateAvailable(new Date(date))
-                                ? 'border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500'
-                                : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
-                            }`}
-                            required
-                          />
-                          {/* Show warning if date is on a closed day */}
-                          {businessHours && !isDateAvailable(new Date(date)) && (
-                            <div className="flex items-center gap-1 text-xs text-red-600">
-                              <AlertCircle className="w-3 h-3" />
-                              <span>Salon is gesloten op deze dag</span>
+                        <div className="space-y-3">
+                          {/* Date Section */}
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-500">
+                              Datum
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="date"
+                                value={date ? new Date(date).toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                  const currentTime = new Date(date)
+                                  const newDate = new Date(e.target.value)
+                                  newDate.setHours(currentTime.getHours(), currentTime.getMinutes(), 0, 0)
+                                  updateCustomDate(index, format(newDate, "yyyy-MM-dd'T'HH:mm"))
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 transition-all ${
+                                  businessHours && !isDateAvailable(new Date(date))
+                                    ? 'border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500'
+                                    : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                                }`}
+                                required
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Time Section */}
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-500">
+                              Tijd
+                            </label>
+                            <div className="relative">
+                              <select
+                                value={(() => {
+                                  const sessionDate = new Date(date)
+                                  return `${sessionDate.getHours().toString().padStart(2, '0')}:${sessionDate.getMinutes().toString().padStart(2, '0')}`
+                                })()}
+                                onChange={(e) => {
+                                  const [hours, minutes] = e.target.value.split(':').map(Number)
+                                  const newDate = new Date(date)
+                                  newDate.setHours(hours, minutes, 0, 0)
+                                  updateCustomDate(index, format(newDate, "yyyy-MM-dd'T'HH:mm"))
+                                }}
+                                className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 transition-all ${
+                                  businessHours && !isDateAvailable(new Date(date))
+                                    ? 'border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500'
+                                    : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                                }`}
+                                required
+                              >
+                                {/* Generate time options based on business hours */}
+                                {(() => {
+                                  if (!businessHours || !date) {
+                                    // Fallback to default hours
+                                    return Array.from({ length: 61 }, (_, i) => {
+                                      const totalMinutes = 420 + (i * 15)
+                                      const hours = Math.floor(totalMinutes / 60)
+                                      const minutes = totalMinutes % 60
+                                      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                                      return (
+                                        <option key={timeString} value={timeString}>
+                                          {timeString}
+                                        </option>
+                                      )
+                                    })
+                                  }
+
+                                  const selectedDate = new Date(date)
+                                  const dayOfWeek = selectedDate.getDay()
+                                  
+                                  // Get time range
+                                  const earliestOpen = getEarliestOpenTime(businessHours)
+                                  const latestClose = getLatestCloseTime(businessHours)
+                                  const startMinutes = Math.max(420, timeToMinutes(earliestOpen) - 60)
+                                  const endMinutes = Math.min(1320, timeToMinutes(latestClose) + 60)
+                                  const totalSlots = Math.ceil((endMinutes - startMinutes) / 15)
+                                  
+                                  return Array.from({ length: totalSlots }, (_, i) => {
+                                    const totalMinutes = startMinutes + (i * 15)
+                                    const hours = Math.floor(totalMinutes / 60)
+                                    const minutes = totalMinutes % 60
+                                    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                                    
+                                    const isTimeAvailable = isTimeWithinBusinessHours(businessHours, dayOfWeek, timeString)
+                                    
+                                    return (
+                                      <option 
+                                        key={timeString} 
+                                        value={timeString}
+                                        disabled={!isTimeAvailable}
+                                        className={!isTimeAvailable ? 'text-gray-400' : ''}
+                                      >
+                                        {isTimeAvailable ? timeString : `${timeString} (Buiten openingstijden)`}
+                                      </option>
+                                    )
+                                  })
+                                })()}
+                              </select>
+                            </div>
+                          </div>
+                          
+                          {/* Show warnings */}
+                          {businessHours && date && (
+                            <div className="space-y-1">
+                              {!isDateAvailable(new Date(date)) && (
+                                <div className="flex items-center gap-1 text-xs text-red-600">
+                                  <AlertCircle className="w-3 h-3" />
+                                  <span>Salon is gesloten op deze dag</span>
+                                </div>
+                              )}
+                              {(() => {
+                                const selectedDate = new Date(date)
+                                const dayOfWeek = selectedDate.getDay()
+                                const selectedTime = `${selectedDate.getHours().toString().padStart(2, '0')}:${selectedDate.getMinutes().toString().padStart(2, '0')}`
+                                const isTimeAvailable = isTimeWithinBusinessHours(businessHours, dayOfWeek, selectedTime)
+                                
+                                if (isDateAvailable(new Date(date)) && !isTimeAvailable) {
+                                  return (
+                                    <div className="flex items-center gap-1 text-xs text-amber-600">
+                                      <AlertCircle className="w-3 h-3" />
+                                      <span>Buiten openingstijden</span>
+                                    </div>
+                                  )
+                                }
+                                return null
+                              })()}
                             </div>
                           )}
                         </div>
@@ -390,13 +611,24 @@ function CreateTreatmentSeriesModal({
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <h5 className="text-xs font-medium text-blue-900 mb-2">Openingstijden:</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs text-blue-800">
-                        {['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'].map((dayName, dayIndex) => {
-                          const dayConfig = businessHours[dayIndex.toString()]
+                        {Object.entries(businessHours).map(([dayName, dayConfig]) => {
+                          const dayNames = {
+                            'sunday': 'Zondag',
+                            'monday': 'Maandag', 
+                            'tuesday': 'Dinsdag',
+                            'wednesday': 'Woensdag',
+                            'thursday': 'Donderdag',
+                            'friday': 'Vrijdag',
+                            'saturday': 'Zaterdag'
+                          } as const
+                          
+                          const dutchDayName = dayNames[dayName as keyof typeof dayNames]
+                          
                           return (
-                            <div key={dayIndex} className="flex justify-between">
-                              <span>{dayName}:</span>
+                            <div key={dayName} className="flex justify-between">
+                              <span>{dutchDayName}:</span>
                               <span>
-                                {dayConfig?.closed ? 'Gesloten' : `${dayConfig?.open} - ${dayConfig?.close}`}
+                                {dayConfig.closed ? 'Gesloten' : `${dayConfig.open} - ${dayConfig.close}`}
                               </span>
                             </div>
                           )

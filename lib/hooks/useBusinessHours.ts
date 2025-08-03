@@ -3,14 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenant } from './useTenant';
 import { supabase } from '@/lib/supabase';
-
-export interface BusinessHours {
-  [key: string]: {
-    closed: boolean;
-    open?: string;
-    close?: string;
-  };
-}
+import { BusinessHours, transformDbToFrontend, indexToDay } from '@/lib/utils/business-hours';
 
 export interface TenantSettings {
   business_hours: BusinessHours;
@@ -34,7 +27,16 @@ export function useBusinessHours() {
         .single();
 
       if (error) throw error;
-      return data as TenantSettings | null;
+      
+      if (!data) return null;
+
+      // Transform the business hours from database format to frontend format
+      const transformedBusinessHours = transformDbToFrontend(data.business_hours);
+      
+      return {
+        business_hours: transformedBusinessHours,
+        timezone: data.timezone
+      } as TenantSettings;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -54,7 +56,11 @@ export function useBusinessHours() {
     const minutes = now.getMinutes();
     const currentTime = hour * 60 + minutes;
 
-    const todayHours = tenantSettings.business_hours[day.toString()];
+    // Convert day index to day name using our mapping
+    const dayName = indexToDay[day as keyof typeof indexToDay];
+    if (!dayName) return false;
+
+    const todayHours = tenantSettings.business_hours[dayName];
 
     if (todayHours?.closed || !todayHours?.open || !todayHours?.close) {
       return false;
@@ -77,7 +83,10 @@ export function useBusinessHours() {
     
     for (let i = 0; i < 7; i++) {
       const checkDay = (now.getDay() + i) % 7;
-      const dayHours = tenantSettings.business_hours[checkDay.toString()];
+      const dayName = indexToDay[checkDay as keyof typeof indexToDay];
+      if (!dayName) continue;
+      
+      const dayHours = tenantSettings.business_hours[dayName];
       
       if (!dayHours?.closed && dayHours?.open) {
         // If it's today, check if we haven't passed opening time yet
@@ -102,8 +111,11 @@ export function useBusinessHours() {
   const isDateAvailable = (date: Date): boolean => {
     if (!tenantSettings?.business_hours) return true; // Default to available if no settings
     
-    const dayOfWeek = date.getDay().toString();
-    const dayConfig = tenantSettings.business_hours[dayOfWeek];
+    const dayOfWeek = date.getDay();
+    const dayName = indexToDay[dayOfWeek as keyof typeof indexToDay];
+    if (!dayName) return false;
+    
+    const dayConfig = tenantSettings.business_hours[dayName];
     
     return !dayConfig?.closed;
   };
@@ -112,8 +124,11 @@ export function useBusinessHours() {
   const getAvailableHours = (date: Date): { open: string; close: string } | null => {
     if (!tenantSettings?.business_hours) return null;
     
-    const dayOfWeek = date.getDay().toString();
-    const dayConfig = tenantSettings.business_hours[dayOfWeek];
+    const dayOfWeek = date.getDay();
+    const dayName = indexToDay[dayOfWeek as keyof typeof indexToDay];
+    if (!dayName) return null;
+    
+    const dayConfig = tenantSettings.business_hours[dayName];
     
     if (!dayConfig || dayConfig.closed || !dayConfig.open || !dayConfig.close) {
       return null;
