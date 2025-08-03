@@ -136,7 +136,7 @@ export default function BookServicePage({ params }: { params: Promise<{ domain: 
 
       // Extract unique categories
       const categoryMap = new Map<string, number>();
-      (data || []).forEach(service => {
+      (data || []).forEach((service: any) => {
         const categoryName = service.treatment_categories?.name || service.category;
         const count = categoryMap.get(categoryName) || 0;
         categoryMap.set(categoryName, count + 1);

@@ -51,14 +51,14 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background">
       <AdminSidebar 
         isMobileOpen={isMobileSidebarOpen}
         onMobileClose={() => setIsMobileSidebarOpen(false)}

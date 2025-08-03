@@ -51,7 +51,7 @@ export function useBusinessInfo() {
       if (error) throw error;
       return data as BusinessInfo;
     },
-    staleTime: 1000 * 30, // 30 seconds for faster updates
+    staleTime: 1000 * 5, // 5 seconds for faster updates
   });
 
   const invalidateBusinessInfo = () => {

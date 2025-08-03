@@ -7,6 +7,7 @@ import { useToast } from '@/components/providers/ToastProvider';
 import { supabase } from '@/lib/supabase';
 import { ValidationService } from '@/lib/services/validationService';
 import { ToastContainer } from '@/components/ui/Toast';
+import { useBusinessInfo } from '@/lib/hooks/useBusinessInfo';
 import { 
   Building2, 
   MapPin, 
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   const { tenantId } = useTenant();
   const { toasts, showToast, removeToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { invalidateBusinessInfo } = useBusinessInfo();
   
   const [profile, setProfile] = useState<SalonProfile>({
     name: '',
@@ -295,6 +297,10 @@ export default function SettingsPage() {
 
       console.log('Update successful, data:', data);
       console.log('[Admin Settings] Tenant data updated - real-time subscribers should be notified');
+      
+      // Invalidate business info cache to ensure logo updates immediately
+      invalidateBusinessInfo();
+      
       showToast('Salon profiel succesvol bijgewerkt', 'success');
       
       // Refresh the profile data to confirm save

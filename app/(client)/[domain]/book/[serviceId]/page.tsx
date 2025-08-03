@@ -96,14 +96,14 @@ export default function BookStaffPage({
       
       // Transform the data to include staff with their service assignments
       const staffWithServiceInfo = (staffServices || [])
-        .filter(ss => ss.users)
-        .map(ss => ({
+        .filter((ss: any) => ss.users)
+        .map((ss: any) => ({
           ...ss.users,
           proficiency_level: ss.proficiency_level,
           custom_duration_minutes: ss.custom_duration_minutes,
           custom_price: ss.custom_price
         }))
-        .sort((a, b) => a.first_name.localeCompare(b.first_name));
+        .sort((a: any, b: any) => a.first_name.localeCompare(b.first_name));
 
       setStaff(staffWithServiceInfo);
 

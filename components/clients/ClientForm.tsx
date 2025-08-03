@@ -136,7 +136,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
                   value={formData.first_name}
                   onChange={(e)=>setFormData(p=>({...p, first_name: e.target.value}))}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -146,7 +146,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
                   value={formData.last_name}
                   onChange={(e)=>setFormData(p=>({...p, last_name: e.target.value}))}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -156,7 +156,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
                   value={formData.email}
                   onChange={(e)=>setFormData(p=>({...p, email: e.target.value}))}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -165,7 +165,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
                   type="tel"
                   value={formData.phone}
                   onChange={(e)=>setFormData(p=>({...p, phone: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -174,7 +174,7 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
                   type="date"
                   value={formData.date_of_birth || ''}
                   onChange={(e)=>setFormData(p=>({...p, date_of_birth: e.target.value || null}))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -189,19 +189,19 @@ export function ClientForm({ clientId, onBack }: ClientFormProps) {
                   type="text"
                   value={formData.address}
                   onChange={(e)=>setFormData(p=>({...p, address: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <label htmlFor="marketing" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
                   checked={formData.marketing_consent}
                   onChange={(e)=>setFormData(p=>({...p, marketing_consent: e.target.checked}))}
                   id="marketing"
-                  className="border-gray-300 text-primary-600 focus:ring-primary-600"
+                  className="w-5 h-5 border-gray-300 text-primary-600 focus:ring-primary-600 cursor-pointer"
                 />
-                <label htmlFor="marketing" className="text-sm text-gray-700">Toestemming voor marketing</label>
-              </div>
+                <span className="text-sm text-gray-700 select-none">Toestemming voor marketing</span>
+              </label>
             </div>
           </div>
 

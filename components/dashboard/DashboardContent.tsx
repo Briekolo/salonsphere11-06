@@ -314,19 +314,19 @@ export function DashboardContent() {
   }
 
   return (
-    <div className="mobile-p space-y-4 lg:space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 lg:space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Dashboard
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
           Overzicht van uw salon prestaties en belangrijke gegevens
         </p>
       </div>
 
-      {/* Key Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      {/* Key Metrics Grid - Improved responsive breakpoints */}
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {dashboardMetrics.map((metric, index) => (
           <div key={`dashboard-metric-${index}-${metric.title}`} className="metric-card" suppressHydrationWarning={true}>
             <div className={`metric-icon ${metric.bgColor}`}>
@@ -340,14 +340,15 @@ export function DashboardContent() {
         ))}
       </div>
 
+      {/* Revenue and Quick Actions Grid - Better mobile layout */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-        {/* Revenue Chart */}
-        <div className="lg:col-span-2">
+        {/* Revenue Chart - Full width on mobile, 2/3 on desktop */}
+        <div className="order-2 lg:order-1 lg:col-span-2">
           <RevenueChart />
         </div>
         
-        {/* Quick Actions */}
-        <div className="card">
+        {/* Quick Actions - Show first on mobile */}
+        <div className="order-1 lg:order-2 card">
           <h2 className="text-heading mb-3 sm:mb-4">Snelle Acties</h2>
           <div className="space-y-2 sm:space-y-3">
             <button
@@ -390,11 +391,11 @@ export function DashboardContent() {
       {/* Recent Activity Summary */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-heading">Recente Activiteit</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Recente Activiteit</h2>
           <button
             onClick={handleRefreshActivities}
             disabled={refreshingActivities}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             title="Ververs activiteiten"
           >
             <RefreshCw className={`w-4 h-4 ${refreshingActivities ? 'animate-spin' : ''}`} />

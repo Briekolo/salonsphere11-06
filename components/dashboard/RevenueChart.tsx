@@ -282,8 +282,8 @@ export function RevenueChart() {
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="h-64 -mx-2">
+      {/* Chart - Responsive height */}
+      <div className="h-48 sm:h-56 lg:h-64 -mx-2">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart 
             data={chartData} 

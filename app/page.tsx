@@ -13,7 +13,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background">
       <Sidebar 
         isMobileOpen={isMobileSidebarOpen}
         onMobileClose={() => setIsMobileSidebarOpen(false)}
