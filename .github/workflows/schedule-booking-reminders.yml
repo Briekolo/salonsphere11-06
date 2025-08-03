@@ -13,11 +13,42 @@ jobs:
     steps:
       - name: Trigger Booking Reminder Scheduler
         run: |
-          curl -X POST ${{ secrets.SUPABASE_URL }}/functions/v1/booking-reminder-scheduler \
+          # Check if required secrets are set
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "❌ Error: SUPABASE_URL secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "❌ Error: SUPABASE_SERVICE_ROLE_KEY secret is not set"
+            exit 1
+          fi
+          
+          echo "🚀 Triggering booking reminder scheduler..."
+          echo "URL: ${{ secrets.SUPABASE_URL }}/functions/v1/booking-reminder-scheduler"
+          
+          # Make the request and capture both response and status code
+          response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/booking-reminder-scheduler" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}')
+          
+          # Extract status code and body
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "📊 Response status: $status_code"
+          echo "📄 Response body: $body"
+          
+          # Check if request was successful
+          if [ "$status_code" -ge 200 ] && [ "$status_code" -lt 300 ]; then
+            echo "✅ Booking reminder scheduler triggered successfully"
+          else
+            echo "❌ Error: Request failed with status $status_code"
+            echo "Response: $body"
+            exit 1
+          fi
       
       - name: Log Result
         if: always()
-        run: echo "Booking reminder scheduler triggered at $(date)"
+        run: echo "Booking reminder scheduler job completed at $(date)"
