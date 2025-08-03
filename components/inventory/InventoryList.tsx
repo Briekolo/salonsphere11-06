@@ -391,7 +391,6 @@ export function InventoryList({ onProductEdit, onStockAdjustment, onViewHistory,
             </tbody>
           </table>
         </div>
-        </div>
         </>
       )}
     </div>
