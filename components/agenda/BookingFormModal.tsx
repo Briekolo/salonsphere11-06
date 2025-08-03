@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { X, Save, Trash2, Calendar, Clock, User, Briefcase, FileText, Users, ExternalLink, Euro, AlertCircle, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useCreateBooking, useUpdateBooking, useDeleteBooking, useBooking } from '@/lib/hooks/useBookings'
@@ -11,7 +11,10 @@ import { useAvailableStaff } from '@/lib/hooks/useAvailableStaff'
 import { StaffMember, StaffService } from '@/types/staff'
 import { debugLog, debugError } from '@/lib/utils/debug'
 import { useClientTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
-import { CreateTreatmentSeriesModal } from '@/components/treatments/CreateTreatmentSeriesModal'
+// Dynamically import to prevent circular dependency
+const CreateTreatmentSeriesModal = lazy(() => import('@/components/treatments/CreateTreatmentSeriesModal').then(module => ({
+  default: module.CreateTreatmentSeriesModal || module.default
+})))
 
 interface BookingFormModalProps {
   bookingId?: string | null
@@ -680,12 +683,20 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
       </div>
 
       {/* Treatment Series Modal */}
-      <CreateTreatmentSeriesModal
-        isOpen={showTreatmentSeriesModal}
-        onClose={() => setShowTreatmentSeriesModal(false)}
-        preselectedClientId={formData.client_id}
-        preselectedServiceId={formData.service_id}
-      />
+      {showTreatmentSeriesModal && (
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="text-white">Laden...</div>
+          </div>
+        }>
+          <CreateTreatmentSeriesModal
+            isOpen={showTreatmentSeriesModal}
+            onClose={() => setShowTreatmentSeriesModal(false)}
+            preselectedClientId={formData.client_id}
+            preselectedServiceId={formData.service_id}
+          />
+        </Suspense>
+      )}
     </div>
   )
 } 

@@ -1,20 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Package, Calendar, Euro, Users, Filter, Search, Eye, Pause, Play, X } from 'lucide-react'
-import { format } from 'date-fns'
-import { nl } from 'date-fns/locale'
-import { useActiveTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
-import { CreateTreatmentSeriesModal } from './CreateTreatmentSeriesModal'
-import { TreatmentSeriesCard } from '../clients/TreatmentSeriesCard'
+import { Plus, Package, Calendar, Euro, Users, Filter, Search } from 'lucide-react'
+import { useAllTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
+import { CreateTreatmentSeriesModalWrapper } from './CreateTreatmentSeriesModalWrapper'
 
 export function TreatmentSeriesManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   
-  const { data: treatmentSeries = [], isLoading, refetch } = useActiveTreatmentSeries()
-
+  const { data: treatmentSeries = [], isLoading, refetch } = useAllTreatmentSeries()
+  
   // Filter series based on search and status
   const filteredSeries = treatmentSeries.filter(series => {
     const matchesSearch = searchTerm === '' || 
@@ -27,7 +24,7 @@ export function TreatmentSeriesManagement() {
     return matchesSearch && matchesStatus
   })
 
-  // Calculate statistics
+  // Calculate statistics from all series
   const stats = {
     total: treatmentSeries.length,
     active: treatmentSeries.filter(s => s.status === 'active').length,
@@ -55,44 +52,52 @@ export function TreatmentSeriesManagement() {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Totaal reeksen</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="metric-card p-3 sm:p-4">
+          <div className="metric-icon w-10 h-10 sm:w-12 sm:h-12 bg-icon-purple-bg">
+            <div className="text-icon-purple">
+              <Package className="w-5 h-5" />
             </div>
-            <Package className="w-8 h-8 text-gray-400" />
+          </div>
+          <div className="mt-3 sm:mt-4">
+            <p className="metric-title text-xs sm:text-sm">Totaal reeksen</p>
+            <p className="metric-value text-lg sm:text-2xl">{stats.total}</p>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Actieve reeksen</p>
-              <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+        <div className="metric-card p-3 sm:p-4">
+          <div className="metric-icon w-10 h-10 sm:w-12 sm:h-12 bg-icon-green-bg">
+            <div className="text-icon-green">
+              <Calendar className="w-5 h-5" />
             </div>
-            <Calendar className="w-8 h-8 text-green-400" />
+          </div>
+          <div className="mt-3 sm:mt-4">
+            <p className="metric-title text-xs sm:text-sm">Actieve reeksen</p>
+            <p className="metric-value text-lg sm:text-2xl">{stats.active}</p>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Voltooide reeksen</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.completed}</p>
+        <div className="metric-card p-3 sm:p-4">
+          <div className="metric-icon w-10 h-10 sm:w-12 sm:h-12 bg-icon-blue-bg">
+            <div className="text-icon-blue">
+              <Users className="w-5 h-5" />
             </div>
-            <Users className="w-8 h-8 text-blue-400" />
+          </div>
+          <div className="mt-3 sm:mt-4">
+            <p className="metric-title text-xs sm:text-sm">Voltooide reeksen</p>
+            <p className="metric-value text-lg sm:text-2xl">{stats.completed}</p>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Totale omzet</p>
-              <p className="text-2xl font-bold text-gray-900">€{stats.revenue.toFixed(2)}</p>
+        <div className="metric-card p-3 sm:p-4">
+          <div className="metric-icon w-10 h-10 sm:w-12 sm:h-12 bg-icon-orange-bg">
+            <div className="text-icon-orange">
+              <Euro className="w-5 h-5" />
             </div>
-            <Euro className="w-8 h-8 text-gray-400" />
+          </div>
+          <div className="mt-3 sm:mt-4">
+            <p className="metric-title text-xs sm:text-sm">Totale omzet</p>
+            <p className="metric-value text-lg sm:text-2xl">€{stats.revenue.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -160,19 +165,66 @@ export function TreatmentSeriesManagement() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredSeries.map((series) => (
-            <TreatmentSeriesCard 
-              key={series.id} 
-              series={series} 
-              onRefresh={refetch}
-            />
+            <div key={series.id} className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900">{series.service_name}</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {series.client_name} • {series.total_sessions} sessies
+                  </p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  series.status === 'active' ? 'bg-green-100 text-green-800' :
+                  series.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                  series.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {series.status === 'active' ? 'Actief' : 
+                   series.status === 'completed' ? 'Voltooid' :
+                   series.status === 'cancelled' ? 'Geannuleerd' : 'Gepauzeerd'}
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="mb-3">
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-gray-600">Voortgang</span>
+                  <span className="text-gray-900 font-medium">
+                    {series.completed_sessions || 0} van {series.total_sessions} voltooid
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      series.status === 'completed' ? 'bg-green-600' :
+                      series.status === 'cancelled' ? 'bg-red-600' :
+                      'bg-blue-600'
+                    }`}
+                    style={{ 
+                      width: `${series.total_sessions > 0 ? 
+                        (series.completed_sessions / series.total_sessions) * 100 : 0}%` 
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Totaalprijs</span>
+                <span className="font-medium">€{series.total_price || 0}</span>
+              </div>
+            </div>
           ))}
         </div>
       )}
 
       {/* Create Modal */}
-      <CreateTreatmentSeriesModal
+      <CreateTreatmentSeriesModalWrapper
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          setShowCreateModal(false)
+          refetch()
+        }}
       />
     </div>
   )

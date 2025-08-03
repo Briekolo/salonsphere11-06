@@ -35,6 +35,16 @@ export function useActiveTreatmentSeries() {
   })
 }
 
+export function useAllTreatmentSeries() {
+  const { tenantId } = useTenant()
+
+  return useQuery({
+    queryKey: ['treatment-series', tenantId, 'all'],
+    queryFn: () => tenantId ? TreatmentSeriesService.getAllSeries(tenantId) : [],
+    enabled: !!tenantId,
+  })
+}
+
 export function useSeriesBookings(seriesId: string) {
   const { tenantId } = useTenant()
 
@@ -59,9 +69,11 @@ export function useCreateTreatmentSeries() {
       queryClient.invalidateQueries({ queryKey: ['clients', tenantId, variables.client_id] })
       showToast('Behandelreeks succesvol aangemaakt', 'success')
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error creating treatment series:', error)
-      showToast('Fout bij het aanmaken van behandelreeks', 'error')
+      // Show specific error message if available
+      const errorMessage = error.message || 'Fout bij het aanmaken van behandelreeks'
+      showToast(errorMessage, 'error')
     },
   })
 }

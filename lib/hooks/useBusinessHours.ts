@@ -4,21 +4,24 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenant } from './useTenant';
 import { supabase } from '@/lib/supabase';
 
-interface BusinessHours {
-  monday: { open: string; close: string; closed: boolean };
-  tuesday: { open: string; close: string; closed: boolean };
-  wednesday: { open: string; close: string; closed: boolean };
-  thursday: { open: string; close: string; closed: boolean };
-  friday: { open: string; close: string; closed: boolean };
-  saturday: { open: string; close: string; closed: boolean };
-  sunday: { open: string; close: string; closed: boolean };
+export interface BusinessHours {
+  [key: string]: {
+    closed: boolean;
+    open?: string;
+    close?: string;
+  };
+}
+
+export interface TenantSettings {
+  business_hours: BusinessHours;
+  timezone: string;
 }
 
 export function useBusinessHours() {
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
 
-  const { data: businessHours, isLoading, error } = useQuery({
+  const { data: tenantSettings, isLoading, error } = useQuery({
     queryKey: ['business-hours', tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
@@ -26,12 +29,12 @@ export function useBusinessHours() {
 
       const { data, error } = await supabase
         .from('tenants')
-        .select('business_hours')
+        .select('business_hours, timezone')
         .eq('id', tenantId)
         .single();
 
       if (error) throw error;
-      return data?.business_hours as BusinessHours | null;
+      return data as TenantSettings | null;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -43,7 +46,7 @@ export function useBusinessHours() {
 
   // Helper function to check if salon is currently open
   const isCurrentlyOpen = (): boolean => {
-    if (!businessHours) return false;
+    if (!tenantSettings?.business_hours) return false;
 
     const now = new Date();
     const day = now.getDay();
@@ -51,8 +54,7 @@ export function useBusinessHours() {
     const minutes = now.getMinutes();
     const currentTime = hour * 60 + minutes;
 
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const todayHours = businessHours[days[day] as keyof BusinessHours];
+    const todayHours = tenantSettings.business_hours[day.toString()];
 
     if (todayHours?.closed || !todayHours?.open || !todayHours?.close) {
       return false;
@@ -68,15 +70,14 @@ export function useBusinessHours() {
 
   // Helper function to get next opening time
   const getNextOpeningTime = (): { day: string; time: string } | null => {
-    if (!businessHours) return null;
+    if (!tenantSettings?.business_hours) return null;
 
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayNames = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
     const now = new Date();
     
     for (let i = 0; i < 7; i++) {
       const checkDay = (now.getDay() + i) % 7;
-      const dayHours = businessHours[days[checkDay] as keyof BusinessHours];
+      const dayHours = tenantSettings.business_hours[checkDay.toString()];
       
       if (!dayHours?.closed && dayHours?.open) {
         // If it's today, check if we haven't passed opening time yet
@@ -97,12 +98,42 @@ export function useBusinessHours() {
     return null;
   };
 
+  // Helper function to check if a specific date is available
+  const isDateAvailable = (date: Date): boolean => {
+    if (!tenantSettings?.business_hours) return true; // Default to available if no settings
+    
+    const dayOfWeek = date.getDay().toString();
+    const dayConfig = tenantSettings.business_hours[dayOfWeek];
+    
+    return !dayConfig?.closed;
+  };
+
+  // Helper function to get available hours for a date
+  const getAvailableHours = (date: Date): { open: string; close: string } | null => {
+    if (!tenantSettings?.business_hours) return null;
+    
+    const dayOfWeek = date.getDay().toString();
+    const dayConfig = tenantSettings.business_hours[dayOfWeek];
+    
+    if (!dayConfig || dayConfig.closed || !dayConfig.open || !dayConfig.close) {
+      return null;
+    }
+    
+    return {
+      open: dayConfig.open,
+      close: dayConfig.close
+    };
+  };
+
   return {
-    businessHours,
+    businessHours: tenantSettings?.business_hours,
+    timezone: tenantSettings?.timezone,
     isLoading,
     error,
     invalidateBusinessHours,
     isCurrentlyOpen,
-    getNextOpeningTime
+    getNextOpeningTime,
+    isDateAvailable,
+    getAvailableHours
   };
 }

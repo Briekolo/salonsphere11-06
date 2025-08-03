@@ -26,6 +26,7 @@ export interface CreateTreatmentSeriesParams {
   interval_weeks?: number
   package_discount?: number
   notes?: string
+  custom_dates?: string[] // Optional custom dates for appointments
 }
 
 export class TreatmentSeriesService {
@@ -43,12 +44,46 @@ export class TreatmentSeriesService {
       throw new Error('Could not fetch tenant information')
     }
 
+    // If custom dates are provided, use the new function
+    if (params.custom_dates && params.custom_dates.length > 0) {
+      // Convert datetime-local strings to ISO format with timezone
+      const isoCustomDates = params.custom_dates.map(dateStr => {
+        // dateStr is in format "yyyy-MM-dd'T'HH:mm"
+        // Convert to proper ISO string by adding seconds and timezone
+        const date = new Date(dateStr)
+        return date.toISOString()
+      })
+      
+      const { data, error } = await supabase.rpc('create_treatment_series_with_custom_appointments', {
+        p_tenant_id: userProfile.tenant_id,
+        p_client_id: params.client_id,
+        p_service_id: params.service_id,
+        p_staff_id: params.staff_id || null,
+        p_custom_dates: isoCustomDates,
+        p_package_discount: params.package_discount || 0,
+        p_notes: params.notes || null
+      })
+      
+      if (error) {
+        // Check if it's a business hours validation error
+        if (error.message.includes('outside business hours')) {
+          throw new Error('Een of meer afspraken vallen buiten de openingstijden van het salon')
+        }
+        throw error
+      }
+      return data
+    }
+
+    // Otherwise use the existing interval-based function
+    // Convert start date to ISO format
+    const isoStartDate = new Date(params.start_date).toISOString()
+    
     const { data, error } = await supabase.rpc('create_treatment_series_with_appointments', {
       p_tenant_id: userProfile.tenant_id,
       p_client_id: params.client_id,
       p_service_id: params.service_id,
       p_staff_id: params.staff_id || null,
-      p_start_date: params.start_date,
+      p_start_date: isoStartDate,
       p_total_sessions: params.total_sessions,
       p_interval_weeks: params.interval_weeks || null,
       p_package_discount: params.package_discount || 0,
@@ -82,9 +117,12 @@ export class TreatmentSeriesService {
   }
 
   static async updateSeries(seriesId: string, updates: TreatmentSeriesUpdate): Promise<TreatmentSeries> {
+    // Remove updated_at from updates as it's handled by the database
+    const { updated_at, ...cleanUpdates } = updates as any
+    
     const { data, error } = await supabase
       .from('treatment_series')
-      .update(updates)
+      .update(cleanUpdates)
       .eq('id', seriesId)
       .select()
       .single()
@@ -100,6 +138,17 @@ export class TreatmentSeriesService {
       .eq('tenant_id', tenantId)
       .eq('status', 'active')
       .order('next_appointment_date', { ascending: true })
+
+    if (error) throw error
+    return data || []
+  }
+
+  static async getAllSeries(tenantId: string): Promise<TreatmentSeriesWithDetails[]> {
+    const { data, error } = await supabase
+      .from('treatment_series_details')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
 
     if (error) throw error
     return data || []
@@ -137,6 +186,7 @@ export class TreatmentSeriesService {
       .update({ 
         status: 'cancelled',
         cancelled_at: new Date().toISOString()
+        // updated_at is handled by the database trigger
       })
       .eq('id', seriesId)
 

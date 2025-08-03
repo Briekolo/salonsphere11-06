@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Save, Calendar, Users, Euro, Clock, Info } from 'lucide-react'
-import { format, addWeeks } from 'date-fns'
+import { useState, useEffect } from 'react'
+import { X, Save, Calendar, Users, Euro, Clock, Info, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react'
+import { format, addWeeks, setHours, setMinutes } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useClients } from '@/lib/hooks/useClients'
 import { useServices } from '@/lib/hooks/useServices'
 import { useUsers } from '@/lib/hooks/useUsers'
 import { useCreateTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
+import { useBusinessHours } from '@/lib/hooks/useBusinessHours'
 import { CreateTreatmentSeriesParams } from '@/lib/services/treatmentSeriesService'
 
 interface CreateTreatmentSeriesModalProps {
@@ -17,7 +18,7 @@ interface CreateTreatmentSeriesModalProps {
   preselectedServiceId?: string
 }
 
-export function CreateTreatmentSeriesModal({ 
+function CreateTreatmentSeriesModal({ 
   isOpen, 
   onClose, 
   preselectedClientId,
@@ -34,22 +35,68 @@ export function CreateTreatmentSeriesModal({
     notes: ''
   })
 
+  const [useCustomDates, setUseCustomDates] = useState(false)
+  const [customDates, setCustomDates] = useState<string[]>([])
+
   const { data: clients = [] } = useClients()
   const { data: services = [] } = useServices()
   const { data: staff = [] } = useUsers()
   const createMutation = useCreateTreatmentSeries()
+  const { businessHours, isDateAvailable, getAvailableHours } = useBusinessHours()
+
+  // Initialize custom dates after business hours are loaded
+  useEffect(() => {
+    if (isDateAvailable && customDates.length === 0) {
+      // Initialize with 3 default dates, skipping closed days
+      const dates = []
+      const baseDate = new Date()
+      let addedDates = 0
+      let checkDate = baseDate
+      
+      while (addedDates < 3) {
+        // Skip to next available day if closed
+        while (!isDateAvailable(checkDate)) {
+          checkDate = addWeeks(checkDate, 1)
+        }
+        
+        // Set default time to 10:00 AM
+        const dateWithTime = setMinutes(setHours(checkDate, 10), 0)
+        dates.push(format(dateWithTime, "yyyy-MM-dd'T'HH:mm"))
+        addedDates++
+        checkDate = addWeeks(checkDate, 2)
+      }
+      setCustomDates(dates)
+    }
+  }, [isDateAvailable])
 
   const selectedService = services.find(s => s.id === formData.service_id)
   const basePrice = selectedService?.price || 0
   const totalPriceBeforeDiscount = basePrice * formData.total_sessions
   const discountAmount = totalPriceBeforeDiscount * (formData.package_discount / 100)
   const finalPrice = totalPriceBeforeDiscount - discountAmount
+  
+  // Check if there are any invalid dates
+  const hasInvalidDates = useCustomDates && businessHours && customDates.some(date => !isDateAvailable(new Date(date)))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate custom dates against business hours
+    if (useCustomDates && businessHours) {
+      const invalidDates = customDates.filter(date => !isDateAvailable(new Date(date)))
+      if (invalidDates.length > 0) {
+        alert('Een of meer geselecteerde datums vallen op dagen dat het salon gesloten is. Controleer de rood gemarkeerde datums en pas ze aan naar open dagen.')
+        return
+      }
+    }
+    
     try {
-      await createMutation.mutateAsync(formData)
+      const submitData = {
+        ...formData,
+        ...(useCustomDates && { custom_dates: customDates })
+      }
+      
+      await createMutation.mutateAsync(submitData)
       onClose()
       // Reset form
       setFormData({
@@ -62,13 +109,44 @@ export function CreateTreatmentSeriesModal({
         package_discount: 0,
         notes: ''
       })
+      setUseCustomDates(false)
+      // Reset custom dates
+      const dates = []
+      const baseDate = new Date()
+      for (let i = 0; i < 3; i++) {
+        const date = addWeeks(baseDate, i * 2)
+        dates.push(format(date, "yyyy-MM-dd'T'HH:mm"))
+      }
+      setCustomDates(dates)
     } catch (error) {
       console.error('Error creating treatment series:', error)
     }
   }
 
+  // Update custom dates when total sessions changes
+  const updateCustomDatesForSessionCount = (newSessionCount: number) => {
+    const currentCount = customDates.length
+    if (newSessionCount > currentCount) {
+      // Add more dates
+      const newDates = [...customDates]
+      const lastDate = new Date(customDates[currentCount - 1] || new Date())
+      for (let i = currentCount; i < newSessionCount; i++) {
+        const nextDate = addWeeks(lastDate, (i - currentCount + 1) * 2)
+        newDates.push(format(nextDate, "yyyy-MM-dd'T'HH:mm"))
+      }
+      setCustomDates(newDates)
+    } else if (newSessionCount < currentCount) {
+      // Remove excess dates
+      setCustomDates(customDates.slice(0, newSessionCount))
+    }
+  }
+
   // Calculate session dates preview
   const getSessionDates = () => {
+    if (useCustomDates) {
+      return customDates.map(date => new Date(date))
+    }
+    
     const dates = []
     const startDate = new Date(formData.start_date)
     
@@ -78,6 +156,13 @@ export function CreateTreatmentSeriesModal({
     }
     
     return dates
+  }
+
+  // Update a specific custom date
+  const updateCustomDate = (index: number, newDate: string) => {
+    const newDates = [...customDates]
+    newDates[index] = newDate
+    setCustomDates(newDates)
   }
 
   if (!isOpen) return null
@@ -164,52 +249,163 @@ export function CreateTreatmentSeriesModal({
               </select>
             </div>
 
-            {/* Series Configuration */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  Startdatum
-                </label>
-                <input
-                  type="datetime-local"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                  required
-                />
+            {/* Scheduling Method Toggle */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Planningswijze</h4>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {useCustomDates ? 'Kies specifieke datums voor elke sessie' : 'Gebruik regelmatige intervallen'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUseCustomDates(!useCustomDates)}
+                  className="flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                >
+                  {useCustomDates ? (
+                    <>
+                      <ToggleRight className="w-5 h-5" />
+                      <span>Aangepaste datums</span>
+                    </>
+                  ) : (
+                    <>
+                      <ToggleLeft className="w-5 h-5" />
+                      <span>Regelmatige intervallen</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Clock className="w-4 h-4 text-gray-400" />
-                  Aantal sessies
-                </label>
-                <input
-                  type="number"
-                  min="2"
-                  max="20"
-                  value={formData.total_sessions}
-                  onChange={(e) => setFormData({...formData, total_sessions: parseInt(e.target.value) || 2})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                  required
-                />
-              </div>
+              {!useCustomDates ? (
+                /* Interval-based scheduling */
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      Startdatum
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.start_date}
+                      onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                      required
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Clock className="w-4 h-4 text-gray-400" />
-                  Interval (weken)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={formData.interval_weeks}
-                  onChange={(e) => setFormData({...formData, interval_weeks: parseInt(e.target.value) || 1})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      Aantal sessies
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="20"
+                      value={formData.total_sessions}
+                      onChange={(e) => {
+                        const newCount = parseInt(e.target.value) || 2
+                        setFormData({...formData, total_sessions: newCount})
+                        updateCustomDatesForSessionCount(newCount)
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      Interval (weken)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={formData.interval_weeks}
+                      onChange={(e) => setFormData({...formData, interval_weeks: parseInt(e.target.value) || 1})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Custom date scheduling */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      Aangepaste sessiedatums
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-600">Aantal sessies:</label>
+                      <input
+                        type="number"
+                        min="2"
+                        max="20"
+                        value={formData.total_sessions}
+                        onChange={(e) => {
+                          const newCount = parseInt(e.target.value) || 2
+                          setFormData({...formData, total_sessions: newCount})
+                          updateCustomDatesForSessionCount(newCount)
+                        }}
+                        className="w-16 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-purple-500/20 focus:border-purple-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {customDates.map((date, index) => (
+                      <div key={index} className="space-y-2">
+                        <label className="text-xs font-medium text-gray-600">
+                          Sessie {index + 1}
+                        </label>
+                        <div className="space-y-1">
+                          <input
+                            type="datetime-local"
+                            value={date}
+                            onChange={(e) => updateCustomDate(index, e.target.value)}
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 transition-all ${
+                              businessHours && !isDateAvailable(new Date(date))
+                                ? 'border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500'
+                                : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                            }`}
+                            required
+                          />
+                          {/* Show warning if date is on a closed day */}
+                          {businessHours && !isDateAvailable(new Date(date)) && (
+                            <div className="flex items-center gap-1 text-xs text-red-600">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>Salon is gesloten op deze dag</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Show business hours info */}
+                  {businessHours && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h5 className="text-xs font-medium text-blue-900 mb-2">Openingstijden:</h5>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-blue-800">
+                        {['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'].map((dayName, dayIndex) => {
+                          const dayConfig = businessHours[dayIndex.toString()]
+                          return (
+                            <div key={dayIndex} className="flex justify-between">
+                              <span>{dayName}:</span>
+                              <span>
+                                {dayConfig?.closed ? 'Gesloten' : `${dayConfig?.open} - ${dayConfig?.close}`}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Package Discount */}
@@ -265,7 +461,7 @@ export function CreateTreatmentSeriesModal({
             <div className="space-y-2">
               <h4 className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <Info className="w-4 h-4 text-gray-400" />
-                Geplande sessiedatums
+                {useCustomDates ? 'Gekozen sessiedatums' : 'Geplande sessiedatums'}
               </h4>
               <div className="bg-gray-50 rounded-xl p-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -281,9 +477,11 @@ export function CreateTreatmentSeriesModal({
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-3">
-                  * Deze datums zijn indicatief. De precieze planning kan worden aangepast na het aanmaken.
-                </p>
+                {!useCustomDates && (
+                  <p className="text-xs text-gray-500 mt-3">
+                    * Deze datums zijn indicatief. De precieze planning kan worden aangepast na het aanmaken.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -303,7 +501,14 @@ export function CreateTreatmentSeriesModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-8 py-6 border-t border-gray-100 flex-shrink-0 bg-gray-50">
+          <div className="flex flex-col gap-3 px-8 py-6 border-t border-gray-100 flex-shrink-0 bg-gray-50">
+            {hasInvalidDates && (
+              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>Pas eerst de datums aan die op gesloten dagen vallen voordat je kunt opslaan</span>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-3">
             <button 
               type="button" 
               onClick={onClose} 
@@ -313,7 +518,7 @@ export function CreateTreatmentSeriesModal({
             </button>
             <button 
               type="submit" 
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || hasInvalidDates}
               className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-medium disabled:opacity-50"
             >
               {createMutation.isPending ? (
@@ -328,9 +533,13 @@ export function CreateTreatmentSeriesModal({
                 </>
               )}
             </button>
+            </div>
           </div>
         </form>
       </div>
     </div>
   )
 }
+
+export default CreateTreatmentSeriesModal
+export { CreateTreatmentSeriesModal }
