@@ -85,7 +85,7 @@ export function StockAdjustmentModal({ productId, onClose }: StockAdjustmentModa
           <h2 className="text-lg font-semibold text-gray-900">Voorraad aanpassen</h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="icon-button-sm"
           >
             <X className="w-5 h-5" />
           </button>

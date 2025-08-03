@@ -72,7 +72,7 @@ export default function NotificationsPage() {
   }, []);
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />

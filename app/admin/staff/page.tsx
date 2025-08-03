@@ -203,7 +203,142 @@ export default function StaffManagementPage() {
 
       {/* Staff List */}
       <div className="card">
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="block lg:hidden space-y-4">
+          {filteredStaff.map((member) => {
+            const schedule = staffSchedules?.[member.id];
+            return (
+              <div key={member.id} className="p-4 border border-gray-200 rounded-lg">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-medium text-gray-600">
+                        {member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{member.name || 'Onbekend'}</div>
+                      <div className="text-sm text-gray-500">Lid sinds {new Date(member.created_at).toLocaleDateString('nl-NL')}</div>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowActionMenu(showActionMenu === member.id ? null : member.id)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    >
+                      <MoreVertical className="h-5 w-5 text-gray-500" />
+                    </button>
+                    
+                    {showActionMenu === member.id && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                        <button
+                          onClick={() => {
+                            setShowActionMenu(null);
+                            router.push(`/admin/staff/${member.id}/edit`);
+                          }}
+                          className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Bewerken
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowActionMenu(null);
+                            router.push(`/admin/staff/${member.id}/availability`);
+                          }}
+                          className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Bekijk Schema
+                        </button>
+                        <hr className="my-1" />
+                        <button
+                          onClick={() => {
+                            setShowActionMenu(null);
+                            handleDeleteStaff(member.id);
+                          }}
+                          className="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Verwijderen
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Contact Info */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-1 text-sm text-gray-900">
+                    <Mail className="h-3 w-3 text-gray-400" />
+                    {member.email}
+                  </div>
+                  {member.phone && (
+                    <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                      <Phone className="h-3 w-3 text-gray-400" />
+                      {member.phone}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Status Badges */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className={`status-chip ${
+                    member.role === 'admin' 
+                      ? 'bg-icon-purple-bg text-icon-purple' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    <Shield className="h-3 w-3" />
+                    {member.role === 'admin' ? 'Admin' : 'Medewerker'}
+                  </span>
+                  <span className={`status-chip ${
+                    member.active 
+                      ? 'bg-icon-green-bg text-icon-green' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {member.active ? 'Actief' : 'Inactief'}
+                  </span>
+                </div>
+                
+                {/* Schedule Info */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-600">Beschikbaarheid:</span>
+                    {!schedule || !schedule.isActive ? (
+                      <div className="flex items-center gap-1 text-amber-600 mt-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Geen schema
+                      </div>
+                    ) : (
+                      <div className="mt-1">
+                        <div className="flex items-center gap-1 text-gray-900">
+                          <Calendar className="h-3 w-3 text-gray-400" />
+                          <span className="font-medium">{schedule.workingDays.join('-')}</span>
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          {schedule.totalHoursPerWeek.toFixed(0)}u/week
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Laatste login:</span>
+                    <div className="text-gray-900 mt-1 text-xs">
+                      {member.last_login 
+                        ? new Date(member.last_login).toLocaleString('nl-NL')
+                        : 'Nog niet ingelogd'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>

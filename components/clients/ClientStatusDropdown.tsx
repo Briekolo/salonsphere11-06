@@ -78,13 +78,13 @@ export function ClientStatusDropdown({
           e.stopPropagation()
           setIsOpen(!isOpen)
         }}
-        className="p-1 hover:bg-gray-200 rounded transition-colors"
+        className="icon-button-sm"
       >
         <MoreVertical className="w-4 h-4 text-gray-500" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+        <div className="dropdown-right dropdown-width-md">
           {/* Status Section */}
           <div className="p-2">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">

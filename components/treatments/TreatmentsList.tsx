@@ -237,7 +237,7 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
                     {openMenuId === treatment.id && (
                       <div
                         ref={menuRef}
-                        className="absolute top-full right-0 mt-2 w-32 sm:w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-10"
+                        className="dropdown-right dropdown-width-sm mt-1"
                       >
                         <ul>
                           <li>

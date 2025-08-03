@@ -124,7 +124,7 @@ export function ProfileDropdown({ initials, firstName, userEmail }: ProfileDropd
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-200"
+          className="dropdown-right dropdown-width-md py-2 animate-in fade-in-0 zoom-in-95 duration-200"
         >
           {/* User Info Section */}
           <div className="px-4 py-3 border-b border-gray-100">

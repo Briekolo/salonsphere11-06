@@ -281,6 +281,37 @@
 
   /* Responsive flex & overflow helpers */
   .stack-on-mobile { @apply flex flex-col sm:flex-row gap-2; }
+  
+  /* Icon button utilities for proper touch targets */
+  .icon-button {
+    @apply p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  .icon-button-sm {
+    @apply p-1 hover:bg-gray-100 rounded lg:min-h-[32px] lg:min-w-[32px] min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors;
+  }
+  
+  /* Dropdown utilities for proper mobile positioning */
+  .dropdown-right {
+    @apply absolute right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg;
+  }
+  
+  .dropdown-left {
+    @apply absolute left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg;
+  }
+  
+  /* Responsive dropdown widths */
+  .dropdown-width-sm {
+    @apply w-48;
+  }
+  
+  .dropdown-width-md {
+    @apply w-56 max-w-[calc(100vw-2rem)];
+  }
+  
+  .dropdown-width-lg {
+    @apply w-64 max-w-[calc(100vw-2rem)] sm:w-80 lg:w-96;
+  }
   .scroll-x-mobile { @apply overflow-x-auto sm:overflow-visible; }
 }
 
