@@ -74,6 +74,19 @@ export async function middleware(req: NextRequest) {
     return response
   }
 
+  // Handle subscription page - only accessible for authenticated users
+  if (pathname.startsWith('/subscription')) {
+    if (!session) {
+      // Not authenticated, redirect to sign-in
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/auth/sign-in'
+      redirectUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
+    // Allow access to subscription page for authenticated users
+    return response
+  }
+
   // Public client module routes
   if (
     /^\/[^\/]+\/book/.test(pathname) || // Booking flow
@@ -108,6 +121,31 @@ export async function middleware(req: NextRequest) {
     const onboardingUrl = req.nextUrl.clone()
     onboardingUrl.pathname = '/onboarding'
     return NextResponse.redirect(onboardingUrl)
+  }
+
+  // Subscription check: if user has tenant but no active subscription, redirect to subscription page
+  if (!pathname.startsWith('/subscription')) {
+    try {
+      const { data: hasSubscription } = await supabase
+        .rpc('has_active_subscription', { tenant_uuid: tenantId })
+      
+      if (!hasSubscription) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Middleware] No active subscription for tenant ${tenantId}, redirecting to subscription page`)
+        }
+        const subscriptionUrl = req.nextUrl.clone()
+        subscriptionUrl.pathname = '/subscription'
+        return NextResponse.redirect(subscriptionUrl)
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`[Middleware] Error checking subscription: ${error}`)
+      }
+      // On error, redirect to subscription page to be safe
+      const subscriptionUrl = req.nextUrl.clone()
+      subscriptionUrl.pathname = '/subscription'
+      return NextResponse.redirect(subscriptionUrl)
+    }
   }
 
   // Role-based redirection for root path

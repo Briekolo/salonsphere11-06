@@ -20,6 +20,18 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'drwxswnfwctstgdorhdw.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'media.istockphoto.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'encrypted-tbn0.gstatic.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'thenailbargreensboro.com',
+      },
     ],
   },
   eslint: {

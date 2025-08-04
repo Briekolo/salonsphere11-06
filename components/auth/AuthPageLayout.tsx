@@ -1,5 +1,6 @@
 import { CheckCircle2, Sparkles } from 'lucide-react'
 import React from 'react'
+import Image from 'next/image'
 import { LogoStatic } from '@/components/layout/LogoStatic'
 
 interface AuthPageLayoutProps {
@@ -47,9 +48,33 @@ export default function AuthPageLayout({ children, title, subtitle, footer }: Au
           <div className="mt-8 text-center">
             <p className="text-xs text-muted mb-2">Vertrouwd door 500+ salons</p>
             <div className="flex justify-center space-x-4 opacity-60">
-              <div className="w-8 h-8 bg-gray-200 rounded"></div>
-              <div className="w-8 h-8 bg-gray-200 rounded"></div>
-              <div className="w-8 h-8 bg-gray-200 rounded"></div>
+              <div className="w-8 h-8 rounded overflow-hidden">
+                <Image 
+                  src="https://media.istockphoto.com/id/134052142/nl/foto/hair-salon-situation.jpg?s=612x612&w=0&k=20&c=Qc__xevwVTY8uRqdZOinsBlQkTaEyJEQVHn1PZA6IgQ=" 
+                  alt="Hair salon"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-8 h-8 rounded overflow-hidden">
+                <Image 
+                  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSk_1-OwpRNU99sqToUVXNyNDbkUqfA_yGYcw&s" 
+                  alt="Beauty salon"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-8 h-8 rounded overflow-hidden">
+                <Image 
+                  src="https://thenailbargreensboro.com/wp-content/uploads/2024/01/The-Nail-Bar-Greensboro-NC-27409-aboutus.jpg" 
+                  alt="Nail salon"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -89,9 +114,33 @@ export default function AuthPageLayout({ children, title, subtitle, footer }: Au
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="flex -space-x-2">
-                <div className="w-8 h-8 bg-gray-200 rounded-full border-2 border-white"></div>
-                <div className="w-8 h-8 bg-gray-200 rounded-full border-2 border-white"></div>
-                <div className="w-8 h-8 bg-gray-200 rounded-full border-2 border-white"></div>
+                <div className="w-8 h-8 rounded-full border-2 border-white overflow-hidden">
+                  <Image 
+                    src="https://media.istockphoto.com/id/134052142/nl/foto/hair-salon-situation.jpg?s=612x612&w=0&k=20&c=Qc__xevwVTY8uRqdZOinsBlQkTaEyJEQVHn1PZA6IgQ=" 
+                    alt="Hair salon"
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="w-8 h-8 rounded-full border-2 border-white overflow-hidden">
+                  <Image 
+                    src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSk_1-OwpRNU99sqToUVXNyNDbkUqfA_yGYcw&s" 
+                    alt="Beauty salon"
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="w-8 h-8 rounded-full border-2 border-white overflow-hidden">
+                  <Image 
+                    src="https://thenailbargreensboro.com/wp-content/uploads/2024/01/The-Nail-Bar-Greensboro-NC-27409-aboutus.jpg" 
+                    alt="Nail salon"
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
               <p className="text-sm text-gray-600">
                 <span className="font-semibold">500+</span> tevreden salonhouders

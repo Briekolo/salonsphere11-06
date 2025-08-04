@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import ReactQueryProvider from '@/components/providers/ReactQueryProvider'
 import RealtimeProvider from '@/components/providers/RealtimeProvider'
+import { SubscriptionProvider } from '@/components/providers/SubscriptionProvider'
 import { ToastProvider } from '@/components/providers/ToastProvider'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 
@@ -29,12 +30,14 @@ export default function RootLayout({
       <body className={`${outfit.className} h-full`}>
         <ReactQueryProvider>
           <AuthProvider>
-            <RealtimeProvider>
-              <ToastProvider>
-                {children}
-                <ToastContainer />
-              </ToastProvider>
-            </RealtimeProvider>
+            <SubscriptionProvider>
+              <RealtimeProvider>
+                <ToastProvider>
+                  {children}
+                  <ToastContainer />
+                </ToastProvider>
+              </RealtimeProvider>
+            </SubscriptionProvider>
           </AuthProvider>
         </ReactQueryProvider>
       </body>

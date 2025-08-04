@@ -7,10 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **SalonSphere** is a multi-tenant SaaS platform for beauty salon management built with:
 - **Frontend**: Next.js 15.3.3 with App Router, React 18.3.1, TypeScript
 - **Backend**: Supabase (PostgreSQL, Auth, Realtime, Edge Functions)
-- **State Management**: TanStack Query v5
-- **Styling**: Tailwind CSS
+- **State Management**: TanStack Query v5, Jotai for client state
+- **Styling**: Tailwind CSS with @tailwindcss/forms
+- **UI Components**: Custom components + Lucide React icons
 - **PDF Generation**: @react-pdf/renderer
-- **Testing**: Playwright
+- **Testing**: Playwright E2E tests
+- **Validation**: Zod schemas with React Hook Form
+- **Date Handling**: date-fns with timezone support
 
 ## Essential Commands
 
@@ -26,10 +29,15 @@ npm run type-check # TypeScript type checking
 npx playwright test              # Run E2E tests
 npx playwright test --ui         # Run tests with UI
 npx playwright test --debug      # Debug tests
+npx playwright test --project=chromium  # Run tests on specific browser
 
 # Storybook
 npm run storybook       # Start Storybook (http://localhost:6006)
 npm run storybook:build # Build Storybook
+
+# Supabase Edge Functions
+./deploy-edge-functions.sh      # Deploy all edge functions
+supabase functions deploy [name] # Deploy specific function
 ```
 
 ## Architecture Overview
@@ -62,12 +70,15 @@ useTenantMetrics() // Dashboard analytics
 ```
 
 ### Key Services (`lib/services/`)
-- `clientService.ts` - Client CRUD operations
-- `bookingService.ts` - Appointment logic
-- `invoiceService.ts` - Billing operations
+- `clientService.ts` - Client CRUD operations with status management
+- `bookingService.ts` - Appointment logic with overlap detection
 - `emailService.ts` - Email notifications (requires API key configuration)
-- `pdfService.ts` - PDF generation for invoices
-- `availabilityService.ts` - Booking availability checks
+- `availabilityService.ts` - Booking availability checks with business hours
+- `treatmentSeriesService.ts` - Multi-session treatment management
+- `subscriptionService.ts` - Tenant subscription and billing
+- `inventoryService.ts` - Product management with stock tracking
+- `notificationService.ts` - In-app notification system
+- `validationService.ts` - Business rule validation
 
 ## Critical Information
 
@@ -83,10 +94,10 @@ useTenantMetrics() // Dashboard analytics
 - **Anon Key**: Configured in `.env.local` (NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
 ### Known Issues (January 2025)
-1. **Invoice tables not created** - Migration needs to be applied
-2. **Help page returns 404** - Route not implemented
-3. **Email service not configured** - Requires Resend/SendGrid API keys
-4. **Several modules show placeholder content** - Marketing, Treatments, Settings
+1. **Help page returns 404** - Route not implemented
+2. **Email service not configured** - Requires Resend/SendGrid API keys
+3. **Some placeholder content remains** - Check individual module implementations
+4. **Edge function deployments** - Use provided shell scripts for deployment
 
 ### Language & Localization
 - **Primary Language**: Dutch (nl-NL)
@@ -125,9 +136,11 @@ lib/                  # Utilities and services
 5. **Type Safety**: Use generated database types from `types/database.ts`
 
 ### Testing Approach
-- **E2E Tests**: Playwright for user flows
+- **E2E Tests**: Playwright for user flows (configured for chromium, firefox, webkit)
 - **Component Development**: Storybook for isolated component testing
 - **Type Checking**: Run `npm run type-check` before committing
+- **Test Location**: Tests located in `/tests/` directory
+- **CI/CD**: Configured with automatic retries and HTML reporting
 
 ### Security Considerations
 - **RLS Policies**: Never bypass tenant isolation
@@ -137,9 +150,30 @@ lib/                  # Utilities and services
 
 ## Useful Documentation References
 
-- `/docs/TODO.md` - Comprehensive task list (290+ items)
-- `/docs/CLIENT-MODULE.md` - Client module specification
-- `/docs/ADMIN.md` - Admin module progress
 - `/docs/RISK_ANALYSIS.md` - Security and compliance analysis
-- `/types/database.ts` - Generated database types
-- `/types/invoice.ts` - Invoice system types
+- `/docs/DATABASE_SETUP.md` - Database configuration guide
+- `/docs/DOMAIN.md` - Domain and subdomain setup
+- `/docs/SECURITY_AUDIT_REPORT.md` - Security audit findings
+- `/types/database.ts` - Generated database types from Supabase
+- `/types/booking.ts` - Booking system types
+- `/types/notification.ts` - Notification system types
+- `/types/staff.ts` - Staff management types
+
+## Important Instructions
+
+### Before Making Changes
+1. **Always run type-check**: `npm run type-check` before committing
+2. **Test changes**: Use Playwright tests to verify functionality
+3. **Check tenant isolation**: Ensure all database queries include tenant_id
+4. **Validate business hours**: Use business hours validation for bookings
+5. **Dutch language**: All user-facing text should be in Dutch
+
+### Edge Functions Deployment
+- Use `./deploy-edge-functions.sh` for all functions
+- Individual deployment: `supabase functions deploy [function-name]`
+- Functions handle timezone-aware booking reminders and email automation
+
+### Database Migrations
+- Located in `/supabase/migrations/`
+- Apply with Supabase CLI or through dashboard
+- Always test migrations on development first
