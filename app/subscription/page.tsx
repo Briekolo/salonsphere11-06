@@ -76,19 +76,10 @@ function SubscriptionPageContent() {
           clearInterval(pollingInterval)
           setPaymentStatus('success')
           
-          // Start final countdown for redirect
-          let redirectTime = 3
-          setCountdown(redirectTime)
-          
-          const redirectInterval = setInterval(() => {
-            redirectTime -= 1
-            setCountdown(redirectTime)
-            
-            if (redirectTime <= 0) {
-              clearInterval(redirectInterval)
-              router.push('/')
-            }
-          }, 1000)
+          // Redirect after 3 seconds
+          setTimeout(() => {
+            window.location.href = 'https://salonsphere-three.vercel.app/'
+          }, 3000)
           
           return
         }
@@ -155,17 +146,10 @@ function SubscriptionPageContent() {
           setPaymentStatus('success')
           setCountdown(3)
           
-          // Start final countdown for redirect
-          let redirectTime = 3
-          const redirectInterval = setInterval(() => {
-            redirectTime -= 1
-            setCountdown(redirectTime)
-            
-            if (redirectTime <= 0) {
-              clearInterval(redirectInterval)
-              router.push('/')
-            }
-          }, 1000)
+          // Redirect after 3 seconds
+          setTimeout(() => {
+            window.location.href = 'https://salonsphere-three.vercel.app/'
+          }, 3000)
         }
       }, 500) // Small delay to allow query invalidation to take effect
     } catch (error) {
@@ -234,24 +218,15 @@ function SubscriptionPageContent() {
             <AlertDescription className="text-green-800">
               <strong>Betaling succesvol!</strong>
               <br />
-              Uw abonnement is geactiveerd. U wordt doorgestuurd naar het dashboard in {countdown} seconde{countdown !== 1 ? 'n' : ''}...
+              We will redirect you shortly, if not: press hyperlink.
             </AlertDescription>
           </Alert>
-          <div className="mt-4 space-y-2">
+          <div className="mt-4">
             <Button 
-              onClick={() => router.push('/')}
+              onClick={() => window.location.href = 'https://salonsphere-three.vercel.app/'}
               className="bg-green-600 hover:bg-green-700 w-full"
             >
-              Direct naar dashboard
-            </Button>
-            <Button 
-              onClick={handleManualSync}
-              disabled={isSyncingPaymentStatus}
-              variant="outline"
-              size="sm"
-            >
-              {isSyncingPaymentStatus ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
-              Status vernieuwen
+              Go to Dashboard
             </Button>
           </div>
         </div>
