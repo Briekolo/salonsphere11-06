@@ -165,33 +165,108 @@ class MollieService {
    * Generate webhook URL for environment
    */
   getWebhookUrl(): string {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
-    if (!baseUrl) {
-      // For development, use localhost
-      return 'http://localhost:3000/api/webhooks/mollie'
+    // Priority order for base URL:
+    // 1. NEXT_PUBLIC_SITE_URL (production URL)
+    // 2. VERCEL_URL (Vercel deployment URL)
+    // 3. Fallback to localhost for development
+    
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    const vercelUrl = process.env.VERCEL_URL
+    
+    let baseUrl: string
+    
+    if (siteUrl) {
+      // Production URL explicitly set
+      baseUrl = siteUrl
+      console.log('[MollieService] Using NEXT_PUBLIC_SITE_URL for webhook:', siteUrl)
+    } else if (vercelUrl) {
+      // Vercel deployment URL
+      baseUrl = `https://${vercelUrl}`
+      console.log('[MollieService] Using VERCEL_URL for webhook:', vercelUrl)
+    } else {
+      // Local development
+      baseUrl = 'http://localhost:3000'
+      console.log('[MollieService] Using localhost for webhook (development mode)')
     }
     
     // Ensure URL has protocol
-    const url = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`
-    return `${url}/api/webhooks/mollie`
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = `https://${baseUrl}`
+    }
+    
+    const webhookUrl = `${baseUrl}/api/webhooks/mollie`
+    console.log('[MollieService] Generated webhook URL:', webhookUrl)
+    
+    return webhookUrl
+  }
+
+  /**
+   * Check and update payment status immediately
+   */
+  async checkPaymentStatus(paymentId: string): Promise<{
+    status: string
+    isPaid: boolean
+    isFailed: boolean
+    isPending: boolean
+  }> {
+    this.initClient()
+    
+    try {
+      const payment = await this.getPayment(paymentId)
+      console.log(`[MollieService] Payment ${paymentId} status check: ${payment.status}`)
+      
+      return {
+        status: payment.status,
+        isPaid: this.isPaymentSuccessful(payment),
+        isFailed: this.isPaymentFailed(payment),
+        isPending: payment.status === 'pending' || payment.status === 'open'
+      }
+    } catch (error) {
+      console.error(`[MollieService] Error checking payment status for ${paymentId}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Get base URL for redirects
+   */
+  private getBaseUrl(): string {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    const vercelUrl = process.env.VERCEL_URL
+    
+    let baseUrl: string
+    
+    if (siteUrl) {
+      baseUrl = siteUrl
+    } else if (vercelUrl) {
+      baseUrl = `https://${vercelUrl}`
+    } else {
+      baseUrl = 'http://localhost:3000'
+    }
+    
+    // Ensure URL has protocol
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = `https://${baseUrl}`
+    }
+    
+    return baseUrl
   }
 
   /**
    * Generate redirect URL for payment success
    */
-  getSuccessUrl(tenantId: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000'
-    const url = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`
-    return `${url}/subscription?success=true`
+  getSuccessUrl(tenantId: string, paymentId?: string): string {
+    const baseUrl = this.getBaseUrl()
+    const url = `${baseUrl}/subscription?success=true&tenant=${tenantId}`
+    return paymentId ? `${url}&payment=${paymentId}` : url
   }
 
   /**
    * Generate redirect URL for payment failure
    */
   getFailureUrl(tenantId: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000'
-    const url = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`
-    return `${url}/subscription?error=payment_failed`
+    const baseUrl = this.getBaseUrl()
+    return `${baseUrl}/subscription?error=payment_failed&tenant=${tenantId}`
   }
 }
 

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       const payment = await mollieService.createPayment({
         amount: paymentAmount,
         description: `${plan.name} Subscription - ${tenantData.name}`,
-        redirectUrl: mollieService.getSuccessUrl(tenantId),
+        redirectUrl: mollieService.getSuccessUrl(tenantId), // Will update with payment ID after creation
         webhookUrl: mollieService.getWebhookUrl(),
         customerId: mollieCustomerId,
         metadata: {
@@ -183,20 +183,27 @@ export async function POST(request: NextRequest) {
       console.log(`[Payment Creation] Payment record created with ID: ${paymentRecordData.id} for Mollie payment: ${payment.id}`)
       console.log(`[Payment Creation] Payment tracking started at ${now.toISOString()} - will check for webhook delivery`)
 
-      // Schedule a fallback reconciliation check after 3 minutes if webhook doesn't arrive
-      // This is done via a delayed API call rather than in-memory timeout to handle serverless nature
-      const fallbackDelayMs = 3 * 60 * 1000 // 3 minutes
+      // Update the payment URL to include the payment ID for status checking on redirect
+      const checkoutUrl = payment.getCheckoutUrl()
+      const updatedCheckoutUrl = checkoutUrl ? 
+        checkoutUrl.replace(
+          mollieService.getSuccessUrl(tenantId),
+          mollieService.getSuccessUrl(tenantId, payment.id)
+        ) : payment.getCheckoutUrl()
+
+      // Schedule a fallback reconciliation check after 30 seconds if webhook doesn't arrive
+      const fallbackDelayMs = 30 * 1000 // 30 seconds
       console.log(`[Payment Creation] Fallback reconciliation will trigger in ${fallbackDelayMs}ms if webhook not received`)
 
       return NextResponse.json({
         success: true,
-        paymentUrl: payment.getCheckoutUrl(),
+        paymentUrl: updatedCheckoutUrl || payment.getCheckoutUrl(),
         paymentId: payment.id,
         subscription: subscription,
         paymentRecordId: paymentRecordData.id,
         webhookTimeout: fallbackDelayMs,
         createdAt: now.toISOString(),
-        message: 'Payment created successfully with fallback reconciliation scheduled'
+        message: 'Payment created successfully with immediate status checking on redirect'
       })
 
     } catch (error) {

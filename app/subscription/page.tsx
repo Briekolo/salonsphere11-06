@@ -42,26 +42,72 @@ function SubscriptionPageContent() {
     subscriptionStatusRef.current = subscriptionStatus
   }, [subscriptionStatus])
 
-  // Handle payment redirect results
+  // Handle payment redirect results with immediate status check
   useEffect(() => {
     const success = searchParams.get('success')
     const error = searchParams.get('error')
+    const paymentId = searchParams.get('payment')
     
-    if (success === 'true') {
+    if (success === 'true' && paymentId) {
       setPaymentStatus('processing')
-      // Clear URL parameters
-      router.replace('/subscription', { scroll: false })
       
-      // Redirect after 3 seconds
-      setTimeout(() => {
-        window.location.href = 'https://salonsphere-three.vercel.app/'
-      }, 3000)
+      // Log redirect status check
+      console.log(`[Subscription Page] Payment redirect detected, checking status for ${paymentId}`)
+      
+      // Immediately check payment status
+      const checkPaymentStatus = async () => {
+        try {
+          const response = await fetch('/api/subscription/check-payment-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ paymentId })
+          })
+          
+          const result = await response.json()
+          console.log(`[Subscription Page] Payment status check result:`, result)
+          
+          if (result.success && (result.status === 'paid' || result.alreadyProcessed)) {
+            // Payment confirmed, clear URL and redirect
+            router.replace('/subscription', { scroll: false })
+            setPaymentStatus('success')
+            
+            // Refresh subscription status
+            await syncPaymentStatus()
+            
+            // Redirect after 2 seconds
+            setTimeout(() => {
+              window.location.href = 'https://salonsphere-three.vercel.app/'
+            }, 2000)
+          } else if (result.isPending) {
+            // Still pending, try manual sync
+            console.log(`[Subscription Page] Payment still pending, attempting manual sync`)
+            await handleManualSync()
+          } else {
+            // Payment failed or error
+            setPaymentStatus('error')
+            router.replace('/subscription', { scroll: false })
+          }
+        } catch (error) {
+          console.error('[Subscription Page] Error checking payment status:', error)
+          // Fallback to manual sync
+          await handleManualSync()
+        }
+      }
+      
+      checkPaymentStatus()
+    } else if (success === 'true' && !paymentId) {
+      // Success without payment ID, try manual sync
+      setPaymentStatus('processing')
+      router.replace('/subscription', { scroll: false })
+      handleManualSync()
     } else if (error) {
       setPaymentStatus('error')
       // Clear URL parameters
       router.replace('/subscription', { scroll: false })
     }
-  }, [searchParams, router, syncPaymentStatus]) // Removed subscriptionStatus from dependencies
+  }, [searchParams, router]) // Dependencies simplified
 
   const handleStartTrial = async (planId: string) => {
     try {

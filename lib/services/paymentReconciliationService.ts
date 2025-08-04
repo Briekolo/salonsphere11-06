@@ -35,18 +35,18 @@ class PaymentReconciliationService {
   }
 
   /**
-   * Find payments that are stuck in 'pending' status for more than 5 minutes
+   * Find payments that are stuck in 'pending' status for more than 30 seconds
    */
   async findStuckPayments(): Promise<StuckPayment[]> {
-    const fiveMinutesAgo = new Date()
-    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5)
+    const thirtySecondsAgo = new Date()
+    thirtySecondsAgo.setSeconds(thirtySecondsAgo.getSeconds() - 30)
 
     const supabase = this.getSupabaseClient()
     const { data: stuckPayments, error } = await supabase
       .from('subscription_payments')
       .select('id, subscription_id, mollie_payment_id, created_at, amount_cents, currency')
       .eq('status', 'pending')
-      .lt('created_at', fiveMinutesAgo.toISOString())
+      .lt('created_at', thirtySecondsAgo.toISOString())
       .not('mollie_payment_id', 'is', null)
 
     if (error) {
@@ -195,7 +195,7 @@ class PaymentReconciliationService {
    */
   async needsReconciliation(molliePaymentId: string, createdAt: string): Promise<boolean> {
     const paymentAge = Date.now() - new Date(createdAt).getTime()
-    const RECONCILIATION_THRESHOLD = 2 * 60 * 1000 // 2 minutes
+    const RECONCILIATION_THRESHOLD = 30 * 1000 // 30 seconds
 
     if (paymentAge < RECONCILIATION_THRESHOLD) {
       return false
