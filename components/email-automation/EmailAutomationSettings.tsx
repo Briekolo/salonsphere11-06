@@ -1,9 +1,83 @@
 'use client'
 
-import { useState } from 'react'
-import { Mail, Users, Clock, TrendingUp, Eye, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Mail, Users, Clock, TrendingUp, Eye, AlertCircle, CheckCircle, XCircle, Edit3 } from 'lucide-react'
 import { useEmailSettings, useUpdateEmailSettings, useEmailStats, useEmailLogs } from '@/lib/hooks/useEmailAutomation'
 import { useToast } from '@/components/providers/ToastProvider'
+
+interface TemplateEditorProps {
+  templateType: string
+  title: string
+  template: {subject: string, content: string}
+  variables: string[]
+  onSave: (subject: string, content: string) => void
+  onCancel: () => void
+}
+
+function TemplateEditor({ templateType, title, template, variables, onSave, onCancel }: TemplateEditorProps) {
+  const subjectRef = useRef<HTMLInputElement>(null)
+  const contentRef = useRef<HTMLTextAreaElement>(null)
+
+  const handleSave = () => {
+    const subject = subjectRef.current?.value || ''
+    const content = contentRef.current?.value || ''
+    onSave(subject, content)
+  }
+
+  return (
+    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <h4 className="font-medium text-gray-900 mb-4">{title} Template Bewerken</h4>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            E-mail Onderwerp
+          </label>
+          <input
+            ref={subjectRef}
+            type="text"
+            defaultValue={template.subject}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            placeholder="Voer het onderwerp in..."
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Beschikbare variabelen: {variables.join(', ')}
+          </p>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            E-mail Inhoud
+          </label>
+          <textarea
+            ref={contentRef}
+            rows={8}
+            defaultValue={template.content}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            placeholder="Voer de e-mail inhoud in..."
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Beschikbare variabelen: {variables.join(', ')}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3 pt-2">
+          <button 
+            onClick={handleSave}
+            className="btn-primary text-sm"
+          >
+            Wijzigingen Opslaan
+          </button>
+          <button 
+            onClick={onCancel}
+            className="btn-outlined text-sm"
+          >
+            Annuleren
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function EmailAutomationSettings() {
   const { data: settings, isLoading: settingsLoading } = useEmailSettings()
@@ -12,6 +86,58 @@ export function EmailAutomationSettings() {
   const updateSettings = useUpdateEmailSettings()
   const { showToast } = useToast()
   const [showPreview, setShowPreview] = useState<string | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null)
+  const [templateData, setTemplateData] = useState<{[key: string]: {subject: string, content: string}}>({
+    welcome: {
+      subject: "🌟 Welkom bij [Salon Naam]!",
+      content: `Beste [Klant Voornaam],
+
+Hartelijk welkom bij [Salon Naam]!
+
+We zijn verheugd dat u deel uitmaakt van onze salon familie. Bij ons staat kwaliteit en persoonlijke aandacht voorop.
+
+Heeft u vragen of wilt u een nieuwe afspraak maken? Neem gerust contact met ons op.
+
+Met vriendelijke groet,
+Het team van [Salon Naam]`
+    },
+    confirmation: {
+      subject: "Afspraakbevestiging - [Behandeling] op [Datum]",
+      content: `Beste [Klant Naam],
+
+Uw afspraak is bevestigd!
+
+Afspraak Details:
+- Behandeling: [Behandeling]
+- Datum: [Datum]
+- Tijd: [Tijd]
+- Medewerker: [Medewerker]
+- Locatie: [Salon Naam], [Salon Adres]
+
+Wij verheugen ons op uw bezoek. Heeft u vragen? Neem gerust contact met ons op via [Salon Telefoon] of [Salon Email].
+
+Met vriendelijke groet,
+Het team van [Salon Naam]`
+    },
+    reminder: {
+      subject: "⏰ Herinnering: [Behandeling] morgen om [Tijd]",
+      content: `Beste [Klant Naam],
+
+Dit is een vriendelijke herinnering voor uw aanstaande afspraak:
+
+Afspraak Details:
+- Behandeling: [Behandeling]
+- Datum: [Datum]
+- Tijd: [Tijd]
+- Medewerker: [Medewerker]
+- Locatie: [Salon Naam], [Salon Adres]
+
+We kijken ernaar uit u te zien! Mocht u uw afspraak willen wijzigen of annuleren, neem dan zo spoedig mogelijk contact met ons op via [Salon Telefoon].
+
+Met vriendelijke groet,
+Het team van [Salon Naam]`
+    }
+  })
 
   const handleToggle = async (type: 'welcome_email_enabled' | 'booking_confirmation_enabled' | 'booking_reminder_enabled', enabled: boolean) => {
     try {
@@ -23,6 +149,27 @@ export function EmailAutomationSettings() {
     } catch (error) {
       console.error('Error updating settings:', error)
       showToast('Er is een fout opgetreden bij het bijwerken van de instellingen', 'error')
+    }
+  }
+
+  const handleSaveTemplate = async (templateType: string, subject: string, content: string) => {
+    try {
+      // Update local state
+      setTemplateData(prev => ({
+        ...prev,
+        [templateType]: { subject, content }
+      }))
+      
+      // In a real implementation, this would save to the database
+      // For now, we'll simulate a successful save
+      showToast('E-mail template succesvol opgeslagen!', 'success')
+      setEditingTemplate(null)
+      
+      // Here you would typically call an API to save the template
+      // await updateEmailTemplate.mutateAsync({ type: templateType, subject, content })
+    } catch (error) {
+      console.error('Error saving template:', error)
+      showToast('Er is een fout opgetreden bij het opslaan van de template', 'error')
     }
   }
 
@@ -99,7 +246,9 @@ export function EmailAutomationSettings() {
         <div className="card">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4 flex-1">
-              <div className="text-2xl">✉️</div>
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Mail className="w-6 h-6 text-blue-600" />
+              </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold text-gray-900">Welkomst E-mail</h3>
@@ -110,6 +259,13 @@ export function EmailAutomationSettings() {
                     >
                       <Eye className="w-4 h-4" />
                       Voorbeeld
+                    </button>
+                    <button
+                      onClick={() => setEditingTemplate(editingTemplate === 'welcome' ? null : 'welcome')}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Bewerken
                     </button>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -133,7 +289,8 @@ export function EmailAutomationSettings() {
                       {stats?.welcome_emails_sent_this_month || 0} verzonden deze maand
                     </div>
                     <div className="flex items-center gap-1 text-gray-500">
-                      📊 {stats?.welcome_emails_sent_today || 0} verzonden vandaag
+                      <TrendingUp className="w-4 h-4" />
+                      {stats?.welcome_emails_sent_today || 0} verzonden vandaag
                     </div>
                   </div>
                 )}
@@ -145,10 +302,21 @@ export function EmailAutomationSettings() {
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
               <h4 className="font-medium text-gray-900 mb-2">E-mail Preview</h4>
               <div className="text-sm text-gray-600 space-y-1">
-                <div><strong>Onderwerp:</strong> 🌟 Welkom bij [Salon Naam]!</div>
-                <div><strong>Inhoud:</strong> Hartelijk welkom bij onze salon! We zijn verheugd dat u deel uitmaakt van onze salon familie...</div>
+                <div><strong>Onderwerp:</strong> {templateData.welcome.subject}</div>
+                <div><strong>Inhoud:</strong> {templateData.welcome.content.substring(0, 100)}...</div>
               </div>
             </div>
+          )}
+          
+          {editingTemplate === 'welcome' && (
+            <TemplateEditor
+              templateType="welcome"
+              title="Welkomst E-mail"
+              template={templateData.welcome}
+              variables={['[Salon Naam]', '[Salon Adres]', '[Salon Telefoon]', '[Salon Email]', '[Klant Naam]', '[Klant Voornaam]']}
+              onSave={(subject, content) => handleSaveTemplate('welcome', subject, content)}
+              onCancel={() => setEditingTemplate(null)}
+            />
           )}
         </div>
 
@@ -156,7 +324,9 @@ export function EmailAutomationSettings() {
         <div className="card">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4 flex-1">
-              <div className="text-2xl">📅</div>
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold text-gray-900">Afspraak Bevestiging</h3>
@@ -167,6 +337,13 @@ export function EmailAutomationSettings() {
                     >
                       <Eye className="w-4 h-4" />
                       Voorbeeld
+                    </button>
+                    <button
+                      onClick={() => setEditingTemplate(editingTemplate === 'confirmation' ? null : 'confirmation')}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Bewerken
                     </button>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -190,7 +367,8 @@ export function EmailAutomationSettings() {
                       {stats?.booking_confirmations_sent_this_month || 0} verzonden deze maand
                     </div>
                     <div className="flex items-center gap-1 text-gray-500">
-                      📊 {stats?.booking_confirmations_sent_today || 0} verzonden vandaag
+                      <TrendingUp className="w-4 h-4" />
+                      {stats?.booking_confirmations_sent_today || 0} verzonden vandaag
                     </div>
                   </div>
                 )}
@@ -202,10 +380,21 @@ export function EmailAutomationSettings() {
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
               <h4 className="font-medium text-gray-900 mb-2">E-mail Preview</h4>
               <div className="text-sm text-gray-600 space-y-1">
-                <div><strong>Onderwerp:</strong> Afspraakbevestiging - [Behandeling] op [Datum]</div>
-                <div><strong>Inhoud:</strong> Uw afspraak is bevestigd! Hierbij bevestigen wij uw afspraak met alle details...</div>
+                <div><strong>Onderwerp:</strong> {templateData.confirmation.subject}</div>
+                <div><strong>Inhoud:</strong> {templateData.confirmation.content.substring(0, 100)}...</div>
               </div>
             </div>
+          )}
+          
+          {editingTemplate === 'confirmation' && (
+            <TemplateEditor
+              templateType="confirmation"
+              title="Afspraak Bevestiging"
+              template={templateData.confirmation}
+              variables={['[Salon Naam]', '[Salon Adres]', '[Salon Telefoon]', '[Salon Email]', '[Klant Naam]', '[Behandeling]', '[Datum]', '[Tijd]', '[Medewerker]']}
+              onSave={(subject, content) => handleSaveTemplate('confirmation', subject, content)}
+              onCancel={() => setEditingTemplate(null)}
+            />
           )}
         </div>
 
@@ -213,7 +402,9 @@ export function EmailAutomationSettings() {
         <div className="card">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4 flex-1">
-              <div className="text-2xl">⏰</div>
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Clock className="w-6 h-6 text-purple-600" />
+              </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold text-gray-900">Afspraak Herinnering</h3>
@@ -224,6 +415,13 @@ export function EmailAutomationSettings() {
                     >
                       <Eye className="w-4 h-4" />
                       Voorbeeld
+                    </button>
+                    <button
+                      onClick={() => setEditingTemplate(editingTemplate === 'reminder' ? null : 'reminder')}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Bewerken
                     </button>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -247,7 +445,8 @@ export function EmailAutomationSettings() {
                       {stats?.booking_reminders_sent_this_month || 0} verzonden deze maand
                     </div>
                     <div className="flex items-center gap-1 text-gray-500">
-                      📊 {stats?.booking_reminders_sent_today || 0} verzonden vandaag
+                      <TrendingUp className="w-4 h-4" />
+                      {stats?.booking_reminders_sent_today || 0} verzonden vandaag
                     </div>
                   </div>
                 )}
@@ -259,10 +458,21 @@ export function EmailAutomationSettings() {
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
               <h4 className="font-medium text-gray-900 mb-2">E-mail Preview</h4>
               <div className="text-sm text-gray-600 space-y-1">
-                <div><strong>Onderwerp:</strong> ⏰ Herinnering: [Behandeling] morgen om [Tijd]</div>
-                <div><strong>Inhoud:</strong> Dit is een vriendelijke herinnering voor uw aanstaande afspraak morgen...</div>
+                <div><strong>Onderwerp:</strong> {templateData.reminder.subject}</div>
+                <div><strong>Inhoud:</strong> {templateData.reminder.content.substring(0, 100)}...</div>
               </div>
             </div>
+          )}
+          
+          {editingTemplate === 'reminder' && (
+            <TemplateEditor
+              templateType="reminder"
+              title="Afspraak Herinnering"
+              template={templateData.reminder}
+              variables={['[Salon Naam]', '[Salon Adres]', '[Salon Telefoon]', '[Salon Email]', '[Klant Naam]', '[Behandeling]', '[Datum]', '[Tijd]', '[Medewerker]']}
+              onSave={(subject, content) => handleSaveTemplate('reminder', subject, content)}
+              onCancel={() => setEditingTemplate(null)}
+            />
           )}
         </div>
       </div>

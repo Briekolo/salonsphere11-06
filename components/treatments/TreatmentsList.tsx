@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Clock, Euro, Edit, MoreVertical, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { Clock, Euro, Edit, MoreVertical, Eye, EyeOff, Trash2, Package } from 'lucide-react'
 import { useServices, useUpdateService, useDeleteService } from '@/lib/hooks/useServices'
 import { Service } from '@/lib/hooks/useServices'
 import { ServiceService } from '@/lib/services/serviceService'
@@ -91,9 +91,17 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h3 className={`font-semibold text-sm ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>
-                  {treatment.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className={`font-semibold text-sm ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>
+                    {treatment.name}
+                  </h3>
+                  {(treatment.treatments_needed || 1) > 1 && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs">
+                      <Package className="w-3 h-3" />
+                      <span>{treatment.treatments_needed} sessies</span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-xs text-gray-600 line-clamp-2 mt-1">{treatment.description}</p>
                 <span className={`inline-block mt-2 status-chip text-xs ${
                   treatment.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
@@ -166,7 +174,16 @@ export function TreatmentsList({ onTreatmentEdit, searchTerm }: TreatmentsListPr
               >
                 <td className="py-3 sm:py-4 px-2 sm:px-4">
                   <div>
-                    <div className={`font-medium text-xs sm:text-sm ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>{treatment.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className={`font-medium text-xs sm:text-sm ${!treatment.active ? 'text-gray-500' : 'text-gray-900'}`}>{treatment.name}</div>
+                      {(treatment.treatments_needed || 1) > 1 && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                          <Package className="w-3 h-3" />
+                          <span className="hidden sm:inline">{treatment.treatments_needed} sessies</span>
+                          <span className="sm:hidden">{treatment.treatments_needed}x</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="text-xs sm:text-sm truncate max-w-[150px] sm:max-w-[200px]">
                       {treatment.description}
                     </div>

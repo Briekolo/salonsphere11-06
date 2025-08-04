@@ -27,7 +27,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
     aftercareInfo: '',
     active: true,
     image: '',
-    is_series_template: false
+    treatments_needed: 1
   })
 
   const { data: categories = [], isLoading: categoriesLoading } = useActiveTreatmentCategories()
@@ -65,7 +65,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
             aftercareInfo: existing.aftercare_info ?? '',
             active: existing.active,
             image: existing.image_url ?? '',
-            is_series_template: existing.is_series_template ?? false,
+            treatments_needed: existing.treatments_needed ?? 1,
           })
         }
       } catch (err) {
@@ -103,6 +103,9 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
       // Find the category name based on category_id for backward compatibility
       const selectedCategory = categories.find(cat => cat.id === formData.category_id)
       const categoryName = selectedCategory?.name || ''
+      
+      // Auto-determine if this is a series template based on treatments_needed
+      const isSeriesTemplate = formData.treatments_needed > 1
 
       if (isEditing && treatmentId) {
         await updateMutation.mutateAsync({
@@ -119,7 +122,8 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
             preparation_info: formData.preparationInfo,
             aftercare_info: formData.aftercareInfo,
             image_url: formData.image,
-            is_series_template: formData.is_series_template,
+            treatments_needed: formData.treatments_needed,
+            is_series_template: isSeriesTemplate,
           },
         } as any)
       } else {
@@ -135,7 +139,8 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
           preparation_info: formData.preparationInfo,
           aftercare_info: formData.aftercareInfo,
           image_url: formData.image,
-          is_series_template: formData.is_series_template,
+          treatments_needed: formData.treatments_needed,
+          is_series_template: isSeriesTemplate,
         } as any)
       }
       onBack()
@@ -270,6 +275,24 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                 placeholder="Beschrijf de behandeling in 2-3 zinnen..."
                 required
               />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Aantal afspraken *
+              </label>
+              <input
+                type="number"
+                value={formData.treatments_needed}
+                onChange={(e) => setFormData(prev => ({ ...prev, treatments_needed: parseInt(e.target.value) || 1 }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                min="1"
+                max="20"
+                required
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Bij meer dan 1 afspraak wordt dit automatisch een behandelreeks. Klanten kunnen dan alle afspraken in 1x inplannen.
+              </p>
             </div>
           </div>
 
@@ -471,28 +494,17 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                   Behandeling is actief
                 </label>
               </div>
-              
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="series_template"
-                  checked={formData.is_series_template}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_series_template: e.target.checked }))}
-                  className="rounded border-gray-300 text-purple-500 focus:ring-purple-500"
-                />
-                <label htmlFor="series_template" className="text-sm font-medium text-gray-700">
-                  Beschikbaar als behandelreeks template
-                </label>
-              </div>
             </div>
             
             <div className="space-y-2 mt-3">
               <p className="text-xs text-gray-600">
                 Inactieve behandelingen zijn niet zichtbaar voor klanten bij het boeken van afspraken.
               </p>
-              <p className="text-xs text-gray-600">
-                Templates kunnen gebruikt worden om snel meerfasige behandelreeksen aan te maken.
-              </p>
+              {formData.treatments_needed > 1 && (
+                <p className="text-xs text-purple-600">
+                  Deze behandeling wordt automatisch beschikbaar als behandelreeks omdat er meer dan 1 afspraak nodig is.
+                </p>
+              )}
             </div>
           </div>
         </div>

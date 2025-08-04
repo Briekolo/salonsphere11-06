@@ -57,11 +57,19 @@ export class TreatmentSeriesService {
         return date.toISOString()
       })
       
+      // Validate required UUIDs
+      if (!params.client_id || !params.client_id.trim()) {
+        throw new Error('Client ID is required')
+      }
+      if (!params.service_id || !params.service_id.trim()) {
+        throw new Error('Service ID is required')
+      }
+
       const { data, error } = await supabase.rpc('create_treatment_series_with_custom_appointments', {
         p_tenant_id: userProfile.tenant_id,
-        p_client_id: params.client_id,
-        p_service_id: params.service_id,
-        p_staff_id: params.staff_id || null,
+        p_client_id: params.client_id.trim(),
+        p_service_id: params.service_id.trim(),
+        p_staff_id: params.staff_id && params.staff_id.trim() ? params.staff_id.trim() : null,
         p_custom_dates: isoCustomDates,
         p_package_discount: params.package_discount || 0,
         p_notes: params.notes || null
@@ -77,14 +85,22 @@ export class TreatmentSeriesService {
       seriesId = data
     } else {
       // Otherwise use the existing interval-based function
+      // Validate required UUIDs
+      if (!params.client_id || !params.client_id.trim()) {
+        throw new Error('Client ID is required')
+      }
+      if (!params.service_id || !params.service_id.trim()) {
+        throw new Error('Service ID is required')
+      }
+      
       // Convert start date to ISO format
       const isoStartDate = new Date(params.start_date).toISOString()
       
       const { data, error } = await supabase.rpc('create_treatment_series_with_appointments', {
         p_tenant_id: userProfile.tenant_id,
-        p_client_id: params.client_id,
-        p_service_id: params.service_id,
-        p_staff_id: params.staff_id || null,
+        p_client_id: params.client_id.trim(),
+        p_service_id: params.service_id.trim(),
+        p_staff_id: params.staff_id && params.staff_id.trim() ? params.staff_id.trim() : null,
         p_start_date: isoStartDate,
         p_total_sessions: params.total_sessions,
         p_interval_weeks: params.interval_weeks || null,

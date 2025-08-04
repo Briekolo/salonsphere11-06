@@ -13,30 +13,45 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
   const [useRealOverhead, setUseRealOverhead] = useState(true)
   
   const [calculatorData, setCalculatorData] = useState({
-    treatmentName: '',
     duration: 60,
     materialCost: 0,
     laborCostPerHour: 45,
-    overheadPercentage: 25,
     desiredMargin: 75,
-    competitorPrice: 0
+    competitorPrice: 0,
+    // Individual overhead costs
+    rent: 0,
+    utilities: 0,
+    insurance: 0,
+    supplies: 0,
+    marketing: 0,
+    other: 0
   })
 
-  // Update overhead percentage when real data is available
+  // Update overhead costs when real data is available
   useEffect(() => {
     if (overheadMetrics && useRealOverhead) {
-      // Calculate overhead percentage based on current metrics
-      const newOverheadPercentage = overheadMetrics.overhead_percentage || 25
+      // Use real overhead data if available, otherwise keep current manual values
+      const monthlyOverhead = overheadMetrics.overhead_monthly || 0
+      // Distribute the total across categories (rough estimation)
       setCalculatorData(prev => ({
         ...prev,
-        overheadPercentage: newOverheadPercentage
+        rent: monthlyOverhead * 0.4, // 40% typically rent
+        utilities: monthlyOverhead * 0.15, // 15% utilities
+        insurance: monthlyOverhead * 0.1, // 10% insurance
+        supplies: monthlyOverhead * 0.15, // 15% supplies
+        marketing: monthlyOverhead * 0.1, // 10% marketing
+        other: monthlyOverhead * 0.1 // 10% other
       }))
     }
   }, [overheadMetrics, useRealOverhead])
 
   // Calculations
   const laborCost = (calculatorData.duration / 60) * calculatorData.laborCostPerHour
-  const overheadCost = (laborCost + calculatorData.materialCost) * (calculatorData.overheadPercentage / 100)
+  const totalMonthlyOverhead = calculatorData.rent + calculatorData.utilities + calculatorData.insurance + 
+                               calculatorData.supplies + calculatorData.marketing + calculatorData.other
+  // Estimate overhead per treatment (assuming ~60 treatments per month as rough baseline)
+  const estimatedTreatmentsPerMonth = overheadMetrics?.total_treatments || 60
+  const overheadCost = totalMonthlyOverhead / estimatedTreatmentsPerMonth
   const totalCost = calculatorData.materialCost + laborCost + overheadCost
   const suggestedPrice = totalCost / (1 - calculatorData.desiredMargin / 100)
   const actualMargin = ((suggestedPrice - totalCost) / suggestedPrice) * 100
@@ -76,19 +91,6 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
             </h2>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Behandelingsnaam
-                </label>
-                <input
-                  type="text"
-                  value={calculatorData.treatmentName}
-                  onChange={(e) => setCalculatorData(prev => ({ ...prev, treatmentName: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Bijv. Luxe Manicure"
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Duur (minuten)
@@ -131,10 +133,11 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
                 />
               </div>
 
+              {/* Overhead Costs Section */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">
-                    Overhead percentage (%)
+                    Maandelijkse overhead kosten
                   </label>
                   {overheadMetrics && (
                     <button
@@ -151,24 +154,49 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
                     </button>
                   )}
                 </div>
-                <input
-                  type="number"
-                  value={calculatorData.overheadPercentage}
-                  onChange={(e) => {
-                    setUseRealOverhead(false)
-                    setCalculatorData(prev => ({ ...prev, overheadPercentage: parseFloat(e.target.value) }))
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  min="0"
-                  step="0.1"
-                  disabled={useRealOverhead}
-                />
-                <p className="text-xs text-gray-600 mt-1">
-                  {useRealOverhead && overheadMetrics 
-                    ? `Gebaseerd op €${overheadMetrics.overhead_per_treatment.toFixed(2)} per behandeling deze maand`
-                    : 'Huur, utilities, verzekeringen, etc.'
-                  }
-                </p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'rent', label: 'Huur' },
+                    { key: 'utilities', label: 'Utilities' },
+                    { key: 'insurance', label: 'Verzekeringen' },
+                    { key: 'supplies', label: 'Benodigdheden' },
+                    { key: 'marketing', label: 'Marketing' },
+                    { key: 'other', label: 'Overig' }
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        {label}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">€</span>
+                        <input
+                          type="number"
+                          value={calculatorData[key as keyof typeof calculatorData]}
+                          onChange={(e) => {
+                            setUseRealOverhead(false)
+                            setCalculatorData(prev => ({ ...prev, [key]: parseFloat(e.target.value) || 0 }))
+                          }}
+                          className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                          min="0"
+                          step="0.01"
+                          disabled={useRealOverhead}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-3 p-2 bg-gray-50 rounded">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Totaal maandelijks:</span>
+                    <span className="font-medium">€{totalMonthlyOverhead.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                    <span>Per behandeling (~{estimatedTreatmentsPerMonth} behandelingen):</span>
+                    <span>€{overheadCost.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -252,7 +280,7 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
                 <span className="font-medium">€{laborCost.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-600">Overhead ({calculatorData.overheadPercentage}%)</span>
+                <span className="text-gray-600">Overhead (€{totalMonthlyOverhead.toFixed(0)}/maand ÷ {estimatedTreatmentsPerMonth})</span>
                 <span className="font-medium">€{overheadCost.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between py-3 border-t-2 border-gray-200 font-semibold text-lg">

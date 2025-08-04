@@ -418,6 +418,52 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
               </div>
             </div>
 
+            {/* Multi-Session Treatment Option */}
+            {!isEditing && formData.service_id && (
+              (() => {
+                const selectedService = services.find(s => s.id === formData.service_id)
+                const treatmentsNeeded = selectedService?.treatments_needed || 1
+                
+                if (treatmentsNeeded > 1) {
+                  return (
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <Package className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-purple-900 mb-1">
+                            Behandelreeks: {treatmentsNeeded} afspraken aanbevolen
+                          </p>
+                          <p className="text-sm text-purple-700 mb-3">
+                            Deze behandeling wordt optimaal uitgevoerd over {treatmentsNeeded} sessies. 
+                            U kunt alle afspraken in één keer inplannen of deze afspraak als losse sessie boeken.
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowTreatmentSeriesModal(true)}
+                              className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                            >
+                              Plan alle {treatmentsNeeded} afspraken in
+                            </button>
+                            <button
+                              type="button"
+                              className="px-4 py-2 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-200 transition-colors"
+                              onClick={() => {
+                                // Continue with single appointment booking - no action needed
+                              }}
+                            >
+                              Alleen deze afspraak boeken
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              })()
+            )}
+
             {/* Active Treatment Series Alert */}
             {showSeriesAlert && clientTreatmentSeries.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -804,7 +850,10 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
         }>
           <CreateTreatmentSeriesModal
             isOpen={showTreatmentSeriesModal}
-            onClose={() => setShowTreatmentSeriesModal(false)}
+            onClose={() => {
+              setShowTreatmentSeriesModal(false)
+              onClose() // Also close the booking form modal
+            }}
             preselectedClientId={formData.client_id}
             preselectedServiceId={formData.service_id}
           />
