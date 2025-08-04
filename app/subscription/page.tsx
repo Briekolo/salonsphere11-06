@@ -54,27 +54,27 @@ function SubscriptionPageContent() {
       // Log redirect status check
       console.log(`[Subscription Page] Payment redirect detected, checking status for ${paymentId}`)
       
-      // Immediately activate the payment - don't wait for webhooks!
-      const activatePaymentImmediately = async () => {
+      // Handle payment redirect - create record if needed and activate immediately!
+      const handlePaymentRedirect = async () => {
         try {
-          console.log(`[Subscription Page] IMMEDIATELY activating payment ${paymentId}`)
+          console.log(`[Subscription Page] Handling payment redirect for ${paymentId}`)
           
-          // First, try to activate the payment right away
-          const activateResponse = await fetch('/api/subscription/activate-payment', {
+          // First, handle the redirect properly (create payment if needed)
+          const handleResponse = await fetch('/api/subscription/handle-payment-redirect', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
               paymentId,
-              forceActivate: false // First try normal activation
+              tenantId
             })
           })
           
-          const activateResult = await activateResponse.json()
-          console.log(`[Subscription Page] Activation result:`, activateResult)
+          const handleResult = await handleResponse.json()
+          console.log(`[Subscription Page] Handle redirect result:`, handleResult)
           
-          if (activateResult.success && (activateResult.activated || activateResult.alreadyActivated)) {
+          if (handleResult.success) {
             // SUCCESS! Payment activated
             router.replace('/subscription', { scroll: false })
             setPaymentStatus('success')
@@ -89,49 +89,19 @@ function SubscriptionPageContent() {
             return
           }
           
-          // If not successful, try force activation after 3 seconds
-          console.log(`[Subscription Page] First activation attempt failed, waiting 3 seconds...`)
-          await new Promise(resolve => setTimeout(resolve, 3000))
-          
-          // Force activate - user just came from payment page
-          const forceResponse = await fetch('/api/subscription/activate-payment', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              paymentId,
-              forceActivate: true // Force it - user just paid!
-            })
-          })
-          
-          const forceResult = await forceResponse.json()
-          console.log(`[Subscription Page] Force activation result:`, forceResult)
-          
-          if (forceResult.success) {
-            router.replace('/subscription', { scroll: false })
-            setPaymentStatus('success')
-            await syncPaymentStatus()
-            setTimeout(() => {
-              window.location.href = 'https://salonsphere-three.vercel.app/'
-            }, 2000)
-          } else {
-            // Still failed - show error but try manual sync
-            setPaymentStatus('error')
-            router.replace('/subscription', { scroll: false })
-            await handleManualSync()
-          }
-          
-        } catch (error) {
-          console.error('[Subscription Page] Error activating payment:', error)
+          // If not successful, payment might still be processing
+          console.log(`[Subscription Page] Payment not successful yet, status: ${handleResult.status}`)
           setPaymentStatus('error')
           router.replace('/subscription', { scroll: false })
-          // Try manual sync as last resort
-          await handleManualSync()
+          
+        } catch (error) {
+          console.error('[Subscription Page] Error handling payment redirect:', error)
+          setPaymentStatus('error')
+          router.replace('/subscription', { scroll: false })
         }
       }
       
-      activatePaymentImmediately()
+      handlePaymentRedirect()
     } else if (success === 'true' && !paymentId) {
       // Success without payment ID, try manual sync
       setPaymentStatus('processing')
