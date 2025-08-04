@@ -1,16 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { mollieService } from '@/lib/services/mollieService'
+import { paymentReconciliationService } from '@/lib/services/paymentReconciliationService'
+import { paymentLogger } from '@/lib/utils/paymentLogger'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
-    const { tenantId } = await request.json()
+    const { tenantId, useReconciliationService } = await request.json()
 
     if (!tenantId) {
       return NextResponse.json(
         { error: 'Tenant ID is required' },
         { status: 400 }
       )
+    }
+
+    // Use new reconciliation service if requested (default to legacy for compatibility)
+    if (useReconciliationService) {
+      paymentLogger.reconciliationStarted({ trigger: 'manual' })
+      
+      const result = await paymentReconciliationService.reconcileAllStuckPayments()
+      const duration = Date.now() - startTime
+      
+      console.log(`[Payment Sync] Reconciliation service completed in ${duration}ms`)
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Payment reconciliation completed using reconciliation service',
+        result: {
+          processedPayments: result.processedPayments,
+          fixedPayments: result.fixedPayments,
+          failedPayments: result.failedPayments.length,
+          errors: result.errors.length,
+          duration: `${duration}ms`
+        },
+        method: 'reconciliation_service'
+      })
     }
 
     const supabase = await createServerSupabaseClient()
@@ -131,13 +158,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Payment Sync] Completed: ${syncedCount} payments synced, ${activatedSubscriptions} subscriptions activated`)
+    const duration = Date.now() - startTime
+    console.log(`[Payment Sync] Completed: ${syncedCount} payments synced, ${activatedSubscriptions} subscriptions activated in ${duration}ms`)
 
     return NextResponse.json({
       success: true,
-      message: `Payment status sync completed`,
+      message: `Payment status sync completed (legacy method)`,
       syncedPayments: syncedCount,
-      activatedSubscriptions: activatedSubscriptions
+      activatedSubscriptions: activatedSubscriptions,
+      duration: `${duration}ms`,
+      method: 'legacy_sync'
     })
 
   } catch (error) {

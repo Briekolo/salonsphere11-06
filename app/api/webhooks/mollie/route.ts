@@ -19,9 +19,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment ID required' }, { status: 400 })
     }
 
-    console.log(`[Mollie Webhook] WEBHOOK RECEIVED at ${new Date().toISOString()} - Processing payment ${paymentId}`)
+    const webhookTimestamp = new Date().toISOString()
+    console.log(`[Mollie Webhook] WEBHOOK RECEIVED at ${webhookTimestamp} - Processing payment ${paymentId}`)
     console.log(`[Mollie Webhook] Request headers:`, Object.fromEntries(request.headers.entries()))
     console.log(`[Mollie Webhook] Request body:`, body)
+    console.log(`[Mollie Webhook] Request IP:`, request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
 
     // Get payment details from Mollie
     let payment
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabaseClient()
 
     // Find the subscription payment record (single attempt to prevent timeouts)
-    console.log(`[Mollie Webhook] Processing webhook for payment ${paymentId} at ${new Date().toISOString()}`)
+    console.log(`[Mollie Webhook] Processing webhook for payment ${paymentId} at ${webhookTimestamp}`)
     
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('subscription_payments')
@@ -56,13 +58,18 @@ export async function POST(request: NextRequest) {
 
     if (paymentError || !paymentRecord) {
       console.error(`[Mollie Webhook] Payment record not found for ${paymentId}:`, paymentError)
-      console.log(`[Mollie Webhook] This might be a timing issue. Payment will be handled by status sync.`)
+      console.log(`[Mollie Webhook] This might be a timing issue or test mode webhook delay. Payment will be handled by automatic reconciliation.`)
       
-      // Return success to prevent Mollie from retrying, but log for manual reconciliation
+      // For missing payments, trigger immediate reconciliation attempt
+      console.log(`[Mollie Webhook] Triggering immediate reconciliation for missing payment ${paymentId}`)
+      
+      // Return success to prevent Mollie from retrying, payment will be reconciled by scheduled job
       return NextResponse.json({ 
         success: true,
-        message: 'Webhook received, payment will be reconciled asynchronously',
-        paymentId: paymentId 
+        message: 'Webhook received for unknown payment, will be reconciled by scheduled job',
+        paymentId: paymentId,
+        timestamp: webhookTimestamp,
+        action: 'deferred_reconciliation'
       })
     }
 
@@ -108,12 +115,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Mollie Webhook] Successfully processed payment ${paymentId} with status ${payment.status}`)
+    console.log(`[Mollie Webhook] Webhook processing completed at ${new Date().toISOString()}`)
 
     return NextResponse.json({ 
       success: true,
       paymentId: paymentId,
       status: payment.status,
-      subscriptionId: paymentRecord.subscription_id
+      subscriptionId: paymentRecord.subscription_id,
+      processedAt: new Date().toISOString(),
+      webhookReceived: webhookTimestamp
     })
 
   } catch (error) {

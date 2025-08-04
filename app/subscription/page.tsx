@@ -99,6 +99,28 @@ function SubscriptionPageContent() {
   const handleManualSync = async () => {
     try {
       setSyncError(null) // Clear any previous errors
+      
+      // Use enhanced reconciliation service if available
+      const response = await fetch('/api/subscription/sync-payment-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          tenantId: tenantId,
+          useReconciliationService: true 
+        })
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync request failed')
+      }
+
+      console.log('[Manual Sync] Reconciliation result:', result)
+
+      // Trigger subscription status refresh
       await syncPaymentStatus()
       
       // After sync, immediately check if we should transition to success

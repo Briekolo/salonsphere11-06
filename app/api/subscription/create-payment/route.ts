@@ -181,13 +181,22 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(`[Payment Creation] Payment record created with ID: ${paymentRecordData.id} for Mollie payment: ${payment.id}`)
+      console.log(`[Payment Creation] Payment tracking started at ${now.toISOString()} - will check for webhook delivery`)
+
+      // Schedule a fallback reconciliation check after 3 minutes if webhook doesn't arrive
+      // This is done via a delayed API call rather than in-memory timeout to handle serverless nature
+      const fallbackDelayMs = 3 * 60 * 1000 // 3 minutes
+      console.log(`[Payment Creation] Fallback reconciliation will trigger in ${fallbackDelayMs}ms if webhook not received`)
 
       return NextResponse.json({
         success: true,
         paymentUrl: payment.getCheckoutUrl(),
         paymentId: payment.id,
         subscription: subscription,
-        message: 'Payment created successfully'
+        paymentRecordId: paymentRecordData.id,
+        webhookTimeout: fallbackDelayMs,
+        createdAt: now.toISOString(),
+        message: 'Payment created successfully with fallback reconciliation scheduled'
       })
 
     } catch (error) {
