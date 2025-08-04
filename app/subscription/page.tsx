@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,13 @@ function SubscriptionPageContent() {
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'error' | 'processing' | null>(null)
   const [countdown, setCountdown] = useState<number>(15)
   const [pollingAttempts, setPollingAttempts] = useState<number>(0)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  
+  // Use ref to access current subscription status inside intervals
+  const subscriptionStatusRef = useRef(subscriptionStatus)
+  useEffect(() => {
+    subscriptionStatusRef.current = subscriptionStatus
+  }, [subscriptionStatus])
 
   // Handle payment redirect results
   useEffect(() => {
@@ -49,7 +56,7 @@ function SubscriptionPageContent() {
       let timeLeft = 15 // Give more time for processing
       let attempts = 0
       setCountdown(timeLeft)
-      setPollingAttempts(0)
+      setPollingAttempts(1) // Start at 1, not 0
       
       const pollingInterval = setInterval(async () => {
         attempts += 1
@@ -64,8 +71,8 @@ function SubscriptionPageContent() {
           }
         }
         
-        // Check if subscription is now active
-        if (subscriptionStatus?.status === 'active') {
+        // Check if subscription is now active using ref to get current value
+        if (subscriptionStatusRef.current?.status === 'active') {
           clearInterval(pollingInterval)
           setPaymentStatus('success')
           
@@ -102,7 +109,7 @@ function SubscriptionPageContent() {
       // Clear URL parameters
       router.replace('/subscription', { scroll: false })
     }
-  }, [searchParams, router, syncPaymentStatus, subscriptionStatus])
+  }, [searchParams, router, syncPaymentStatus]) // Removed subscriptionStatus from dependencies
 
   const handleStartTrial = async (planId: string) => {
     try {
@@ -137,6 +144,40 @@ function SubscriptionPageContent() {
     }
   }
 
+  const handleManualSync = async () => {
+    try {
+      setSyncError(null) // Clear any previous errors
+      await syncPaymentStatus()
+      
+      // After sync, immediately check if we should transition to success
+      setTimeout(() => {
+        if (subscriptionStatusRef.current?.status === 'active') {
+          setPaymentStatus('success')
+          setCountdown(3)
+          
+          // Start final countdown for redirect
+          let redirectTime = 3
+          const redirectInterval = setInterval(() => {
+            redirectTime -= 1
+            setCountdown(redirectTime)
+            
+            if (redirectTime <= 0) {
+              clearInterval(redirectInterval)
+              router.push('/')
+            }
+          }, 1000)
+        }
+      }, 500) // Small delay to allow query invalidation to take effect
+    } catch (error) {
+      console.error('Manual sync failed:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout bij het synchroniseren'
+      setSyncError(errorMessage)
+      
+      // Clear error after 5 seconds
+      setTimeout(() => setSyncError(null), 5000)
+    }
+  }
+
   if (plansLoading || subscriptionLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -160,15 +201,23 @@ function SubscriptionPageContent() {
               <span className="text-sm">Poging {pollingAttempts} • {countdown} seconden resterend</span>
             </AlertDescription>
           </Alert>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <Button 
-              onClick={() => syncPaymentStatus()}
+              onClick={handleManualSync}
               disabled={isSyncingPaymentStatus}
               variant="outline"
             >
               {isSyncingPaymentStatus ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
               Status handmatig controleren
             </Button>
+            
+            {syncError && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800 text-sm">
+                  <strong>Fout:</strong> {syncError}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </div>
       </div>
@@ -196,7 +245,7 @@ function SubscriptionPageContent() {
               Direct naar dashboard
             </Button>
             <Button 
-              onClick={() => syncPaymentStatus()}
+              onClick={handleManualSync}
               disabled={isSyncingPaymentStatus}
               variant="outline"
               size="sm"
