@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           .from('subscriptions')
           .update({
             plan_id: planId,
-            status: 'pending',
+            status: 'unpaid',
             current_period_start: now.toISOString(),
             current_period_end: nextMonth.toISOString(),
             mollie_customer_id: mollieCustomerId,
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
           .insert({
             tenant_id: tenantId,
             plan_id: planId,
-            status: 'pending',
+            status: 'unpaid',
             current_period_start: now.toISOString(),
             current_period_end: nextMonth.toISOString(),
             mollie_customer_id: mollieCustomerId
