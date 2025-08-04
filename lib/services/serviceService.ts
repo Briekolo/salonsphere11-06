@@ -63,9 +63,16 @@ export class ServiceService {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // Auto-determine if this is a series template based on treatments_needed
+    const serviceData = {
+      ...service,
+      tenant_id: tenantId,
+      is_series_template: (service.treatments_needed || 1) > 1
+    }
+
     const { data, error } = await supabase
       .from('services')
-      .insert({ ...service, tenant_id: tenantId })
+      .insert(serviceData)
       .select()
       .single()
 
@@ -77,9 +84,17 @@ export class ServiceService {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
 
+    // Auto-determine if this is a series template based on treatments_needed
+    const updateData = {
+      ...updates,
+      is_series_template: (updates.treatments_needed !== undefined) ? 
+        (updates.treatments_needed || 1) > 1 : 
+        updates.is_series_template
+    }
+
     const { data, error } = await supabase
       .from('services')
-      .update(updates)
+      .update(updateData)
       .eq('id', id)
       .eq('tenant_id', tenantId)
       .select()

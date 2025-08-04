@@ -10,13 +10,11 @@ import { PricingCalculator } from './PricingCalculator'
 import { CategoryManagement } from './CategoryManagement'
 import { StaffAssignments } from './StaffAssignments'
 import { StaffAssignmentsV2 } from './StaffAssignmentsV2'
-import { TreatmentSeriesManagement } from './TreatmentSeriesManagement'
-import { OverheadSettings } from './OverheadSettings'
-import { Calculator, Upload, Plus, Settings, Users, Package, Tag } from 'lucide-react'
+import { Calculator, Upload, Plus, Settings, Users, Tag } from 'lucide-react'
 import { useServices } from '@/lib/hooks/useServices'
 
 export function TreatmentsContent() {
-  const [activeTab, setActiveTab] = useState<'treatments' | 'categories' | 'staff' | 'packages' | 'overhead'>('treatments')
+  const [activeTab, setActiveTab] = useState<'treatments' | 'categories' | 'staff'>('treatments')
   const [view, setView] = useState<'overview' | 'list' | 'form' | 'calculator'>('overview')
   const [selectedTreatment, setSelectedTreatment] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -108,33 +106,6 @@ export function TreatmentsContent() {
               <span className="sm:hidden">Staff</span>
             </div>
           </button>
-          <button
-            onClick={() => setActiveTab('packages')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-              activeTab === 'packages'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Behandelreeksen
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('overhead')}
-            className={`py-1.5 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap min-h-[36px] sm:min-h-[40px] ${
-              activeTab === 'overhead'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Calculator className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Overhead Kosten</span>
-              <span className="sm:hidden">Overhead</span>
-            </div>
-          </button>
         </nav>
       </div>
 
@@ -221,10 +192,6 @@ export function TreatmentsContent() {
       {activeTab === 'categories' && <CategoryManagement />}
       
       {activeTab === 'staff' && <StaffAssignmentsV2 />}
-      
-      {activeTab === 'packages' && <TreatmentSeriesManagement />}
-      
-      {activeTab === 'overhead' && <OverheadSettings />}
       
     </div>
   )

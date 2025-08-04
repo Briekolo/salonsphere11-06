@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Clock, Euro, Edit, Star, Calendar, Users } from 'lucide-react'
+import { Clock, Euro, Edit, Star, Calendar, Users, Package } from 'lucide-react'
 import { useServices, Service } from '@/lib/hooks/useServices'
 import { ServiceService } from '@/lib/services/serviceService'
 import { getCategoryBadgeClasses } from '@/lib/utils/categoryColors'
@@ -122,7 +122,15 @@ export function TreatmentsOverview({ onTreatmentEdit, searchTerm }: TreatmentsOv
             <div className="space-y-2 sm:space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{treatment.name}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{treatment.name}</h3>
+                    {(treatment.treatments_needed || 1) > 1 && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs">
+                        <Package className="w-3 h-3" />
+                        <span>{treatment.treatments_needed}x</span>
+                      </div>
+                    )}
+                  </div>
                   <span className={`text-xs px-2 py-1 rounded-full font-medium inline-block ${getCategoryBadgeClasses(treatment.treatment_categories?.color)}`}>
                     {treatment.treatment_categories?.name || treatment.category}
                   </span>
