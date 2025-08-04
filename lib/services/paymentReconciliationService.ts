@@ -1,5 +1,6 @@
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
 import { mollieService } from './mollieService'
+import { Database } from '@/types/database'
 
 export interface PaymentReconciliationResult {
   processedPayments: number
@@ -18,7 +19,20 @@ export interface StuckPayment {
 }
 
 class PaymentReconciliationService {
-  private supabase = supabase
+  private getSupabaseClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase environment variables for payment reconciliation')
+    }
+    
+    return createClient<Database>(
+      supabaseUrl,
+      supabaseServiceKey,
+      { auth: { persistSession: false } }
+    )
+  }
 
   /**
    * Find payments that are stuck in 'pending' status for more than 5 minutes
@@ -27,7 +41,8 @@ class PaymentReconciliationService {
     const fiveMinutesAgo = new Date()
     fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5)
 
-    const { data: stuckPayments, error } = await this.supabase
+    const supabase = this.getSupabaseClient()
+    const { data: stuckPayments, error } = await supabase
       .from('subscription_payments')
       .select('id, subscription_id, mollie_payment_id, created_at, amount_cents, currency')
       .eq('status', 'pending')
@@ -61,7 +76,8 @@ class PaymentReconciliationService {
         molliePayment.details?.failureReason || 'Payment failed' : null
 
       // Update payment record
-      const { error: paymentUpdateError } = await this.supabase
+      const supabase = this.getSupabaseClient()
+      const { error: paymentUpdateError } = await supabase
         .from('subscription_payments')
         .update({
           status: internalStatus,
@@ -80,7 +96,7 @@ class PaymentReconciliationService {
       if (mollieService.isPaymentSuccessful(molliePayment)) {
         console.log(`[PaymentReconciliation] Activating subscription ${payment.subscription_id}`)
         
-        const { error: subscriptionUpdateError } = await this.supabase
+        const { error: subscriptionUpdateError } = await supabase
           .from('subscriptions')
           .update({
             status: 'active',
@@ -100,7 +116,7 @@ class PaymentReconciliationService {
       else if (mollieService.isPaymentFailed(molliePayment)) {
         console.log(`[PaymentReconciliation] Marking subscription ${payment.subscription_id} as unpaid`)
         
-        const { error: subscriptionUpdateError } = await this.supabase
+        const { error: subscriptionUpdateError } = await supabase
           .from('subscriptions')
           .update({
             status: 'unpaid',
@@ -186,7 +202,8 @@ class PaymentReconciliationService {
     }
 
     // Check if payment is still pending in our database
-    const { data: payment, error } = await this.supabase
+    const supabase = this.getSupabaseClient()
+    const { data: payment, error } = await supabase
       .from('subscription_payments')
       .select('status')
       .eq('mollie_payment_id', molliePaymentId)
@@ -205,7 +222,8 @@ class PaymentReconciliationService {
    */
   async forceReconcilePayment(molliePaymentId: string): Promise<boolean> {
     try {
-      const { data: payment, error } = await this.supabase
+      const supabase = this.getSupabaseClient()
+      const { data: payment, error } = await supabase
         .from('subscription_payments')
         .select('id, subscription_id, mollie_payment_id, created_at, amount_cents, currency')
         .eq('mollie_payment_id', molliePaymentId)
