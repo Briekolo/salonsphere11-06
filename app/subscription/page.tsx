@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function SubscriptionPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: plans, isLoading: plansLoading } = useSubscriptionPlans()
   const { 
     subscriptionStatus, 
@@ -22,10 +23,33 @@ export default function SubscriptionPage() {
     isCreatingTrial,
     simulatePayment,
     isSimulatingPayment,
+    createPayment,
+    isCreatingPayment,
     tenantId 
   } = useSubscription()
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'error' | null>(null)
+
+  // Handle payment redirect results
+  useEffect(() => {
+    const success = searchParams.get('success')
+    const error = searchParams.get('error')
+    
+    if (success === 'true') {
+      setPaymentStatus('success')
+      // Clear URL parameters
+      router.replace('/subscription', { scroll: false })
+      // Redirect to dashboard after showing success message
+      setTimeout(() => {
+        router.push('/')
+      }, 3000)
+    } else if (error) {
+      setPaymentStatus('error')
+      // Clear URL parameters
+      router.replace('/subscription', { scroll: false })
+    }
+  }, [searchParams, router])
 
   const handleStartTrial = async (planId: string) => {
     try {
@@ -39,19 +63,24 @@ export default function SubscriptionPage() {
   }
 
   const handleUpgrade = async (planId: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      // Dev mode: simulate payment
-      try {
-        setSelectedPlan(planId)
-        await simulatePayment(planId)
-        router.push('/')
-      } catch (error) {
-        console.error('Error simulating payment:', error)
-        alert('Er is een fout opgetreden bij de betaling simulatie')
-      }
-    } else {
-      // Production: show Mollie integration message
-      alert('Betaling integratie komt binnenkort beschikbaar!')
+    try {
+      setSelectedPlan(planId)
+      await createPayment(planId)
+      // Note: createPayment will redirect to Mollie, so no need to redirect here
+    } catch (error) {
+      console.error('Error creating payment:', error)
+      alert('Er is een fout opgetreden bij het aanmaken van de betaling. Probeer het opnieuw.')
+    }
+  }
+
+  const handleSimulatePayment = async (planId: string) => {
+    try {
+      setSelectedPlan(planId)
+      await simulatePayment(planId)
+      router.push('/')
+    } catch (error) {
+      console.error('Error simulating payment:', error)
+      alert('Er is een fout opgetreden bij de betaling simulatie')
     }
   }
 
@@ -59,6 +88,44 @@ export default function SubscriptionPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LoadingSpinner />
+      </div>
+    )
+  }
+
+  // Show payment success message
+  if (paymentStatus === 'success') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>Betaling succesvol!</strong>
+              <br />
+              Uw abonnement is geactiveerd. U wordt doorgestuurd naar het dashboard...
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    )
+  }
+
+  // Show payment error message
+  if (paymentStatus === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center space-y-4">
+          <Alert className="border-red-200 bg-red-50">
+            <AlertDescription className="text-red-800">
+              <strong>Betaling mislukt</strong>
+              <br />
+              Er is een probleem opgetreden met uw betaling. Probeer het opnieuw.
+            </AlertDescription>
+          </Alert>
+          <Button onClick={() => setPaymentStatus(null)}>
+            Probeer opnieuw
+          </Button>
+        </div>
       </div>
     )
   }
@@ -151,14 +218,14 @@ export default function SubscriptionPage() {
                       onClick={() => handleUpgrade(subscription?.plan_id || '')}
                       className="w-full"
                       size="lg"
-                      disabled={(isCreatingTrial || isSimulatingPayment) && selectedPlan === subscription?.plan_id}
+                      disabled={(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === subscription?.plan_id}
                     >
-                      {(isCreatingTrial || isSimulatingPayment) && selectedPlan === subscription?.plan_id ? (
+                      {(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === subscription?.plan_id ? (
                         <LoadingSpinner className="w-4 h-4 mr-2" />
                       ) : (
                         <CreditCard className="w-4 h-4 mr-2" />
                       )}
-                      {process.env.NODE_ENV === 'development' ? 'Betalen (Dev Mode)' : 'Upgrade naar betaald plan'}
+                      Upgrade naar betaald plan
                     </Button>
                   </div>
                 </CardFooter>
@@ -175,9 +242,9 @@ export default function SubscriptionPage() {
                   key={plan.id} 
                   plan={plan} 
                   onSelect={() => handleUpgrade(plan.id)}
-                  buttonText={process.env.NODE_ENV === 'development' ? 'Betalen (Dev Mode)' : 'Wijzig Plan'}
+                  buttonText="Wijzig Plan"
                   buttonVariant="outline"
-                  isLoading={(isCreatingTrial || isSimulatingPayment) && selectedPlan === plan.id}
+                  isLoading={(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === plan.id}
                 />
               ))}
             </div>
@@ -197,22 +264,11 @@ export default function SubscriptionPage() {
             Start uw 14-daagse gratis proefperiode en ontdek alle mogelijkheden van SalonSphere
           </p>
           
-          {process.env.NODE_ENV === 'development' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-2xl mx-auto mb-6">
-              <div className="flex items-center justify-center text-orange-800">
-                <span className="font-medium">🚧 Development Mode: Betalingen worden gesimuleerd</span>
-              </div>
-            </div>
-          )}
-          
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
             <div className="flex items-center justify-center text-blue-800">
               <Star className="w-5 h-5 mr-2" />
               <span className="font-medium">
-                {process.env.NODE_ENV === 'development' 
-                  ? '14 dagen gratis proberen • Dev betaling beschikbaar'
-                  : '14 dagen gratis proberen • Geen betaalgegevens vereist'
-                }
+                14 dagen gratis proberen • Veilige betaling via Mollie
               </span>
             </div>
           </div>
@@ -225,7 +281,8 @@ export default function SubscriptionPage() {
               plan={plan}
               onTrialSelect={() => handleStartTrial(plan.id)}
               onPaymentSelect={() => handleUpgrade(plan.id)}
-              isLoading={(isCreatingTrial || isSimulatingPayment) && selectedPlan === plan.id}
+              onSimulatePayment={process.env.NODE_ENV === 'development' ? () => handleSimulatePayment(plan.id) : undefined}
+              isLoading={(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === plan.id}
               popular={plan.name === 'Professional'}
               showDevPayment={process.env.NODE_ENV === 'development'}
             />
@@ -246,6 +303,7 @@ function PlanCard({
   plan, 
   onTrialSelect, 
   onPaymentSelect,
+  onSimulatePayment, // For dev mode simulation
   onSelect, // Legacy support
   isLoading = false, 
   popular = false,
@@ -308,15 +366,25 @@ function PlanCard({
               {isLoading ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
               Start Gratis Proef
             </Button>
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={onPaymentSelect}
-              disabled={isLoading}
-            >
-              {isLoading ? <LoadingSpinner className="w-4 h-4 mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
-              Betalen (Dev Mode)
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                size="lg"
+                onClick={onPaymentSelect}
+                disabled={isLoading}
+              >
+                {isLoading ? <LoadingSpinner className="w-4 h-4 mr-1" /> : <CreditCard className="w-4 h-4 mr-1" />}
+                Mollie
+              </Button>
+              <Button 
+                size="lg"
+                onClick={onSimulatePayment}
+                disabled={isLoading}
+                variant="outline"
+              >
+                {isLoading ? <LoadingSpinner className="w-4 h-4 mr-1" /> : null}
+                Simuleer
+              </Button>
+            </div>
           </div>
         ) : (
           <Button 

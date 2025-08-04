@@ -85,6 +85,34 @@ export function useSubscription() {
       queryClient.invalidateQueries({ queryKey: ['subscription-details', tenantId] })
     },
   })
+
+  // Create real payment mutation
+  const createPaymentMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      if (!tenantId) throw new Error('No tenant ID available')
+      
+      const response = await fetch('/api/subscription/create-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planId, tenantId })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create payment')
+      }
+      
+      return response.json()
+    },
+    onSuccess: (data) => {
+      // Redirect to Mollie payment page
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl
+      }
+    },
+  })
   
   const loading = tenantLoading || checkingSubscription || loadingStatus || loadingSubscription
   
@@ -107,6 +135,10 @@ export function useSubscription() {
     simulatePayment: simulatePaymentMutation.mutate,
     simulatePaymentAsync: simulatePaymentMutation.mutateAsync,
     isSimulatingPayment: simulatePaymentMutation.isPending,
+    
+    createPayment: createPaymentMutation.mutate,
+    createPaymentAsync: createPaymentMutation.mutateAsync,
+    isCreatingPayment: createPaymentMutation.isPending,
     
     // Helper functions
     isFeatureAvailable: (feature: string) => subscriptionService.isFeatureAvailable(subscriptionStatus, feature),
