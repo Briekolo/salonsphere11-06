@@ -52,49 +52,10 @@ function SubscriptionPageContent() {
       // Clear URL parameters
       router.replace('/subscription', { scroll: false })
       
-      // Start polling for subscription status changes
-      let timeLeft = 15 // Give more time for processing
-      let attempts = 0
-      setCountdown(timeLeft)
-      setPollingAttempts(1) // Start at 1, not 0
-      
-      const pollingInterval = setInterval(async () => {
-        attempts += 1
-        setPollingAttempts(attempts)
-        
-        // Sync payment status every few attempts
-        if (attempts % 3 === 0) {
-          try {
-            await syncPaymentStatus()
-          } catch (error) {
-            console.log('Payment sync attempt failed:', error)
-          }
-        }
-        
-        // Check if subscription is now active using ref to get current value
-        if (subscriptionStatusRef.current?.status === 'active') {
-          clearInterval(pollingInterval)
-          setPaymentStatus('success')
-          
-          // Redirect after 3 seconds
-          setTimeout(() => {
-            window.location.href = 'https://salonsphere-three.vercel.app/'
-          }, 3000)
-          
-          return
-        }
-        
-        timeLeft -= 2 // Check every 2 seconds
-        setCountdown(Math.max(0, timeLeft))
-        
-        if (timeLeft <= 0) {
-          clearInterval(pollingInterval)
-          setPaymentStatus('success') // Show success anyway, let user manually check
-        }
-      }, 2000)
-      
-      // Cleanup interval on component unmount
-      return () => clearInterval(pollingInterval)
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        window.location.href = 'https://salonsphere-three.vercel.app/'
+      }, 3000)
     } else if (error) {
       setPaymentStatus('error')
       // Clear URL parameters
@@ -175,33 +136,21 @@ function SubscriptionPageContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">
-          <Alert className="border-blue-200 bg-blue-50">
-            <Clock className="w-4 h-4 text-blue-600 animate-spin" />
-            <AlertDescription className="text-blue-800">
-              <strong>Betaling wordt verwerkt...</strong>
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>Betaling succesvol!</strong>
               <br />
-              We controleren uw betalingsstatus. Dit kan enkele seconden duren.
-              <br />
-              <span className="text-sm">Poging {pollingAttempts} • {countdown} seconden resterend</span>
+              We will redirect you shortly, if not: press hyperlink.
             </AlertDescription>
           </Alert>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4">
             <Button 
-              onClick={handleManualSync}
-              disabled={isSyncingPaymentStatus}
-              variant="outline"
+              onClick={() => window.location.href = 'https://salonsphere-three.vercel.app/'}
+              className="bg-green-600 hover:bg-green-700 w-full"
             >
-              {isSyncingPaymentStatus ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
-              Status handmatig controleren
+              Go to Dashboard
             </Button>
-            
-            {syncError && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-800 text-sm">
-                  <strong>Fout:</strong> {syncError}
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         </div>
       </div>
