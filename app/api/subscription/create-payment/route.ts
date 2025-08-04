@@ -173,16 +173,33 @@ export async function POST(request: NextRequest) {
 
     } catch (error) {
       console.error('Failed to create Mollie payment:', error)
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        mollieApiKey: process.env.MOLLIE_API_KEY ? 'SET' : 'NOT_SET'
+      })
       return NextResponse.json(
-        { error: 'Failed to create payment' },
+        { 
+          error: 'Failed to create payment',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        },
         { status: 500 }
       )
     }
 
   } catch (error) {
     console.error('Payment creation error:', error)
+    console.error('Full error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      tenantId,
+      planId
+    })
     return NextResponse.json(
-      { error: 'Internal server error during payment creation' },
+      { 
+        error: 'Internal server error during payment creation',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

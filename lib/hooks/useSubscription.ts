@@ -101,7 +101,8 @@ export function useSubscription() {
       
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to create payment')
+        console.error('Payment creation failed:', error)
+        throw new Error(error.details || error.error || 'Failed to create payment')
       }
       
       return response.json()
