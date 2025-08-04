@@ -30,6 +30,7 @@ function SubscriptionPageContent() {
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'error' | null>(null)
+  const [countdown, setCountdown] = useState<number>(3)
 
   // Handle payment redirect results
   useEffect(() => {
@@ -40,10 +41,23 @@ function SubscriptionPageContent() {
       setPaymentStatus('success')
       // Clear URL parameters
       router.replace('/subscription', { scroll: false })
-      // Redirect to dashboard after showing success message
-      setTimeout(() => {
-        router.push('/')
-      }, 3000)
+      
+      // Start countdown and redirect
+      let timeLeft = 3
+      setCountdown(timeLeft)
+      
+      const countdownInterval = setInterval(() => {
+        timeLeft -= 1
+        setCountdown(timeLeft)
+        
+        if (timeLeft <= 0) {
+          clearInterval(countdownInterval)
+          router.push('/')
+        }
+      }, 1000)
+      
+      // Cleanup interval on component unmount
+      return () => clearInterval(countdownInterval)
     } else if (error) {
       setPaymentStatus('error')
       // Clear URL parameters
@@ -102,9 +116,17 @@ function SubscriptionPageContent() {
             <AlertDescription className="text-green-800">
               <strong>Betaling succesvol!</strong>
               <br />
-              Uw abonnement is geactiveerd. U wordt doorgestuurd naar het dashboard...
+              Uw abonnement is geactiveerd. U wordt doorgestuurd naar het dashboard in {countdown} seconde{countdown !== 1 ? 'n' : ''}...
             </AlertDescription>
           </Alert>
+          <div className="mt-4">
+            <Button 
+              onClick={() => router.push('/')}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Direct naar dashboard
+            </Button>
+          </div>
         </div>
       </div>
     )

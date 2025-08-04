@@ -43,16 +43,40 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient()
 
-    // Find the subscription payment record
-    const { data: paymentRecord, error: paymentError } = await supabase
-      .from('subscription_payments')
-      .select('*')
-      .eq('mollie_payment_id', paymentId)
-      .single()
+    // Find the subscription payment record with retry logic for race conditions
+    let paymentRecord = null
+    let attempts = 0
+    const maxAttempts = 3
+    const baseDelay = 1000 // 1 second
 
-    if (paymentError || !paymentRecord) {
-      console.error('Payment record not found in database:', paymentError)
-      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 })
+    while (attempts < maxAttempts && !paymentRecord) {
+      attempts++
+      console.log(`[Mollie Webhook] Attempt ${attempts}/${maxAttempts} to find payment record for ${paymentId}`)
+      
+      const { data, error } = await supabase
+        .from('subscription_payments')
+        .select('*')
+        .eq('mollie_payment_id', paymentId)
+        .single()
+
+      if (data && !error) {
+        paymentRecord = data
+        console.log(`[Mollie Webhook] Payment record found on attempt ${attempts}`)
+        break
+      }
+
+      if (attempts < maxAttempts) {
+        const delay = baseDelay * Math.pow(2, attempts - 1) // Exponential backoff: 1s, 2s, 4s
+        console.log(`[Mollie Webhook] Payment record not found, retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      } else {
+        console.error(`[Mollie Webhook] Payment record not found after ${maxAttempts} attempts:`, error)
+      }
+    }
+
+    if (!paymentRecord) {
+      console.error(`[Mollie Webhook] Failed to find payment record for ${paymentId} after ${maxAttempts} attempts`)
+      return NextResponse.json({ error: 'Payment record not found after retries' }, { status: 404 })
     }
 
     // Update payment status

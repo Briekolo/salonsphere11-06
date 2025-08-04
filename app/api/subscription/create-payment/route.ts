@@ -160,8 +160,8 @@ export async function POST(request: NextRequest) {
         throw new Error('Subscription creation failed - no subscription object available')
       }
 
-      // Create payment record
-      await supabase
+      // Create payment record and ensure it's committed
+      const { data: paymentRecordData, error: paymentInsertError } = await supabase
         .from('subscription_payments')
         .insert({
           subscription_id: subscription.id,
@@ -172,6 +172,15 @@ export async function POST(request: NextRequest) {
           period_start: now.toISOString(),
           period_end: nextMonth.toISOString()
         })
+        .select()
+        .single()
+
+      if (paymentInsertError) {
+        console.error('Failed to create payment record:', paymentInsertError)
+        throw new Error(`Failed to create payment record: ${paymentInsertError.message}`)
+      }
+
+      console.log(`[Payment Creation] Payment record created with ID: ${paymentRecordData.id} for Mollie payment: ${payment.id}`)
 
       return NextResponse.json({
         success: true,
