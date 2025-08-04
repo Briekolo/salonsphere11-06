@@ -387,16 +387,27 @@ function PlanCard({
             </div>
           </div>
         ) : (
-          <Button 
-            className="w-full" 
-            size="lg"
-            variant={buttonVariant}
-            onClick={onSelect || onTrialSelect}
-            disabled={isLoading}
-          >
-            {isLoading ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
-            {buttonText}
-          </Button>
+          <div className="w-full space-y-3">
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={onTrialSelect}
+              disabled={isLoading}
+              variant="outline"
+            >
+              {isLoading ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
+              Start Gratis Proef
+            </Button>
+            <Button 
+              className="w-full"
+              size="lg"
+              onClick={onPaymentSelect}
+              disabled={isLoading}
+            >
+              {isLoading ? <LoadingSpinner className="w-4 h-4 mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
+              Betaal Nu
+            </Button>
+          </div>
         )}
       </CardFooter>
     </Card>
