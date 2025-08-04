@@ -2,37 +2,69 @@
 
 import { useState, useEffect } from 'react';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
-import { useNotificationSettings } from '@/lib/hooks/useNotificationSettings';
+import { useNotificationSettings, useUpdateNotificationSettings } from '@/lib/hooks/useNotificationSettings';
+import { useEmailSettings, useUpdateEmailSettings } from '@/lib/hooks/useEmailAutomation';
 import { 
   Mail, 
-  MessageSquare, 
-  Bell,
-  Settings,
-  Send,
   Save,
   Loader2,
-  Phone,
-  Calendar,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Clock,
+  X
 } from 'lucide-react';
 
 export default function NotificationsPage() {
   const { isAdmin, isLoading } = useRequireAdmin();
-  const { notificationSettings, isLoading: notificationLoading, invalidateNotificationSettings } = useNotificationSettings();
+  const { notificationSettings, isLoading: notificationLoading } = useNotificationSettings();
+  const updateNotificationSettings = useUpdateNotificationSettings();
+  const { data: emailSettings, isLoading: emailLoading } = useEmailSettings();
+  const updateEmailSettings = useUpdateEmailSettings();
   const [saving, setSaving] = useState(false);
+  const [localNotificationSettings, setLocalNotificationSettings] = useState(notificationSettings);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Update local state when notification settings are loaded
+  useEffect(() => {
+    if (notificationSettings) {
+      setLocalNotificationSettings(notificationSettings);
+      setHasUnsavedChanges(false);
+    }
+  }, [notificationSettings]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (notificationSettings && localNotificationSettings) {
+      const hasChanges = JSON.stringify(notificationSettings) !== JSON.stringify(localNotificationSettings);
+      setHasUnsavedChanges(hasChanges);
+    }
+  }, [localNotificationSettings, notificationSettings]);
 
   const handleSave = async () => {
+    if (!localNotificationSettings || !hasUnsavedChanges) return;
+    
     setSaving(true);
-    // This would need to be implemented to save notification settings
-    // For now it's a placeholder that redirects to the settings page
-    setTimeout(() => {
+    setFeedback(null);
+    try {
+      await updateNotificationSettings.mutateAsync(localNotificationSettings);
+      setFeedback({ type: 'success', message: 'Instellingen zijn succesvol opgeslagen' });
+      setHasUnsavedChanges(false);
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setFeedback({ 
+        type: 'error', 
+        message: 'Er is een fout opgetreden bij het opslaan van de instellingen' 
+      });
+    } finally {
       setSaving(false);
-      alert('Ga naar Instellingen > Meldingen om notificatie-instellingen te beheren');
-    }, 1000);
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || emailLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary-600"></div>
@@ -40,36 +72,6 @@ export default function NotificationsPage() {
     );
   }
 
-  const emailTemplates = [
-    {
-      name: 'Afspraak Bevestiging',
-      description: 'Automatisch verzonden na het maken van een afspraak',
-      icon: <Calendar className="h-5 w-5" />,
-      status: 'active',
-      lastModified: '2024-06-10'
-    },
-    {
-      name: 'Afspraak Herinnering',
-      description: 'Verzonden 24 uur voor de afspraak',
-      icon: <Bell className="h-5 w-5" />,
-      status: 'active',
-      lastModified: '2024-06-08'
-    },
-    {
-      name: 'Betaling Bevestiging',
-      description: 'Verzonden na succesvolle betaling',
-      icon: <CheckCircle className="h-5 w-5" />,
-      status: 'active',
-      lastModified: '2024-06-05'
-    },
-    {
-      name: 'Promotie Email',
-      description: 'Voor marketingcampagnes en aanbiedingen',
-      icon: <Send className="h-5 w-5" />,
-      status: 'draft',
-      lastModified: '2024-06-01'
-    }
-  ];
 
   return (
     <div className="mobile-p space-y-4 lg:space-y-6">
@@ -80,43 +82,30 @@ export default function NotificationsPage() {
         </p>
       </div>
 
-      {/* Email Templates */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <Mail className="h-5 w-5" />
-          <h2 className="text-heading">Email Templates</h2>
+      {/* Feedback Messages */}
+      {feedback && (
+        <div className={`p-4 rounded-xl border flex items-center justify-between ${
+          feedback.type === 'success' 
+            ? 'bg-green-50 border-green-200 text-green-800' 
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {feedback.type === 'success' ? (
+              <CheckCircle className="h-5 w-5" />
+            ) : (
+              <AlertTriangle className="h-5 w-5" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+          <button 
+            onClick={() => setFeedback(null)}
+            className="text-current hover:opacity-70"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        
-        <div className="space-y-4">
-          {emailTemplates.map((template, index) => (
-            <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-xl">
-                  <div className="text-gray-600">{template.icon}</div>
-                </div>
-                <div>
-                  <h3 className="font-medium">{template.name}</h3>
-                  <p className="text-sm text-gray-600">{template.description}</p>
-                  <p className="text-xs text-gray-500">Laatst gewijzigd: {template.lastModified}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`status-chip ${
-                  template.status === 'active' 
-                    ? 'bg-icon-green-bg text-icon-green' 
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {template.status === 'active' ? 'Actief' : 'Concept'}
-                </span>
-                <button className="btn-outlined text-sm">
-                  <Settings className="h-4 w-4" />
-                  Bewerken
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
+
 
       {/* Email Settings */}
       <div className="card">
@@ -134,11 +123,8 @@ export default function NotificationsPage() {
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                checked={emailSettings.appointmentConfirmation}
-                onChange={(e) => setEmailSettings(prev => ({
-                  ...prev,
-                  appointmentConfirmation: e.target.checked
-                }))}
+                checked={emailSettings?.booking_confirmation_enabled || false}
+                onChange={(e) => updateEmailSettings.mutate({ booking_confirmation_enabled: e.target.checked })}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
@@ -153,49 +139,46 @@ export default function NotificationsPage() {
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                checked={emailSettings.appointmentReminder}
-                onChange={(e) => setEmailSettings(prev => ({
-                  ...prev,
-                  appointmentReminder: e.target.checked
-                }))}
+                checked={emailSettings?.booking_reminder_enabled || false}
+                onChange={(e) => updateEmailSettings.mutate({ booking_reminder_enabled: e.target.checked })}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
             </label>
           </div>
 
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+          <div 
+            className="flex items-center justify-between p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => {
+              setFeedback({ 
+                type: 'error', 
+                message: 'Betaling bevestigingen worden automatisch verstuurd via Mollie wanneer deze integratie beschikbaar is.' 
+              });
+              setTimeout(() => setFeedback(null), 4000);
+            }}
+          >
             <div>
               <p className="font-medium">Betaling Bevestigingen</p>
               <p className="text-sm text-gray-600">Bevestiging van succesvolle betalingen</p>
+              <p className="text-xs text-orange-600">Binnenkort beschikbaar via Mollie</p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={emailSettings.paymentConfirmation}
-                onChange={(e) => setEmailSettings(prev => ({
-                  ...prev,
-                  paymentConfirmation: e.target.checked
-                }))}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
+            <div className="relative inline-flex items-center">
+              <div className="w-11 h-6 bg-gray-200 rounded-full opacity-50">
+                <div className="absolute top-[2px] left-[2px] bg-white border-gray-300 border rounded-full h-5 w-5"></div>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
             <div>
-              <p className="font-medium">Promotionele Emails</p>
-              <p className="text-sm text-gray-600">Marketing emails en aanbiedingen</p>
+              <p className="font-medium">Welkom Emails</p>
+              <p className="text-sm text-gray-600">Welkomstbericht voor nieuwe klanten</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                checked={emailSettings.promotionalEmails}
-                onChange={(e) => setEmailSettings(prev => ({
-                  ...prev,
-                  promotionalEmails: e.target.checked
-                }))}
+                checked={emailSettings?.welcome_email_enabled || false}
+                onChange={(e) => updateEmailSettings.mutate({ welcome_email_enabled: e.target.checked })}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
@@ -204,42 +187,29 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* SMS & Push Notifications */}
+      {/* Email Timing */}
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
-          <MessageSquare className="h-5 w-5" />
-          <h2 className="text-heading">SMS & Push Notificaties</h2>
+          <Clock className="h-5 w-5" />
+          <h2 className="text-heading">Email Timing</h2>
         </div>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-            <div>
-              <p className="font-medium">SMS Herinneringen</p>
-              <p className="text-sm text-gray-600">SMS berichten voor afspraak herinneringen</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notificationSettings.smsReminders}
-                onChange={(e) => setNotificationSettings(prev => ({
-                  ...prev,
-                  smsReminders: e.target.checked
-                }))}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Herinnering Timing
             </label>
+            <p className="text-sm text-gray-600 mb-3">
+              Wanneer moeten herinneringen worden verstuurd voor afspraken?
+            </p>
             <select
-              value={notificationSettings.reminderTiming}
-              onChange={(e) => setNotificationSettings(prev => ({
+              value={localNotificationSettings?.client_reminders?.appointment_reminder_hours || 24}
+              onChange={(e) => setLocalNotificationSettings(prev => ({
                 ...prev,
-                reminderTiming: parseInt(e.target.value)
+                client_reminders: {
+                  ...prev?.client_reminders,
+                  appointment_reminder_hours: parseInt(e.target.value)
+                }
               }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
@@ -282,25 +252,27 @@ export default function NotificationsPage() {
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Opslaan...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Wijzigingen Opslaan
-            </>
-          )}
-        </button>
-      </div>
+      {hasUnsavedChanges && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Opslaan...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Wijzigingen Opslaan
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

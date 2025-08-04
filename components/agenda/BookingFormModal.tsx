@@ -9,6 +9,7 @@ import { useServices } from '@/lib/hooks/useServices'
 import { useUsers } from '@/lib/hooks/useUsers'
 import { useAvailableStaff } from '@/lib/hooks/useAvailableStaff'
 import { useBusinessHours } from '@/lib/hooks/useBusinessHours'
+import { useGoogleCalendarIntegration, useSyncToGoogleCalendar } from '@/lib/hooks/useGoogleCalendar'
 import { StaffMember, StaffService } from '@/types/staff'
 import { debugLog, debugError } from '@/lib/utils/debug'
 import { useClientTreatmentSeries } from '@/lib/hooks/useTreatmentSeries'
@@ -226,6 +227,10 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
   const createMutation = useCreateBooking()
   const updateMutation = useUpdateBooking()
   const deleteMutation = useDeleteBooking()
+  
+  // Google Calendar integration
+  const { data: googleCalendarIntegration } = useGoogleCalendarIntegration()
+  const syncToGoogleCalendar = useSyncToGoogleCalendar()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -253,13 +258,29 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
 
       debugLog('Submitting payload:', payload)
 
+      let result;
       if (isEditing) {
         if (!bookingId) return
-        await updateMutation.mutateAsync({ id: bookingId, updates: payload })
+        result = await updateMutation.mutateAsync({ id: bookingId, updates: payload })
       } else {
         // Add sendConfirmationEmail for staff bookings (will respect marketing toggle setting)
-        await createMutation.mutateAsync({ ...payload, sendConfirmationEmail: true })
+        result = await createMutation.mutateAsync({ ...payload, sendConfirmationEmail: true })
       }
+      
+      // Auto-sync to Google Calendar if integration is connected
+      if (googleCalendarIntegration?.is_connected) {
+        try {
+          const appointmentId = isEditing ? bookingId : result?.id;
+          if (appointmentId) {
+            await syncToGoogleCalendar.mutateAsync(appointmentId);
+            debugLog('Booking synced to Google Calendar successfully');
+          }
+        } catch (error) {
+          debugError('Failed to sync booking to Google Calendar:', error);
+          // Don't fail the booking creation/update if Google Calendar sync fails
+        }
+      }
+      
       onClose()
     } catch (error: any) {
       debugError('Failed to save booking:', error)

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ArrowLeft, Save, X, Plus, Trash2, Upload } from 'lucide-react'
 import { useCreateService, useUpdateService } from '@/lib/hooks/useServices'
 import { useActiveTreatmentCategories } from '@/lib/hooks/useTreatmentCategories'
+import { useOverheadMetrics } from '@/lib/hooks/useOverheadCalculations'
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 import { ServiceService } from '@/lib/services/serviceService'
@@ -30,9 +31,14 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
   })
 
   const { data: categories = [], isLoading: categoriesLoading } = useActiveTreatmentCategories()
+  const { data: overheadMetrics } = useOverheadMetrics()
 
   const isEditing = treatmentId !== null
   const margin = formData.price > 0 ? ((formData.price - formData.materialCost) / formData.price * 100) : 0
+  const overheadCost = overheadMetrics?.overhead_per_treatment || 0
+  const marginWithOverhead = formData.price > 0 ? ServiceService.calculateMarginWithOverhead(formData.price, formData.materialCost, overheadCost) : 0
+  const totalCostWithOverhead = formData.materialCost + overheadCost
+  const profitWithOverhead = formData.price - totalCostWithOverhead
 
   const createMutation = useCreateService()
   const updateMutation = useUpdateService()
@@ -329,10 +335,11 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                 />
               </div>
 
-              {/* Margin Display */}
-              <div className="p-3 bg-gray-50 rounded-lg">
+              {/* Margin Display with Overhead */}
+              <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+                {/* Without Overhead */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Berekende marge:</span>
+                  <span className="text-sm font-medium text-gray-700">Marge (zonder overhead):</span>
                   <span className={`text-lg font-bold ${
                     margin >= 80 ? 'text-green-600' : 
                     margin >= 70 ? 'text-yellow-600' : 'text-red-600'
@@ -340,9 +347,31 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
                     {margin.toFixed(1)}%
                   </span>
                 </div>
-                <div className="text-xs text-gray-600 mt-1">
-                  Winst: €{(formData.price - formData.materialCost).toFixed(2)}
-                </div>
+                
+                {/* With Overhead */}
+                {overheadMetrics && (
+                  <>
+                    <div className="flex items-center justify-between border-t pt-2">
+                      <span className="text-sm font-medium text-gray-700">Marge (met overhead):</span>
+                      <span className={`text-lg font-bold ${
+                        marginWithOverhead >= 80 ? 'text-green-600' : 
+                        marginWithOverhead >= 70 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {marginWithOverhead.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 grid grid-cols-2 gap-2">
+                      <div>Overhead per behandeling: €{overheadCost.toFixed(2)}</div>
+                      <div>Winst na overhead: €{profitWithOverhead.toFixed(2)}</div>
+                    </div>
+                  </>
+                )}
+                
+                {!overheadMetrics && (
+                  <div className="text-xs text-gray-600">
+                    Winst: €{(formData.price - formData.materialCost).toFixed(2)}
+                  </div>
+                )}
               </div>
             </div>
           </div>
