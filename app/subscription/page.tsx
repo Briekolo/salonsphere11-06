@@ -25,12 +25,15 @@ function SubscriptionPageContent() {
     isSimulatingPayment,
     createPayment,
     isCreatingPayment,
+    syncPaymentStatus,
+    isSyncingPaymentStatus,
     tenantId 
   } = useSubscription()
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-  const [paymentStatus, setPaymentStatus] = useState<'success' | 'error' | null>(null)
-  const [countdown, setCountdown] = useState<number>(3)
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'error' | 'processing' | null>(null)
+  const [countdown, setCountdown] = useState<number>(15)
+  const [pollingAttempts, setPollingAttempts] = useState<number>(0)
 
   // Handle payment redirect results
   useEffect(() => {
@@ -38,32 +41,68 @@ function SubscriptionPageContent() {
     const error = searchParams.get('error')
     
     if (success === 'true') {
-      setPaymentStatus('success')
+      setPaymentStatus('processing')
       // Clear URL parameters
       router.replace('/subscription', { scroll: false })
       
-      // Start countdown and redirect
-      let timeLeft = 3
+      // Start polling for subscription status changes
+      let timeLeft = 15 // Give more time for processing
+      let attempts = 0
       setCountdown(timeLeft)
+      setPollingAttempts(0)
       
-      const countdownInterval = setInterval(() => {
-        timeLeft -= 1
-        setCountdown(timeLeft)
+      const pollingInterval = setInterval(async () => {
+        attempts += 1
+        setPollingAttempts(attempts)
+        
+        // Sync payment status every few attempts
+        if (attempts % 3 === 0) {
+          try {
+            await syncPaymentStatus()
+          } catch (error) {
+            console.log('Payment sync attempt failed:', error)
+          }
+        }
+        
+        // Check if subscription is now active
+        if (subscriptionStatus?.status === 'active') {
+          clearInterval(pollingInterval)
+          setPaymentStatus('success')
+          
+          // Start final countdown for redirect
+          let redirectTime = 3
+          setCountdown(redirectTime)
+          
+          const redirectInterval = setInterval(() => {
+            redirectTime -= 1
+            setCountdown(redirectTime)
+            
+            if (redirectTime <= 0) {
+              clearInterval(redirectInterval)
+              router.push('/')
+            }
+          }, 1000)
+          
+          return
+        }
+        
+        timeLeft -= 2 // Check every 2 seconds
+        setCountdown(Math.max(0, timeLeft))
         
         if (timeLeft <= 0) {
-          clearInterval(countdownInterval)
-          router.push('/')
+          clearInterval(pollingInterval)
+          setPaymentStatus('success') // Show success anyway, let user manually check
         }
-      }, 1000)
+      }, 2000)
       
       // Cleanup interval on component unmount
-      return () => clearInterval(countdownInterval)
+      return () => clearInterval(pollingInterval)
     } else if (error) {
       setPaymentStatus('error')
       // Clear URL parameters
       router.replace('/subscription', { scroll: false })
     }
-  }, [searchParams, router])
+  }, [searchParams, router, syncPaymentStatus, subscriptionStatus])
 
   const handleStartTrial = async (planId: string) => {
     try {
@@ -106,6 +145,36 @@ function SubscriptionPageContent() {
     )
   }
 
+  // Show payment processing message
+  if (paymentStatus === 'processing') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          <Alert className="border-blue-200 bg-blue-50">
+            <Clock className="w-4 h-4 text-blue-600 animate-spin" />
+            <AlertDescription className="text-blue-800">
+              <strong>Betaling wordt verwerkt...</strong>
+              <br />
+              We controleren uw betalingsstatus. Dit kan enkele seconden duren.
+              <br />
+              <span className="text-sm">Poging {pollingAttempts} • {countdown} seconden resterend</span>
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4">
+            <Button 
+              onClick={() => syncPaymentStatus()}
+              disabled={isSyncingPaymentStatus}
+              variant="outline"
+            >
+              {isSyncingPaymentStatus ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
+              Status handmatig controleren
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Show payment success message
   if (paymentStatus === 'success') {
     return (
@@ -119,12 +188,21 @@ function SubscriptionPageContent() {
               Uw abonnement is geactiveerd. U wordt doorgestuurd naar het dashboard in {countdown} seconde{countdown !== 1 ? 'n' : ''}...
             </AlertDescription>
           </Alert>
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Button 
               onClick={() => router.push('/')}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 w-full"
             >
               Direct naar dashboard
+            </Button>
+            <Button 
+              onClick={() => syncPaymentStatus()}
+              disabled={isSyncingPaymentStatus}
+              variant="outline"
+              size="sm"
+            >
+              {isSyncingPaymentStatus ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
+              Status vernieuwen
             </Button>
           </div>
         </div>

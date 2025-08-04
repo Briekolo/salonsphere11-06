@@ -43,41 +43,28 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient()
 
-    // Find the subscription payment record with retry logic for race conditions
-    let paymentRecord = null
-    let attempts = 0
-    const maxAttempts = 3
-    const baseDelay = 1000 // 1 second
+    // Find the subscription payment record (single attempt to prevent timeouts)
+    console.log(`[Mollie Webhook] Processing webhook for payment ${paymentId} at ${new Date().toISOString()}`)
+    
+    const { data: paymentRecord, error: paymentError } = await supabase
+      .from('subscription_payments')
+      .select('*')
+      .eq('mollie_payment_id', paymentId)
+      .single()
 
-    while (attempts < maxAttempts && !paymentRecord) {
-      attempts++
-      console.log(`[Mollie Webhook] Attempt ${attempts}/${maxAttempts} to find payment record for ${paymentId}`)
+    if (paymentError || !paymentRecord) {
+      console.error(`[Mollie Webhook] Payment record not found for ${paymentId}:`, paymentError)
+      console.log(`[Mollie Webhook] This might be a timing issue. Payment will be handled by status sync.`)
       
-      const { data, error } = await supabase
-        .from('subscription_payments')
-        .select('*')
-        .eq('mollie_payment_id', paymentId)
-        .single()
-
-      if (data && !error) {
-        paymentRecord = data
-        console.log(`[Mollie Webhook] Payment record found on attempt ${attempts}`)
-        break
-      }
-
-      if (attempts < maxAttempts) {
-        const delay = baseDelay * Math.pow(2, attempts - 1) // Exponential backoff: 1s, 2s, 4s
-        console.log(`[Mollie Webhook] Payment record not found, retrying in ${delay}ms...`)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      } else {
-        console.error(`[Mollie Webhook] Payment record not found after ${maxAttempts} attempts:`, error)
-      }
+      // Return success to prevent Mollie from retrying, but log for manual reconciliation
+      return NextResponse.json({ 
+        success: true,
+        message: 'Webhook received, payment will be reconciled asynchronously',
+        paymentId: paymentId 
+      })
     }
 
-    if (!paymentRecord) {
-      console.error(`[Mollie Webhook] Failed to find payment record for ${paymentId} after ${maxAttempts} attempts`)
-      return NextResponse.json({ error: 'Payment record not found after retries' }, { status: 404 })
-    }
+    console.log(`[Mollie Webhook] Payment record found: ${paymentRecord.id}`)
 
     // Update payment status
     const internalStatus = mollieService.getInternalPaymentStatus(payment.status)

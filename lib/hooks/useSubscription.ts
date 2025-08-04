@@ -86,6 +86,34 @@ export function useSubscription() {
     },
   })
 
+  // Sync payment status mutation
+  const syncPaymentStatusMutation = useMutation({
+    mutationFn: async () => {
+      if (!tenantId) throw new Error('No tenant ID available')
+      
+      const response = await fetch('/api/subscription/sync-payment-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tenantId })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to sync payment status')
+      }
+      
+      return response.json()
+    },
+    onSuccess: () => {
+      // Invalidate all subscription queries to refresh status
+      queryClient.invalidateQueries({ queryKey: ['subscription-active', tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['subscription-status', tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['subscription-details', tenantId] })
+    },
+  })
+
   // Create real payment mutation
   const createPaymentMutation = useMutation({
     mutationFn: async (planId: string) => {
@@ -140,6 +168,10 @@ export function useSubscription() {
     createPayment: createPaymentMutation.mutate,
     createPaymentAsync: createPaymentMutation.mutateAsync,
     isCreatingPayment: createPaymentMutation.isPending,
+    
+    syncPaymentStatus: syncPaymentStatusMutation.mutate,
+    syncPaymentStatusAsync: syncPaymentStatusMutation.mutateAsync,
+    isSyncingPaymentStatus: syncPaymentStatusMutation.isPending,
     
     // Helper functions
     isFeatureAvailable: (feature: string) => subscriptionService.isFeatureAvailable(subscriptionStatus, feature),
