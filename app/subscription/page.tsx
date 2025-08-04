@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { subscriptionService } from '@/lib/services/subscriptionService'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-export default function SubscriptionPage() {
+function SubscriptionPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: plans, isLoading: plansLoading } = useSubscriptionPlans()
@@ -423,4 +423,16 @@ function getFeatureDisplayName(key: string): string {
   }
   
   return displayNames[key] || key
+}
+
+export default function SubscriptionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    }>
+      <SubscriptionPageContent />
+    </Suspense>
+  )
 }
