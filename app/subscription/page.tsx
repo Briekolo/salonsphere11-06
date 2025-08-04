@@ -76,10 +76,19 @@ function SubscriptionPageContent() {
           clearInterval(pollingInterval)
           setPaymentStatus('success')
           
-          // Simple redirect after 2 seconds
-          setTimeout(() => {
-            router.push('/')
-          }, 2000)
+          // Start final countdown for redirect
+          let redirectTime = 3
+          setCountdown(redirectTime)
+          
+          const redirectInterval = setInterval(() => {
+            redirectTime -= 1
+            setCountdown(redirectTime)
+            
+            if (redirectTime <= 0) {
+              clearInterval(redirectInterval)
+              router.push('/')
+            }
+          }, 1000)
           
           return
         }
@@ -144,11 +153,19 @@ function SubscriptionPageContent() {
       setTimeout(() => {
         if (subscriptionStatusRef.current?.status === 'active') {
           setPaymentStatus('success')
+          setCountdown(3)
           
-          // Simple redirect after 2 seconds
-          setTimeout(() => {
-            router.push('/')
-          }, 2000)
+          // Start final countdown for redirect
+          let redirectTime = 3
+          const redirectInterval = setInterval(() => {
+            redirectTime -= 1
+            setCountdown(redirectTime)
+            
+            if (redirectTime <= 0) {
+              clearInterval(redirectInterval)
+              router.push('/')
+            }
+          }, 1000)
         }
       }, 500) // Small delay to allow query invalidation to take effect
     } catch (error) {
@@ -217,15 +234,24 @@ function SubscriptionPageContent() {
             <AlertDescription className="text-green-800">
               <strong>Betaling succesvol!</strong>
               <br />
-              De pagina wordt doorgestuurd naar het dashboard. Zo niet, druk op onderstaande link:
+              Uw abonnement is geactiveerd. U wordt doorgestuurd naar het dashboard in {countdown} seconde{countdown !== 1 ? 'n' : ''}...
             </AlertDescription>
           </Alert>
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Button 
               onClick={() => router.push('/')}
               className="bg-green-600 hover:bg-green-700 w-full"
             >
-              Ga naar dashboard
+              Direct naar dashboard
+            </Button>
+            <Button 
+              onClick={handleManualSync}
+              disabled={isSyncingPaymentStatus}
+              variant="outline"
+              size="sm"
+            >
+              {isSyncingPaymentStatus ? <LoadingSpinner className="w-4 h-4 mr-2" /> : null}
+              Status vernieuwen
             </Button>
           </div>
         </div>
