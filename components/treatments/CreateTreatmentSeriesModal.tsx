@@ -17,17 +17,21 @@ interface CreateTreatmentSeriesModalProps {
   onClose: () => void
   preselectedClientId?: string
   preselectedServiceId?: string
+  useTemplate?: boolean
+  preselectedTemplateId?: string
 }
 
 function CreateTreatmentSeriesModal({ 
   isOpen, 
   onClose, 
   preselectedClientId,
-  preselectedServiceId 
+  preselectedServiceId,
+  useTemplate = false,
+  preselectedTemplateId
 }: CreateTreatmentSeriesModalProps) {
   const [formData, setFormData] = useState<CreateTreatmentSeriesParams>({
     client_id: preselectedClientId || '',
-    service_id: preselectedServiceId || '',
+    service_id: preselectedServiceId || preselectedTemplateId || '',
     staff_id: '',
     start_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     total_sessions: 3,
@@ -38,12 +42,22 @@ function CreateTreatmentSeriesModal({
 
   const [useCustomDates, setUseCustomDates] = useState(false)
   const [customDates, setCustomDates] = useState<string[]>([])
+  const [templateMode, setTemplateMode] = useState(useTemplate)
+  const [selectedTemplate, setSelectedTemplate] = useState(preselectedTemplateId || '')
 
   const { data: clients = [] } = useClients()
   const { data: services = [] } = useServices()
   const { data: staff = [] } = useUsers()
   const createMutation = useCreateTreatmentSeries()
   const { businessHours, isDateAvailable, getAvailableHours } = useBusinessHours()
+
+  // Filter services based on template mode
+  const availableServices = templateMode 
+    ? services.filter(service => service.is_series_template)
+    : services.filter(service => !service.is_series_template)
+  
+  // Get templates for template selection
+  const templates = services.filter(service => service.is_series_template)
 
   // Initialize custom dates after business hours are loaded
   useEffect(() => {
@@ -69,6 +83,37 @@ function CreateTreatmentSeriesModal({
       setCustomDates(dates)
     }
   }, [isDateAvailable])
+
+  // Handle template selection and pre-fill form data
+  const handleTemplateSelect = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId)
+    if (template) {
+      setSelectedTemplate(templateId)
+      setFormData(prev => ({
+        ...prev,
+        service_id: templateId,
+        total_sessions: template.treatments_needed || 3,
+        package_discount: 10 // Default discount for template-based series
+      }))
+      
+      // Update custom dates count if needed
+      const sessionCount = template.treatments_needed || 3
+      updateCustomDatesForSessionCount(sessionCount)
+    }
+  }
+
+  // Toggle template mode
+  const handleTemplateModeToggle = () => {
+    const newMode = !templateMode
+    setTemplateMode(newMode)
+    setFormData(prev => ({
+      ...prev,
+      service_id: '',
+      total_sessions: 3,
+      package_discount: newMode ? 10 : 0
+    }))
+    setSelectedTemplate('')
+  }
 
   const selectedService = services.find(s => s.id === formData.service_id)
   const basePrice = selectedService?.price || 0
@@ -111,6 +156,8 @@ function CreateTreatmentSeriesModal({
         notes: ''
       })
       setUseCustomDates(false)
+      setTemplateMode(useTemplate)
+      setSelectedTemplate(preselectedTemplateId || '')
       // Reset custom dates
       const dates = []
       const baseDate = new Date()
@@ -174,8 +221,21 @@ function CreateTreatmentSeriesModal({
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 flex-shrink-0 bg-gradient-to-r from-purple-50 to-purple-100">
           <div>
-            <h2 className="text-2xl font-semibold text-purple-700">Nieuwe Behandelreeks</h2>
-            <p className="text-sm text-gray-600 mt-1">Plan een serie behandelingen in één keer</p>
+            <h2 className="text-2xl font-semibold text-purple-700">
+              {templateMode ? 'Nieuwe Behandelreeks vanaf Template' : 'Nieuwe Behandelreeks'}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {templateMode 
+                ? 'Gebruik een vooraf ingestelde template voor snelle planning'
+                : 'Plan een serie behandelingen in één keer'}
+            </p>
+            {templateMode && selectedTemplate && (
+              <div className="mt-2 px-3 py-1 bg-purple-100 border border-purple-200 rounded-lg inline-block">
+                <p className="text-xs text-purple-700 font-medium">
+                  Template: {templates.find(t => t.id === selectedTemplate)?.name}
+                </p>
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
             <X className="w-6 h-6 text-gray-400" />
@@ -185,6 +245,56 @@ function CreateTreatmentSeriesModal({
         <form onSubmit={handleSubmit} className="contents">
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+            {/* Template Mode Toggle */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200">
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">
+                  {templateMode ? 'Template gebruiken' : 'Handmatig instellen'}
+                </h4>
+                <p className="text-xs text-gray-600 mt-1">
+                  {templateMode 
+                    ? 'Kies een vooraf ingestelde behandelreeks template' 
+                    : 'Stel de behandelreeks handmatig in'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleTemplateModeToggle}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                  templateMode ? 'bg-purple-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    templateMode ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Template Selection */}
+            {templateMode && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  Selecteer Template
+                </label>
+                <select
+                  value={selectedTemplate}
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  required={templateMode}
+                >
+                  <option value="">Kies een template</option>
+                  {templates.map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} - {template.treatments_needed || 3} sessies - €{template.price}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Client and Service Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -211,22 +321,31 @@ function CreateTreatmentSeriesModal({
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Calendar className="w-4 h-4 text-gray-400" />
-                  Behandeling
+                  {templateMode ? 'Behandeling (uit template)' : 'Behandeling'}
                 </label>
                 <select
                   value={formData.service_id}
                   onChange={(e) => setFormData({...formData, service_id: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all ${
+                    templateMode ? 'bg-gray-50 cursor-not-allowed' : ''
+                  }`}
                   required
-                  disabled={!!preselectedServiceId}
+                  disabled={!!preselectedServiceId || templateMode}
                 >
-                  <option value="">Selecteer een behandeling</option>
-                  {services.map(service => (
+                  <option value="">
+                    {templateMode ? 'Selecteer eerst een template' : 'Selecteer een behandeling'}
+                  </option>
+                  {availableServices.map(service => (
                     <option key={service.id} value={service.id}>
                       {service.name} - €{service.price}
                     </option>
                   ))}
                 </select>
+                {templateMode && selectedTemplate && (
+                  <p className="text-xs text-gray-600">
+                    Deze behandeling is automatisch geselecteerd uit de gekozen template
+                  </p>
+                )}
               </div>
             </div>
 

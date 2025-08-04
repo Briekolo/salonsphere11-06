@@ -25,7 +25,8 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
     preparationInfo: '',
     aftercareInfo: '',
     active: true,
-    image: ''
+    image: '',
+    is_series_template: false
   })
 
   const { data: categories = [], isLoading: categoriesLoading } = useActiveTreatmentCategories()
@@ -58,6 +59,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
             aftercareInfo: existing.aftercare_info ?? '',
             active: existing.active,
             image: existing.image_url ?? '',
+            is_series_template: existing.is_series_template ?? false,
           })
         }
       } catch (err) {
@@ -111,6 +113,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
             preparation_info: formData.preparationInfo,
             aftercare_info: formData.aftercareInfo,
             image_url: formData.image,
+            is_series_template: formData.is_series_template,
           },
         } as any)
       } else {
@@ -126,6 +129,7 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
           preparation_info: formData.preparationInfo,
           aftercare_info: formData.aftercareInfo,
           image_url: formData.image,
+          is_series_template: formData.is_series_template,
         } as any)
       }
       onBack()
@@ -425,22 +429,42 @@ export function TreatmentForm({ treatmentId, onBack }: TreatmentFormProps) {
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Status</h3>
             
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="active"
-                checked={formData.active}
-                onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                className="rounded border-gray-300 text-primary-500 focus:ring-primary-500"
-              />
-              <label htmlFor="active" className="text-sm font-medium text-gray-700">
-                Behandeling is actief
-              </label>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="active"
+                  checked={formData.active}
+                  onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
+                  className="rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                />
+                <label htmlFor="active" className="text-sm font-medium text-gray-700">
+                  Behandeling is actief
+                </label>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="series_template"
+                  checked={formData.is_series_template}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_series_template: e.target.checked }))}
+                  className="rounded border-gray-300 text-purple-500 focus:ring-purple-500"
+                />
+                <label htmlFor="series_template" className="text-sm font-medium text-gray-700">
+                  Beschikbaar als behandelreeks template
+                </label>
+              </div>
             </div>
             
-            <p className="text-xs text-gray-600 mt-2">
-              Inactieve behandelingen zijn niet zichtbaar voor klanten bij het boeken van afspraken.
-            </p>
+            <div className="space-y-2 mt-3">
+              <p className="text-xs text-gray-600">
+                Inactieve behandelingen zijn niet zichtbaar voor klanten bij het boeken van afspraken.
+              </p>
+              <p className="text-xs text-gray-600">
+                Templates kunnen gebruikt worden om snel meerfasige behandelreeksen aan te maken.
+              </p>
+            </div>
           </div>
         </div>
       </form>

@@ -13,6 +13,7 @@ import { DndContext, DragEndEvent, useDraggable, useDroppable, DragOverlay, Drag
 import { atom, useAtom } from 'jotai'
 import { useQueryClient } from '@tanstack/react-query'
 import { calculateAppointmentPositions, AppointmentWithOverlap } from '@/lib/utils/appointment-overlap'
+import { getCategoryBadgeClasses } from '@/lib/utils/categoryColors'
 
 interface KiboCalendarViewProps {
   selectedDate: Date
@@ -22,6 +23,7 @@ interface KiboCalendarViewProps {
     payment: string
     service: string
     staff: string
+    category: string
   }
 }
 
@@ -200,6 +202,11 @@ function AppointmentHoverPreview({ booking, position }: {
           <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
             <div>
               <div className="font-medium text-gray-900">{serviceName}</div>
+              {booking.services?.treatment_categories && (
+                <div className="text-xs text-gray-500 mb-1">
+                  Categorie: {booking.services.treatment_categories.name}
+                </div>
+              )}
               <div className="text-sm text-gray-600">{duration} minuten</div>
             </div>
             {price > 0 && (
@@ -270,6 +277,9 @@ function ResizePreview({ booking, type, previewTime, previewDuration }: {
 
 // Compact appointment card for month view with multiple appointments
 function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { booking: Booking; onClick: () => void; viewMode?: 'week' | 'month' }) {
+  const [hoveredBooking, setHoveredBooking] = useAtom(hoveredBookingAtom)
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+  
   const paymentStatus = booking.is_paid ? 'paid' : 'unpaid'
   const colors = paymentColors[paymentStatus]
   
@@ -288,11 +298,95 @@ function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { book
     }
   })
   
-  const [isTouchDevice, setIsTouchDevice] = useState(false)
-  
   useEffect(() => {
     setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
   }, [])
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    if (!isTouchDevice) {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const menuWidth = 320 // w-80 in Tailwind
+      const menuHeight = 450 // Approximate height of the hover menu
+      const margin = 15
+      
+      // Calculate available space
+      const rightSpace = window.innerWidth - rect.right
+      const leftSpace = rect.left
+      const topSpace = rect.top
+      const bottomSpace = window.innerHeight - rect.bottom
+      
+      // Determine optimal horizontal position
+      let horizontalAlignment: 'left' | 'right' | 'center' = 'right'
+      
+      if (rightSpace < menuWidth + margin && leftSpace >= menuWidth + margin) {
+        // Not enough space on right, but enough on left
+        horizontalAlignment = 'left'
+      } else if (rightSpace < menuWidth + margin && leftSpace < menuWidth + margin) {
+        // Not enough space on either side, center it
+        horizontalAlignment = 'center'
+      }
+      
+      // Determine optimal vertical position
+      let verticalAlignment: 'above' | 'below' | 'center' = 'center'
+      
+      // Priority: 1. Side positioning if horizontal space allows
+      // 2. Above if bottom space insufficient
+      // 3. Below if top space insufficient
+      if (horizontalAlignment === 'left' || horizontalAlignment === 'right') {
+        // Prefer side positioning with center vertical alignment
+        if (topSpace >= menuHeight / 2 && bottomSpace >= menuHeight / 2) {
+          verticalAlignment = 'center'
+        } else if (topSpace < menuHeight / 2) {
+          verticalAlignment = 'below'
+        } else {
+          verticalAlignment = 'above'
+        }
+      } else {
+        // Center horizontally, need to decide vertical position
+        if (bottomSpace >= menuHeight + margin) {
+          verticalAlignment = 'below'
+        } else if (topSpace >= menuHeight + margin) {
+          verticalAlignment = 'above'  
+        } else {
+          // Not enough space above or below, use center
+          verticalAlignment = 'center'
+        }
+      }
+      
+      // If appointment is near bottom and we can't fit menu anywhere
+      if (bottomSpace < menuHeight + margin && topSpace >= menuHeight + margin) {
+        verticalAlignment = 'above'
+        // Force horizontal center if needed for vertical space
+        if (horizontalAlignment !== 'center' && bottomSpace < 100) {
+          horizontalAlignment = 'center'
+        }
+      }
+      
+      setHoveredBooking({
+        booking,
+        position: {
+          x: 0, // Not used anymore, keeping for compatibility
+          y: 0, // Not used anymore, keeping for compatibility
+          horizontalAlignment,
+          verticalAlignment,
+          rect: {
+            width: rect.width,
+            height: rect.height,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom
+          }
+        }
+      })
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (!isTouchDevice) {
+      setHoveredBooking(null)
+    }
+  }
   
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
@@ -307,6 +401,8 @@ function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { book
         e.stopPropagation()
         onClick()
       }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={`group relative p-1 rounded border text-xs cursor-pointer transition-all overflow-hidden ${colors.bg} ${colors.text} ${isDragging ? 'opacity-50 z-50' : ''}`}
     >
       <div className="flex items-center gap-1 overflow-hidden">
@@ -314,6 +410,16 @@ function CompactAppointmentCard({ booking, onClick, viewMode = 'month' }: { book
         <span className="font-medium flex-shrink-0">{time}</span>
         <span className="truncate opacity-90 min-w-0" title={clientName}>{clientName}</span>
       </div>
+      
+      {/* Category badge */}
+      {booking.services?.treatment_categories && (
+        <div 
+          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium mt-0.5 ${getCategoryBadgeClasses(booking.services.treatment_categories.color)}`}
+          style={booking.services.treatment_categories.color.startsWith('#') ? { backgroundColor: booking.services.treatment_categories.color } : {}}
+        >
+          {booking.services.treatment_categories.name}
+        </div>
+      )}
       
       {/* Drag handle for touch devices */}
       <div 
@@ -570,6 +676,15 @@ function DraggableAppointment({ booking, onClick, compact = false, viewMode = 'm
               </div>
               <div className="text-[11px] sm:text-xs mt-0.5 truncate opacity-90" title={clientName}>{clientName}</div>
               <div className="text-[10px] sm:text-xs truncate opacity-75 hidden sm:block" title={serviceName}>{serviceName}</div>
+              {/* Category badge for larger appointments */}
+              {booking.services?.treatment_categories && (
+                <div 
+                  className={`inline-block px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-medium mt-0.5 ${getCategoryBadgeClasses(booking.services.treatment_categories.color)}`}
+                  style={booking.services.treatment_categories.color.startsWith('#') ? { backgroundColor: booking.services.treatment_categories.color } : {}}
+                >
+                  {booking.services.treatment_categories.name}
+                </div>
+              )}
               {booking.duration_minutes && booking.duration_minutes > 90 && (
                 <div className="text-[10px] sm:text-xs text-orange-600 font-medium truncate" title={`Lange behandeling (${Math.round(booking.duration_minutes / 60 * 10) / 10} uur)`}>
                   Lang ({Math.round(booking.duration_minutes / 60 * 10) / 10}u)

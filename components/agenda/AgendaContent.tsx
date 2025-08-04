@@ -24,7 +24,8 @@ export function AgendaContent() {
     searchTerm: '',
     payment: 'all',
     service: 'all',
-    staff: 'all'
+    staff: 'all',
+    category: 'all'
   })
 
   return (

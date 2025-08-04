@@ -10,9 +10,16 @@ import { BookingFormModal } from './BookingFormModal'
 interface AppointmentsListProps {
   selectedDate: Date
   listView?: boolean
+  filters?: {
+    searchTerm: string
+    payment: string
+    service: string
+    staff: string
+    category: string
+  }
 }
 
-export function AppointmentsList({ selectedDate, listView = false }: AppointmentsListProps) {
+export function AppointmentsList({ selectedDate, listView = false, filters }: AppointmentsListProps) {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showBulkActions, setShowBulkActions] = useState(false)
 
@@ -58,6 +65,7 @@ export function AppointmentsList({ selectedDate, listView = false }: Appointment
   const { data: bookingData, isLoading } = useBookings(
     listView ? undefined : startOfDay.toISOString(),
     listView ? undefined : endOfDay.toISOString(),
+    filters,
     !listView // Only enable when NOT in list view
   )
 

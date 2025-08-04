@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
 import { useUsers } from '@/lib/hooks/useUsers'
 import { useServices } from '@/lib/hooks/useServices'
+import { useActiveTreatmentCategories } from '@/lib/hooks/useTreatmentCategories'
 
 interface AppointmentFiltersProps {
   onFiltersChange?: (filters: {
@@ -11,6 +12,7 @@ interface AppointmentFiltersProps {
     payment: string
     service: string
     staff: string
+    category: string
   }) => void
 }
 
@@ -19,10 +21,12 @@ export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps)
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [serviceFilter, setServiceFilter] = useState('all')
   const [staffFilter, setStaffFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   
-  // Load staff members and services dynamically
+  // Load staff members, services and categories dynamically
   const { data: users } = useUsers()
   const { data: services } = useServices()
+  const { data: categories } = useActiveTreatmentCategories()
   
   // Filter for staff members only
   const staffMembers = users?.filter(user => user.role === 'staff') || []
@@ -34,10 +38,11 @@ export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps)
         searchTerm,
         payment: paymentFilter,
         service: serviceFilter,
-        staff: staffFilter
+        staff: staffFilter,
+        category: categoryFilter
       })
     }
-  }, [searchTerm, paymentFilter, serviceFilter, staffFilter, onFiltersChange])
+  }, [searchTerm, paymentFilter, serviceFilter, staffFilter, categoryFilter, onFiltersChange])
 
   return (
     <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-4">
@@ -79,6 +84,23 @@ export function AppointmentFilters({ onFiltersChange }: AppointmentFiltersProps)
             {staffMembers.map((staff) => (
               <option key={staff.id} value={staff.id}>
                 {staff.first_name} {staff.last_name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+        </div>
+
+        {/* Category Filter */}
+        <div className="relative">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="appearance-none bg-white border border-gray-300 rounded-full px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[44px] w-full sm:w-auto"
+          >
+            <option value="all">Alle categorieën</option>
+            {categories?.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
               </option>
             ))}
           </select>

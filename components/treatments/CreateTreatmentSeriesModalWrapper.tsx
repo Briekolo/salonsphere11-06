@@ -9,6 +9,8 @@ interface CreateTreatmentSeriesModalWrapperProps {
   onSuccess?: () => void
   preselectedClientId?: string
   preselectedServiceId?: string
+  useTemplate?: boolean
+  preselectedTemplateId?: string
 }
 
 export function CreateTreatmentSeriesModalWrapper(props: CreateTreatmentSeriesModalWrapperProps) {

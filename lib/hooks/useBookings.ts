@@ -18,6 +18,12 @@ export type Booking = Database['public']['Tables']['bookings']['Row'] & {
     name: string | null
     duration_minutes: number | null
     price: number | null
+    category_id?: string | null
+    treatment_categories?: {
+      id: string
+      name: string
+      color: string
+    } | null
   }
   users?: {
     first_name: string | null
@@ -31,6 +37,7 @@ export function useBookings(startDate?: string, endDate?: string, filters?: {
   payment?: string
   service?: string
   staff?: string
+  category?: string
 }, enabled: boolean = true) {
   const { tenantId } = useTenant()
 

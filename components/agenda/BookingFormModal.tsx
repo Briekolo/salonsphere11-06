@@ -383,6 +383,17 @@ export function BookingFormModal({ bookingId, initialDate, onClose }: BookingFor
                     <option key={service.id} value={service.id}>{service.name}</option>
                   ))}
                 </select>
+                
+                {/* Category Display - Read-only */}
+                {isEditing && existingBooking?.services?.treatment_categories && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900">Categorie:</span>
+                      <span className="text-sm text-blue-800">{existingBooking.services.treatment_categories.name}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

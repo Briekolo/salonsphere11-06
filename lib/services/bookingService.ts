@@ -19,7 +19,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('tenant_id', tenantId)
@@ -34,6 +34,7 @@ export class BookingService {
     payment?: string
     service?: string
     staff?: string
+    category?: string
   }): Promise<Booking[]> {
     const tenantId = await getCurrentUserTenantId()
     if (!tenantId) throw new Error('No tenant found')
@@ -43,7 +44,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('tenant_id', tenantId)
@@ -68,6 +69,9 @@ export class BookingService {
         query = query.eq('service_id', filters.service)
       }
 
+      // Category filter - this needs to be done client-side since we're filtering on joined data
+      // Note: category filtering is handled in client-side filtering below
+
       // Search term (searches in client names)
       if (filters.searchTerm) {
         // For now, we'll need to filter this client-side since Supabase doesn't support
@@ -84,14 +88,23 @@ export class BookingService {
     
     let results = data || []
 
-    // Client-side filtering for search term
-    if (filters?.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase()
-      results = results.filter(booking => {
-        const clientName = `${booking.clients?.first_name || ''} ${booking.clients?.last_name || ''}`.toLowerCase()
-        const serviceName = (booking.services?.name || '').toLowerCase()
-        return clientName.includes(searchLower) || serviceName.includes(searchLower)
-      })
+    // Client-side filtering for search term and category
+    if (filters?.searchTerm || (filters?.category && filters.category !== 'all')) {
+      if (filters.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase()
+        results = results.filter(booking => {
+          const clientName = `${booking.clients?.first_name || ''} ${booking.clients?.last_name || ''}`.toLowerCase()
+          const serviceName = (booking.services?.name || '').toLowerCase()
+          return clientName.includes(searchLower) || serviceName.includes(searchLower)
+        })
+      }
+
+      // Category filter
+      if (filters.category && filters.category !== 'all') {
+        results = results.filter(booking => {
+          return booking.services?.category_id === filters.category
+        })
+      }
     }
 
     return results
@@ -106,7 +119,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('id', id)
@@ -126,7 +139,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('client_id', clientId)
@@ -146,7 +159,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('client_id', clientId)
@@ -172,7 +185,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .single()
@@ -257,7 +270,7 @@ export class BookingService {
         .select(`
           *,
           clients:client_id (first_name, last_name, email, phone),
-          services:service_id (name, duration_minutes, price),
+          services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
           users:staff_id (first_name, last_name)
         `)
         .single()
@@ -398,7 +411,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('tenant_id', tenantId)
@@ -436,7 +449,7 @@ export class BookingService {
       .select(`
         *,
         clients:client_id (first_name, last_name, email, phone),
-        services:service_id (name, duration_minutes, price),
+        services:service_id (name, duration_minutes, price, category_id, treatment_categories(id, name, color)),
         users:staff_id (first_name, last_name)
       `)
       .eq('tenant_id', tenantId)
