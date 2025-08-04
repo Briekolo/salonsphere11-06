@@ -1,17 +1,12 @@
--- Add overhead_monthly field to tenants table for overhead cost calculations
--- Migration: 20250726_add_overhead_monthly_to_tenants
+-- Fix overhead functions to use correct database schema
+-- Migration: 20250804_fix_overhead_functions_schema
 
--- Add overhead_monthly column to tenants table
-ALTER TABLE tenants 
-ADD COLUMN overhead_monthly DECIMAL(10,2) DEFAULT 0.00;
+-- Drop existing functions to recreate them with correct schema
+DROP FUNCTION IF EXISTS calculate_overhead_per_treatment(UUID, DATE);
+DROP FUNCTION IF EXISTS calculate_overhead_percentage(UUID, DATE);
+DROP FUNCTION IF EXISTS get_overhead_metrics(UUID, DATE);
 
--- Add comment for documentation
-COMMENT ON COLUMN tenants.overhead_monthly IS 'Monthly overhead costs in euros for overhead per treatment calculations';
-
--- Update RLS policy to allow tenants to update their own overhead costs
--- (This should already be covered by existing RLS policies, but let's ensure it's explicit)
-
--- Create function to calculate overhead per treatment
+-- Recreate function to calculate overhead per treatment with correct schema
 CREATE OR REPLACE FUNCTION calculate_overhead_per_treatment(
   tenant_id_param UUID,
   month_year DATE DEFAULT CURRENT_DATE
@@ -66,7 +61,7 @@ BEGIN
 END;
 $$;
 
--- Create function to calculate overhead percentage per treatment
+-- Recreate function to calculate overhead percentage with correct schema
 CREATE OR REPLACE FUNCTION calculate_overhead_percentage(
   tenant_id_param UUID,
   month_year DATE DEFAULT CURRENT_DATE
@@ -118,7 +113,7 @@ BEGIN
 END;
 $$;
 
--- Create comprehensive overhead metrics function
+-- Recreate comprehensive overhead metrics function with correct schema
 CREATE OR REPLACE FUNCTION get_overhead_metrics(
   tenant_id_param UUID,
   month_year DATE DEFAULT CURRENT_DATE
@@ -152,3 +147,6 @@ $$;
 GRANT EXECUTE ON FUNCTION calculate_overhead_per_treatment(UUID, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION calculate_overhead_percentage(UUID, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_overhead_metrics(UUID, DATE) TO authenticated;
+
+-- Add comment for documentation
+COMMENT ON FUNCTION get_overhead_metrics(UUID, DATE) IS 'Calculate comprehensive overhead metrics for a tenant in a specific month using correct database schema';

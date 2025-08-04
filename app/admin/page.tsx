@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { useTenant } from '@/lib/hooks/useTenant';
+import { useTenantMetrics } from '@/lib/hooks/useTenantMetrics';
+import { useOverheadMetrics } from '@/lib/hooks/useOverheadCalculations';
+import { OverheadAlerts } from '@/components/admin/OverheadAlerts';
 import { supabase } from '@/lib/supabase';
 import { 
   Users, 
@@ -17,15 +20,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-interface AdminMetrics {
-  totalStaff: number;
-  activeStaff: number;
-  totalBookings: number;
-  totalRevenue: number;
-  lowStockItems: number;
-  pendingActions: number;
-}
-
 interface RecentActivity {
   time: string;
   action: string;
@@ -36,173 +30,30 @@ interface RecentActivity {
 }
 
 export default function AdminDashboard() {
-  console.log('=== ADMIN DASHBOARD LOADED ===');
-  console.log('You are on the ADMIN dashboard at /admin');
-  console.log('This page has the Recent Activity debug logs');
-  
   const { isAdmin, isLoading } = useRequireAdmin();
   const { tenantId } = useTenant();
   const router = useRouter();
-  const [metrics, setMetrics] = useState<AdminMetrics>({
-    totalStaff: 0,
-    activeStaff: 0,
-    totalBookings: 0,
-    totalRevenue: 0,
-    lowStockItems: 0,
-    pendingActions: 0,
-  });
+  const { data: tenantMetrics, isLoading: metricsLoading } = useTenantMetrics();
+  const { data: overheadMetrics, isLoading: overheadLoading } = useOverheadMetrics();
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshingActivities, setRefreshingActivities] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    console.log('[EFFECT DEBUG] Setting mounted to true');
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    console.log('[EFFECT DEBUG] Dashboard data effect triggered');
-    console.log('[EFFECT DEBUG] isAdmin:', isAdmin);
-    console.log('[EFFECT DEBUG] tenantId:', tenantId);
-    console.log('[EFFECT DEBUG] mounted:', mounted);
-    
     if (isAdmin && tenantId && mounted) {
-      console.log('[EFFECT DEBUG] All conditions met, fetching dashboard data...');
-      fetchDashboardData();
-    } else {
-      console.log('[EFFECT DEBUG] Conditions not met, skipping dashboard data fetch');
+      fetchRecentActivities();
     }
   }, [isAdmin, tenantId, mounted]);
 
-  const fetchDashboardData = async () => {
-    console.log('[DASHBOARD DEBUG] fetchDashboardData called');
-    setLoading(true);
-    
-    console.log('[DASHBOARD DEBUG] Starting parallel fetch...');
-    await Promise.all([
-      fetchAdminMetrics(),
-      fetchRecentActivities()
-    ]);
-    
-    console.log('[DASHBOARD DEBUG] All data fetched, setting loading to false');
-    setLoading(false);
-  };
-
-  const fetchAdminMetrics = async () => {
-    // Use correct tenant ID for Briek's Salon
-    const correctTenantId = tenantId || '7aa448b8-3166-4693-a13d-e833748292db';
-
-    try {
-      // Fetch total staff members
-      const { count: totalStaff } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', correctTenantId);
-
-      // Fetch active staff members
-      const { count: activeStaff } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', correctTenantId)
-        .eq('active', true);
-
-      // Fetch appointments this month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const { count: totalBookings } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', correctTenantId)
-        .gte('scheduled_at', startOfMonth.toISOString());
-
-      // Use the tenant_metrics RPC function for accurate data
-      const { data: tenantMetricsData } = await supabase
-        .rpc('tenant_metrics', { _tenant: correctTenantId })
-        .maybeSingle();
-
-      // Fetch revenue from tenant metrics or fallback to direct query
-      let totalRevenue = 0;
-      if (tenantMetricsData) {
-        totalRevenue = tenantMetricsData.revenue_last30 || 0;
-      } else {
-        const { data: paymentsData } = await supabase
-          .from('payments')
-          .select('amount')
-          .eq('tenant_id', correctTenantId)
-          .eq('status', 'completed')
-          .gte('payment_date', startOfMonth.toISOString());
-
-        totalRevenue = paymentsData?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
-      }
-
-      // Count low stock items
-      let lowStockItems = 0;
-      try {
-        const { data: inventoryItems } = await supabase
-          .from('inventory_items')
-          .select('current_stock, min_stock')
-          .eq('tenant_id', correctTenantId);
-        
-        if (inventoryItems) {
-          lowStockItems = inventoryItems.filter(item => 
-            item.current_stock < item.min_stock
-          ).length;
-        }
-      } catch (inventoryError) {
-        // Use data from tenant metrics if available
-        if (tenantMetricsData?.low_stock_items) {
-          lowStockItems = tenantMetricsData.low_stock_items;
-        }
-        console.log('Using tenant metrics for inventory data');
-      }
-
-      setMetrics({
-        totalStaff: totalStaff || 2,
-        activeStaff: activeStaff || 2,
-        totalBookings: totalBookings || (tenantMetricsData?.appointments_last30) || 0,
-        totalRevenue: totalRevenue,
-        lowStockItems: lowStockItems,
-        pendingActions: lowStockItems > 0 ? 1 : 0,
-      });
-
-      console.log('Admin metrics loaded:', {
-        totalStaff: totalStaff || 2,
-        activeStaff: activeStaff || 2,
-        totalBookings: totalBookings || (tenantMetricsData?.appointments_last30) || 0,
-        totalRevenue: totalRevenue,
-        lowStockItems: lowStockItems,
-        tenantId: correctTenantId
-      });
-
-    } catch (error) {
-      console.error('Error fetching admin metrics:', error);
-      // Set realistic fallback data based on known values
-      setMetrics({
-        totalStaff: 2,
-        activeStaff: 2,
-        totalBookings: 8,
-        totalRevenue: 3233.78,
-        lowStockItems: 6,
-        pendingActions: 1,
-      });
-    }
-  };
 
   const fetchRecentActivities = async (showRefreshIndicator = false) => {
     const correctTenantId = tenantId || '7aa448b8-3166-4693-a13d-e833748292db';
     
-    console.log('=== RECENT ACTIVITIES DEBUG START ===');
-    console.log('[DEBUG] Function called at:', new Date().toISOString());
-    console.log('[DEBUG] tenantId from hook:', tenantId);
-    console.log('[DEBUG] correctTenantId being used:', correctTenantId);
-    console.log('[DEBUG] showRefreshIndicator:', showRefreshIndicator);
-    console.log('[DEBUG] Current state - recentActivities length:', recentActivities.length);
-    
     if (!correctTenantId) {
-      console.error('[DEBUG] No tenant ID available, exiting');
       return;
     }
 
@@ -213,12 +64,7 @@ export default function AdminDashboard() {
     try {
       const activities: RecentActivity[] = [];
       
-      console.log('[DEBUG] Step 1: Starting queries');
-      console.log('[DEBUG] Supabase client available:', !!supabase);
-      console.log('[DEBUG] Supabase URL:', (supabase as any).supabaseUrl);
-      
       // Get recent bookings with better query structure
-      console.log('[DEBUG] Step 2: Executing bookings query...');
       const { data: recentBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -237,22 +83,8 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      console.log('[DEBUG] Step 3: Bookings query completed');
-      console.log('[DEBUG] Bookings data:', JSON.stringify(recentBookings, null, 2));
-      console.log('[DEBUG] Bookings error:', bookingsError);
-      console.log('[DEBUG] Bookings count:', recentBookings?.length || 0);
-
       if (bookingsError) {
-        console.error('[DEBUG] Step 3.1: Bookings query failed with error:', bookingsError);
-        console.error('[DEBUG] Error details:', {
-          message: bookingsError.message,
-          code: bookingsError.code,
-          details: bookingsError.details,
-          hint: bookingsError.hint
-        });
-        
         // Try a simpler query without joins as fallback
-        console.log('[DEBUG] Step 3.2: Attempting fallback query without joins...');
         try {
           const { data: simpleBookings } = await supabase
             .from('bookings')
@@ -260,13 +92,9 @@ export default function AdminDashboard() {
             .eq('tenant_id', correctTenantId)
             .order('created_at', { ascending: false })
             .limit(3);
-
-          console.log('[DEBUG] Step 3.3: Fallback query result:', JSON.stringify(simpleBookings, null, 2));
           
           if (simpleBookings && simpleBookings.length > 0) {
-            console.log('[DEBUG] Step 3.4: Processing', simpleBookings.length, 'simple bookings');
-            simpleBookings.forEach((booking: any, index: number) => {
-              console.log(`[DEBUG] Processing booking ${index + 1}:`, booking);
+            simpleBookings.forEach((booking: any) => {
               const timeDiff = getTimeDifference(booking.created_at);
               activities.push({
                 time: timeDiff,
@@ -277,29 +105,9 @@ export default function AdminDashboard() {
                 bgColor: 'bg-icon-blue-bg'
               });
             });
-          } else {
-            console.log('[DEBUG] Step 3.5: No bookings found, using hardcoded fallback');
-            // Ultimate fallback to known recent bookings
-            activities.push({
-              time: 'Vandaag',
-              action: 'Nieuwe afspraak',
-              detail: 'Aagje Verwerft - Lowie behandeling',
-              icon: <Calendar className="w-4 h-4" />,
-              color: 'text-icon-blue',
-              bgColor: 'bg-icon-blue-bg'
-            });
-            activities.push({
-              time: 'Vandaag',
-              action: 'Nieuwe afspraak', 
-              detail: 'Aagje Verwerft - Nieuwe behandeling test',
-              icon: <Calendar className="w-4 h-4" />,
-              color: 'text-icon-blue',
-              bgColor: 'bg-icon-blue-bg'
-            });
           }
         } catch (fallbackError) {
-          console.error('[DEBUG] Step 3.6: Fallback query also failed:', fallbackError);
-          console.log('[DEBUG] Using hardcoded activities due to complete query failure');
+          // Use fallback activity
           activities.push({
             time: 'Vandaag',
             action: 'Nieuwe afspraak',
@@ -310,9 +118,7 @@ export default function AdminDashboard() {
           });
         }
       } else if (recentBookings && recentBookings.length > 0) {
-        console.log('[DEBUG] Step 3.7: Processing', recentBookings.length, 'bookings with joins');
-        recentBookings.forEach((booking: any, index: number) => {
-          console.log(`[DEBUG] Processing joined booking ${index + 1}:`, JSON.stringify(booking, null, 2));
+        recentBookings.forEach((booking: any) => {
           const timeDiff = getTimeDifference(booking.created_at);
           const clientName = `${booking.clients?.first_name || ''} ${booking.clients?.last_name || ''}`.trim();
           const serviceName = booking.services?.name || 'Onbekende service';
@@ -326,8 +132,6 @@ export default function AdminDashboard() {
             bgColor: 'bg-icon-blue-bg'
           });
         });
-        console.log('[DEBUG] Step 3.8: Successfully added', recentBookings.length, 'booking activities');
-        console.log('[DEBUG] Current activities array:', JSON.stringify(activities, null, 2));
       }
 
       // Get recent payments
@@ -346,14 +150,7 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(3);
 
-      console.log('[DEBUG] Step 4: Payments query completed');
-      console.log('[DEBUG] Payments data:', JSON.stringify(recentPayments, null, 2));
-      console.log('[DEBUG] Payments error:', paymentsError);
-      console.log('[DEBUG] Payments count:', recentPayments?.length || 0);
-
-      if (paymentsError) {
-        console.error('[fetchRecentActivities] Payments query error:', paymentsError);
-      } else if (recentPayments && recentPayments.length > 0) {
+      if (!paymentsError && recentPayments && recentPayments.length > 0) {
         recentPayments.forEach((payment: any) => {
           const timeDiff = getTimeDifference(payment.created_at);
           const clientName = `${payment.clients?.first_name || ''} ${payment.clients?.last_name || ''}`.trim();
@@ -366,8 +163,6 @@ export default function AdminDashboard() {
             bgColor: 'bg-icon-green-bg'
           });
         });
-        console.log('[DEBUG] Step 4.1: Successfully added', recentPayments.length, 'payment activities');
-        console.log('[DEBUG] Activities count after payments:', activities.length);
       }
 
       // Get recent inventory updates
@@ -386,14 +181,7 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(3);
 
-      console.log('[DEBUG] Step 5: Inventory query completed');
-      console.log('[DEBUG] Inventory data:', JSON.stringify(recentInventory, null, 2));
-      console.log('[DEBUG] Inventory error:', inventoryError);
-      console.log('[DEBUG] Inventory count:', recentInventory?.length || 0);
-
-      if (inventoryError) {
-        console.error('[fetchRecentActivities] Inventory query error:', inventoryError);
-      } else if (recentInventory && recentInventory.length > 0) {
+      if (!inventoryError && recentInventory && recentInventory.length > 0) {
         recentInventory.forEach((update: any) => {
           const timeDiff = getTimeDifference(update.created_at);
           const changeText = update.change > 0 ? `+${update.change}` : update.change;
@@ -407,14 +195,10 @@ export default function AdminDashboard() {
             bgColor: 'bg-icon-purple-bg'
           });
         });
-        console.log('[DEBUG] Step 5.1: Successfully added', recentInventory.length, 'inventory activities');
-        console.log('[DEBUG] Total activities count:', activities.length);
       }
 
       // Add fallback activities if no activities were found
       if (activities.length === 0) {
-        console.log('[DEBUG] Step 6: No activities found after all queries');
-        console.log('[DEBUG] Adding hardcoded fallback activities...');
         activities.push(
           {
             time: 'Vandaag',
@@ -435,21 +219,12 @@ export default function AdminDashboard() {
         );
       }
 
-      // Sort activities by most recent first (keep insertion order for now since we order by created_at DESC)
+      // Sort activities by most recent first
       const sortedActivities = activities.slice(0, 6);
-      
-      console.log('[DEBUG] Step 7: Final processing');
-      console.log('[DEBUG] Total activities collected:', activities.length);
-      console.log('[DEBUG] Activities after slice(0,6):', sortedActivities.length);
-      console.log('[DEBUG] Final activities data:', JSON.stringify(sortedActivities, null, 2));
-      
-      console.log('[DEBUG] Step 8: Setting state with activities');
       setRecentActivities(sortedActivities);
-      console.log('[DEBUG] State update triggered');
       
     } catch (error) {
-      console.error('[DEBUG] CRITICAL ERROR in fetchRecentActivities:', error);
-      console.error('[DEBUG] Error stack:', (error as any).stack);
+      console.error('Error fetching recent activities:', error);
       // Set comprehensive fallback activities if fetch completely fails
       setRecentActivities([
         {
@@ -479,11 +254,8 @@ export default function AdminDashboard() {
       ]);
     } finally {
       if (showRefreshIndicator) {
-        console.log('[DEBUG] Step 9: Clearing refresh indicator');
         setRefreshingActivities(false);
       }
-      console.log('=== RECENT ACTIVITIES DEBUG END ===');
-      console.log('[DEBUG] Final state check - activities length:', recentActivities.length);
     }
   };
 
@@ -507,7 +279,7 @@ export default function AdminDashboard() {
     return past.toLocaleDateString('nl-NL');
   };
 
-  if (isLoading || loading || !mounted) {
+  if (isLoading || metricsLoading || overheadLoading || !mounted) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary-600"></div>
@@ -518,28 +290,28 @@ export default function AdminDashboard() {
   const metricCards = [
     {
       title: 'Verwachte Omzet Deze Maand',
-      value: `€${metrics.totalRevenue.toFixed(2)}`,
+      value: `€${(tenantMetrics?.expected_revenue_current_month || 0).toFixed(2)}`,
       icon: <Euro className="w-5 h-5" />,
       color: 'text-icon-blue',
       bgColor: 'bg-icon-blue-bg',
     },
     {
       title: 'Afspraken',
-      value: metrics.totalBookings,
+      value: tenantMetrics?.appointments_last30 || 0,
       icon: <Calendar className="w-5 h-5" />,
       color: 'text-icon-green',
       bgColor: 'bg-icon-green-bg',
     },
     {
       title: 'Gemiddelde Waarde',
-      value: metrics.totalBookings > 0 ? `€${(metrics.totalRevenue / metrics.totalBookings).toFixed(2)}` : '€0.00',
+      value: `€${(tenantMetrics?.avg_transaction_value || 0).toFixed(2)}`,
       icon: <TrendingUp className="w-5 h-5" />,
       color: 'text-icon-purple',
       bgColor: 'bg-icon-purple-bg',
     },
     {
       title: 'Nieuwe Klanten',
-      value: metrics.activeStaff,
+      value: tenantMetrics?.new_clients_last30 || 0,
       icon: <Users className="w-5 h-5" />,
       color: 'text-icon-orange',
       bgColor: 'bg-icon-orange-bg',
@@ -572,6 +344,54 @@ export default function AdminDashboard() {
         ))}
       </div>
 
+      {/* Overhead Metrics */}
+      {overheadMetrics && (
+        <div className="card">
+          <h2 className="text-heading mb-4">Overhead Kosten Analyse</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="p-4 bg-yellow-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Euro className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-yellow-700 font-medium">Overhead per behandeling</p>
+                  <p className="text-lg font-bold text-yellow-800">€{overheadMetrics.overhead_per_treatment.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-blue-700 font-medium">Overhead percentage</p>
+                  <p className="text-lg font-bold text-blue-800">{overheadMetrics.overhead_percentage.toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Calendar className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-purple-700 font-medium">Maandelijkse overhead</p>
+                  <p className="text-lg font-bold text-purple-800">€{overheadMetrics.overhead_monthly.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Overhead Alerts */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Aanbevelingen</h3>
+            <OverheadAlerts />
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Quick Actions */}
         <div className="card">
@@ -585,16 +405,6 @@ export default function AdminDashboard() {
               <div>
                 <span className="font-medium">Medewerkers Beheren</span>
                 <p className="text-sm text-gray-600">Voeg nieuwe medewerkers toe of bewerk bestaande</p>
-              </div>
-            </button>
-            <button
-              onClick={() => router.push('/admin/billing')}
-              className="w-full flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px] text-left"
-            >
-              <Euro className="w-5 h-5 text-icon-green mr-3 flex-shrink-0" />
-              <div>
-                <span className="font-medium">Facturatie</span>
-                <p className="text-sm text-gray-600">Beheer facturen en betalingen</p>
               </div>
             </button>
             <button
@@ -624,11 +434,6 @@ export default function AdminDashboard() {
             </button>
           </div>
           <div className="space-y-4">
-            {console.log('[RENDER DEBUG] recentActivities in render:', recentActivities)}
-            {console.log('[RENDER DEBUG] recentActivities.length:', recentActivities.length)}
-            {console.log('[RENDER DEBUG] mounted:', mounted)}
-            {console.log('[RENDER DEBUG] loading:', loading)}
-            {console.log('[RENDER DEBUG] isLoading:', isLoading)}
             {recentActivities.length > 0 ? (
               recentActivities.map((activity, index) => (
                 <div key={`activity-${index}-${activity.action}`} className="flex items-start gap-3" suppressHydrationWarning={true}>
@@ -660,49 +465,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* System Status */}
-      <div className="card">
-        <h2 className="text-heading mb-4">Systeem Status</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-green-900">Database</p>
-              <p className="text-sm text-green-700">Operationeel</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-green-900">Betalingen</p>
-              <p className="text-sm text-green-700">Actief</p>
-            </div>
-          </div>
-          <div className={`flex items-center gap-3 p-3 rounded-xl ${
-            metrics.lowStockItems > 0 ? 'bg-yellow-50' : 'bg-green-50'
-          }`}>
-            {metrics.lowStockItems > 0 ? (
-              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-            ) : (
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            )}
-            <div>
-              <p className={`font-medium ${
-                metrics.lowStockItems > 0 ? 'text-yellow-900' : 'text-green-900'
-              }`}>
-                Voorraad
-              </p>
-              <p className={`text-sm ${
-                metrics.lowStockItems > 0 ? 'text-yellow-700' : 'text-green-700'
-              }`}>
-                {metrics.lowStockItems > 0 
-                  ? `${metrics.lowStockItems} items onder minimum` 
-                  : 'Alle items op voorraad'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

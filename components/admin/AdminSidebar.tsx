@@ -11,13 +11,11 @@ import {
   LayoutDashboard,
   Settings,
   Users,
-  FileText,
   CreditCard,
   BarChart3,
   Mail,
   Plug,
   Database,
-  Shield,
   ArrowLeft,
   ChevronDown,
   Building2,
@@ -43,18 +41,13 @@ const navigation: NavItem[] = [
       { name: 'Salon Profiel', href: '/admin/settings', icon: Building2 },
       { name: 'Domein Instellingen', href: '/admin/settings/domain', icon: Link2 },
       { name: 'Openingstijden', href: '/admin/settings/hours', icon: Clock },
-      { name: 'BTW Instellingen', href: '/admin/settings/tax', icon: Calculator },
-      { name: 'Overhead Kosten', href: '/admin/settings/overhead', icon: Calculator },
     ]
   },
   { name: 'Medewerkers', href: '/admin/staff', icon: Users },
-  { name: 'Facturatie', href: '/admin/billing', icon: FileText },
   { name: 'Abonnement', href: '/admin/subscription', icon: CreditCard },
-  { name: 'Rapporten', href: '/admin/reports', icon: BarChart3 },
   { name: 'Email & Notificaties', href: '/admin/notifications', icon: Mail },
   { name: 'Integraties', href: '/admin/integrations', icon: Plug },
   { name: 'Data Beheer', href: '/admin/data', icon: Database },
-  { name: 'Beveiliging', href: '/admin/security', icon: Shield },
 ];
 
 interface AdminSidebarProps {

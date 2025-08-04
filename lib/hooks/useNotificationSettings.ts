@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTenant } from './useTenant';
 import { supabase } from '@/lib/supabase';
 
@@ -152,4 +152,33 @@ export function useNotificationSettings() {
     getReminderDateTime,
     shouldNotify
   };
+}
+
+// Hook to update notification settings
+export function useUpdateNotificationSettings() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: Partial<NotificationSettings>) => {
+      if (!tenantId) throw new Error('No tenant ID');
+
+      const { data, error } = await supabase
+        .from('tenants')
+        .update({
+          notification_preferences: updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tenantId)
+        .select('notification_preferences')
+        .single();
+
+      if (error) throw error;
+      return data.notification_preferences as NotificationSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-settings', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['tenant'] });
+    },
+  });
 }
