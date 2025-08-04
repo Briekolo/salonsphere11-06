@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment ID required' }, { status: 400 })
     }
 
-    console.log(`[Mollie Webhook] Processing payment ${paymentId}`)
+    console.log(`[Mollie Webhook] WEBHOOK RECEIVED at ${new Date().toISOString()} - Processing payment ${paymentId}`)
+    console.log(`[Mollie Webhook] Request headers:`, Object.fromEntries(request.headers.entries()))
+    console.log(`[Mollie Webhook] Request body:`, body)
 
     // Get payment details from Mollie
     let payment
