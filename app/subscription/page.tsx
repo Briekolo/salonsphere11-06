@@ -35,7 +35,7 @@ function SubscriptionPageContent() {
   const [countdown, setCountdown] = useState<number>(15)
   const [pollingAttempts, setPollingAttempts] = useState<number>(0)
   const [syncError, setSyncError] = useState<string | null>(null)
-  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState<number>(30)
+  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState<number>(60)
   
   // Use ref to access current subscription status inside intervals
   const subscriptionStatusRef = useRef(subscriptionStatus)
@@ -231,8 +231,8 @@ function SubscriptionPageContent() {
               </div>
               <CardTitle className="text-xl">Uw betaling wordt verwerkt</CardTitle>
               <CardDescription className="mt-2">
-                Uw betaling wordt binnen enkele minuten verwerkt. 
-                Ververs deze pagina om de status van uw abonnement te controleren.
+                Bedankt voor uw betaling. We zijn uw abonnement aan het activeren.
+                Dit duurt meestal ongeveer 1 minuut.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -247,8 +247,12 @@ function SubscriptionPageContent() {
                 </ul>
               </div>
               <div className="text-center">
+                <p className="text-sm text-gray-600 mb-2">
+                  De meeste betalingen worden binnen 1 minuut geregistreerd.
+                </p>
                 <p className="text-sm text-gray-600 mb-3">
-                  Dit proces duurt normaal gesproken minder dan 5 minuten.
+                  Mocht uw betaling na 1 minuut nog niet verwerkt zijn, 
+                  ververs dan de pagina of neem contact op met onze helpdesk.
                 </p>
                 <p className="text-xs text-gray-500">
                   Automatisch verversen over {autoRefreshCountdown} seconden...
