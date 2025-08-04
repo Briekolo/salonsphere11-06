@@ -404,30 +404,51 @@ function SubscriptionPageContent() {
                   </div>
                 </div>
               </CardContent>
-              {subscriptionStatus.status === 'trial' && (
-                <CardFooter>
-                  <div className="w-full space-y-4">
-                    <Alert>
-                      <AlertDescription>
-                        Uw proefperiode eindigt binnenkort. Upgrade naar een betaald plan om door te gaan met SalonSphere.
-                      </AlertDescription>
-                    </Alert>
+              <CardFooter>
+                <div className="w-full space-y-4">
+                  {subscriptionStatus.status === 'active' && (
                     <Button 
-                      onClick={() => handleUpgrade(subscription?.plan_id || '')}
+                      onClick={() => window.location.href = 'https://salonsphere-three.vercel.app/'}
                       className="w-full"
                       size="lg"
-                      disabled={(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === subscription?.plan_id}
+                      variant="default"
                     >
-                      {(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === subscription?.plan_id ? (
-                        <LoadingSpinner className="w-4 h-4 mr-2" />
-                      ) : (
-                        <CreditCard className="w-4 h-4 mr-2" />
-                      )}
-                      Upgrade naar betaald plan
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Ga naar Dashboard
                     </Button>
-                  </div>
-                </CardFooter>
-              )}
+                  )}
+                  {subscriptionStatus.status === 'trial' && (
+                    <>
+                      <Alert>
+                        <AlertDescription>
+                          Uw proefperiode eindigt binnenkort. Upgrade naar een betaald plan om door te gaan met SalonSphere.
+                        </AlertDescription>
+                      </Alert>
+                      <Button 
+                        onClick={() => handleUpgrade(subscription?.plan_id || '')}
+                        className="w-full"
+                        size="lg"
+                        disabled={(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === subscription?.plan_id}
+                      >
+                        {(isCreatingTrial || isSimulatingPayment || isCreatingPayment) && selectedPlan === subscription?.plan_id ? (
+                          <LoadingSpinner className="w-4 h-4 mr-2" />
+                        ) : (
+                          <CreditCard className="w-4 h-4 mr-2" />
+                        )}
+                        Upgrade naar betaald plan
+                      </Button>
+                      <Button 
+                        onClick={() => window.location.href = 'https://salonsphere-three.vercel.app/'}
+                        className="w-full"
+                        size="lg"
+                        variant="outline"
+                      >
+                        Ga naar Dashboard
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardFooter>
             </Card>
           </div>
 
