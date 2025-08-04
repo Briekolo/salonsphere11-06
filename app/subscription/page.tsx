@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle, Clock, CreditCard, Star } from 'lucide-react'
+import { CheckCircle, Clock, CreditCard, Star, RefreshCw } from 'lucide-react'
 import { useSubscriptionPlans, useSubscription } from '@/lib/hooks/useSubscription'
 import { subscriptionService } from '@/lib/services/subscriptionService'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -35,6 +35,7 @@ function SubscriptionPageContent() {
   const [countdown, setCountdown] = useState<number>(15)
   const [pollingAttempts, setPollingAttempts] = useState<number>(0)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState<number>(30)
   
   // Use ref to access current subscription status inside intervals
   const subscriptionStatusRef = useRef(subscriptionStatus)
@@ -89,9 +90,9 @@ function SubscriptionPageContent() {
             return
           }
           
-          // If not successful, payment might still be processing
-          console.log(`[Subscription Page] Payment not successful yet, status: ${handleResult.status}`)
-          setPaymentStatus('error')
+          // If not successful, show processing message
+          console.log(`[Subscription Page] Payment processing, status: ${handleResult.status}`)
+          // Keep showing processing status - payment might take a few minutes
           router.replace('/subscription', { scroll: false })
           
         } catch (error) {
@@ -113,6 +114,20 @@ function SubscriptionPageContent() {
       router.replace('/subscription', { scroll: false })
     }
   }, [searchParams, router]) // Dependencies simplified
+
+  // Auto-refresh timer when payment is processing
+  useEffect(() => {
+    if (paymentStatus === 'processing' && autoRefreshCountdown > 0) {
+      const timer = setTimeout(() => {
+        setAutoRefreshCountdown(prev => prev - 1)
+      }, 1000)
+      
+      return () => clearTimeout(timer)
+    } else if (paymentStatus === 'processing' && autoRefreshCountdown === 0) {
+      // Auto refresh the page
+      window.location.reload()
+    }
+  }, [paymentStatus, autoRefreshCountdown])
 
   const handleStartTrial = async (planId: string) => {
     try {
@@ -207,24 +222,57 @@ function SubscriptionPageContent() {
   // Show payment processing message
   if (paymentStatus === 'processing') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center">
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              <strong>Betaling succesvol!</strong>
-              <br />
-              We will redirect you shortly, if not: press hyperlink.
-            </AlertDescription>
-          </Alert>
-          <div className="mt-4">
-            <Button 
-              onClick={() => window.location.href = 'https://salonsphere-three.vercel.app/'}
-              className="bg-green-600 hover:bg-green-700 w-full"
-            >
-              Go to Dashboard
-            </Button>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Clock className="w-6 h-6 text-blue-600" />
+              </div>
+              <CardTitle className="text-xl">Uw betaling wordt verwerkt</CardTitle>
+              <CardDescription className="mt-2">
+                Uw betaling wordt binnen enkele minuten verwerkt. 
+                Ververs deze pagina om de status van uw abonnement te controleren.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Wat gebeurt er nu?</strong>
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-blue-700">
+                  <li>• Uw betaling wordt geverifieerd</li>
+                  <li>• Uw abonnement wordt geactiveerd</li>
+                  <li>• U krijgt toegang tot alle functies</li>
+                </ul>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-3">
+                  Dit proces duurt normaal gesproken minder dan 5 minuten.
+                </p>
+                <p className="text-xs text-gray-500">
+                  Automatisch verversen over {autoRefreshCountdown} seconden...
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-3">
+              <Button 
+                onClick={() => window.location.reload()}
+                className="w-full"
+                variant="default"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Pagina verversen
+              </Button>
+              <Button 
+                onClick={() => window.location.href = 'https://salonsphere-three.vercel.app/'}
+                variant="outline"
+                className="w-full"
+              >
+                Naar dashboard
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     )
