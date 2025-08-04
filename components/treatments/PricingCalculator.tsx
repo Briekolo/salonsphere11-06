@@ -18,6 +18,7 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
     laborCostPerHour: 45,
     desiredMargin: 75,
     competitorPrice: 0,
+    expectedAppointmentsPerMonth: 120,
     // Individual overhead costs
     rent: 0,
     utilities: 0,
@@ -49,9 +50,8 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
   const laborCost = (calculatorData.duration / 60) * calculatorData.laborCostPerHour
   const totalMonthlyOverhead = calculatorData.rent + calculatorData.utilities + calculatorData.insurance + 
                                calculatorData.supplies + calculatorData.marketing + calculatorData.other
-  // Estimate overhead per treatment (assuming ~60 treatments per month as rough baseline)
-  const estimatedTreatmentsPerMonth = overheadMetrics?.total_treatments || 60
-  const overheadCost = totalMonthlyOverhead / estimatedTreatmentsPerMonth
+  // Use configured expected appointments per month for overhead calculation
+  const overheadCost = totalMonthlyOverhead / calculatorData.expectedAppointmentsPerMonth
   const totalCost = calculatorData.materialCost + laborCost + overheadCost
   const suggestedPrice = totalCost / (1 - calculatorData.desiredMargin / 100)
   const actualMargin = ((suggestedPrice - totalCost) / suggestedPrice) * 100
@@ -133,6 +133,23 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Verwachte afspraken per maand
+                </label>
+                <input
+                  type="number"
+                  value={calculatorData.expectedAppointmentsPerMonth}
+                  onChange={(e) => setCalculatorData(prev => ({ ...prev, expectedAppointmentsPerMonth: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  min="1"
+                  step="1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Dit aantal wordt gebruikt om vaste kosten (huur, utilities, etc.) per afspraak te berekenen
+                </p>
+              </div>
+
               {/* Overhead Costs Section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -193,7 +210,7 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
                     <span className="font-medium">€{totalMonthlyOverhead.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                    <span>Per behandeling (~{estimatedTreatmentsPerMonth} behandelingen):</span>
+                    <span>Per afspraak ({calculatorData.expectedAppointmentsPerMonth} afspraken):</span>
                     <span>€{overheadCost.toFixed(2)}</span>
                   </div>
                 </div>
@@ -280,7 +297,7 @@ export function PricingCalculator({ onBack }: PricingCalculatorProps) {
                 <span className="font-medium">€{laborCost.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-600">Overhead (€{totalMonthlyOverhead.toFixed(0)}/maand ÷ {estimatedTreatmentsPerMonth})</span>
+                <span className="text-gray-600">Overhead (€{totalMonthlyOverhead.toFixed(0)}/maand ÷ {calculatorData.expectedAppointmentsPerMonth})</span>
                 <span className="font-medium">€{overheadCost.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between py-3 border-t-2 border-gray-200 font-semibold text-lg">
