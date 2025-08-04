@@ -1,4 +1,4 @@
-import { createClientSupabaseClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { mollieService } from './mollieService'
 
 export interface PaymentReconciliationResult {
@@ -18,7 +18,7 @@ export interface StuckPayment {
 }
 
 class PaymentReconciliationService {
-  private supabase = createClientSupabaseClient()
+  private supabase = supabase
 
   /**
    * Find payments that are stuck in 'pending' status for more than 5 minutes
