@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           .eq('id', subscription.id)
       } else {
         // Create new subscription
-        const { data: newSubscription } = await supabase
+        const { data: newSubscription, error: subscriptionError } = await supabase
           .from('subscriptions')
           .insert({
             tenant_id: tenantId,
@@ -147,14 +147,24 @@ export async function POST(request: NextRequest) {
           .select()
           .single()
 
+        if (subscriptionError || !newSubscription) {
+          console.error('Failed to create subscription:', subscriptionError)
+          throw new Error(`Failed to create subscription: ${subscriptionError?.message || 'Unknown error'}`)
+        }
+
         subscription = newSubscription
+      }
+
+      // Ensure subscription exists before creating payment record
+      if (!subscription) {
+        throw new Error('Subscription creation failed - no subscription object available')
       }
 
       // Create payment record
       await supabase
         .from('subscription_payments')
         .insert({
-          subscription_id: subscription!.id,
+          subscription_id: subscription.id,
           amount_cents: plan.price_cents,
           currency: plan.currency,
           status: 'pending',
