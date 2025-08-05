@@ -18,6 +18,7 @@ interface TemplateEditorProps {
 function TemplateEditor({ templateType, title, template, variables, onSave, onCancel }: TemplateEditorProps) {
   const subjectRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
+  const [showHtmlInfo, setShowHtmlInfo] = useState(false)
 
   const handleSave = () => {
     const subject = subjectRef.current?.value || ''
@@ -28,6 +29,54 @@ function TemplateEditor({ templateType, title, template, variables, onSave, onCa
   return (
     <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
       <h4 className="font-medium text-gray-900 mb-4">{title} Template Bewerken</h4>
+      
+      {/* HTML Information Box */}
+      <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-900">Belangrijk: HTML E-mail Templates</p>
+            <button
+              onClick={() => setShowHtmlInfo(!showHtmlInfo)}
+              className="text-xs text-amber-700 underline mt-1"
+            >
+              {showHtmlInfo ? 'Verberg informatie' : 'Wat is HTML? Klik hier voor uitleg'}
+            </button>
+            
+            {showHtmlInfo && (
+              <div className="mt-3 text-xs text-amber-800 space-y-2">
+                <p><strong>Wat is HTML?</strong> HTML is de code die bepaalt hoe uw e-mail eruitziet. Het is als een recept voor de opmaak van uw e-mail.</p>
+                
+                <p><strong>Hoe werkt het?</strong></p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><code className="bg-amber-100 px-1">&lt;h1&gt;Tekst&lt;/h1&gt;</code> = Grote koptekst</li>
+                  <li><code className="bg-amber-100 px-1">&lt;p&gt;Tekst&lt;/p&gt;</code> = Normale paragraaf</li>
+                  <li><code className="bg-amber-100 px-1">&lt;strong&gt;Tekst&lt;/strong&gt;</code> = Vetgedrukte tekst</li>
+                  <li><code className="bg-amber-100 px-1">&lt;br&gt;</code> = Nieuwe regel</li>
+                </ul>
+                
+                <p><strong>Variabelen gebruiken:</strong></p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Type <code className="bg-amber-100 px-1">{`{{client_name}}`}</code> om de naam van de klant in te voegen</li>
+                  <li>Type <code className="bg-amber-100 px-1">{`{{appointment_date}}`}</code> voor de afspraakdatum</li>
+                  <li>Deze worden automatisch vervangen met de juiste informatie</li>
+                </ul>
+                
+                <p><strong>Tips voor aanpassen:</strong></p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Wijzig alleen tekst tussen <code className="bg-amber-100 px-1">&gt;</code> en <code className="bg-amber-100 px-1">&lt;</code></li>
+                  <li>Laat <code className="bg-amber-100 px-1">style=</code> regels intact voor de opmaak</li>
+                  <li>Test altijd uw wijzigingen met een test e-mail</li>
+                  <li>Maak een kopie van de originele code voordat u wijzigt</li>
+                </ul>
+                
+                <p className="font-medium text-amber-900 mt-2">⚠️ Let op: Verkeerde HTML kan ervoor zorgen dat uw e-mail er vreemd uitziet. Bij twijfel, vraag om hulp!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -47,14 +96,14 @@ function TemplateEditor({ templateType, title, template, variables, onSave, onCa
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            E-mail Inhoud
+            E-mail Inhoud (HTML Code)
           </label>
           <textarea
             ref={contentRef}
-            rows={8}
+            rows={12}
             defaultValue={template.content}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Voer de e-mail inhoud in..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-xs"
+            placeholder="Voer de HTML code voor de e-mail in..."
           />
           <p className="text-xs text-gray-500 mt-1">
             Beschikbare variabelen: {variables.join(', ')}
