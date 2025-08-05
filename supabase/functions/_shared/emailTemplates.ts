@@ -19,28 +19,56 @@ export async function getEmailTemplate(
 ): Promise<EmailTemplate | null> {
   console.log(`[EmailTemplate] Fetching template - Tenant: ${tenantId}, Type: ${templateType}`)
   
-  const { data, error } = await supabase
-    .from('email_templates')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('type', templateType)
-    .eq('active', true)
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('type', templateType)
+      .eq('active', true)
+      .single()
 
-  if (error) {
-    console.error('[EmailTemplate] Error fetching template:', error)
-    console.error('[EmailTemplate] Query params:', { tenantId, templateType })
+    if (error) {
+      console.error('[EmailTemplate] Database error:', error.message)
+      console.error('[EmailTemplate] Query params:', { tenantId, templateType })
+      
+      // If not found with primary type, try alternative type
+      if (error.code === 'PGRST116' && templateType === 'appointment_confirmation') {
+        console.log('[EmailTemplate] Trying alternative type: booking_confirmation')
+        const { data: altData, error: altError } = await supabase
+          .from('email_templates')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('type', 'booking_confirmation')
+          .eq('active', true)
+          .single()
+        
+        if (!altError && altData) {
+          console.log('[EmailTemplate] Found template with alternative type')
+          return altData
+        }
+      }
+      
+      return null
+    }
+
+    if (!data) {
+      console.log('[EmailTemplate] No template found')
+      return null
+    }
+
+    console.log('[EmailTemplate] Template found:', {
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      subject: data.subject?.substring(0, 50) + '...'
+    })
+    
+    return data
+  } catch (err) {
+    console.error('[EmailTemplate] Unexpected error:', err)
     return null
   }
-
-  console.log('[EmailTemplate] Template found:', {
-    id: data.id,
-    name: data.name,
-    type: data.type,
-    subject: data.subject?.substring(0, 50) + '...'
-  })
-  
-  return data
 }
 
 export function renderTemplate(
@@ -267,9 +295,17 @@ export const defaultTemplates = {
 
 // Simple conditional replacement (not full handlebars)
 export function processConditionals(html: string, variables: Record<string, any>): string {
+  // First, ensure the HTML doesn't have already corrupted conditionals
+  if (!html.includes('{{#if')) {
+    return html
+  }
+  
   // Replace {{#if variable}} ... {{/if}} blocks
   const ifPattern = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g
   return html.replace(ifPattern, (match, varName, content) => {
-    return variables[varName] ? content : ''
+    // Check if variable exists and is not empty
+    const value = variables[varName]
+    const shouldShow = value !== undefined && value !== null && value !== ''
+    return shouldShow ? content : ''
   })
 }
