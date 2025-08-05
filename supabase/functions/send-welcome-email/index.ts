@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getEmailTemplate, renderTemplate, defaultTemplates, processConditionals } from '../_shared/emailTemplates.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,8 +80,35 @@ serve(async (req) => {
     const tenantName = tenant?.name || 'SalonSphere'
     const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
 
-    // Prepare welcome email content
-    const emailHtml = `
+    // Prepare template variables
+    const templateVars = {
+      salon_name: tenantName,
+      salon_address: tenant?.address || '',
+      salon_phone: tenant?.phone || '',
+      salon_email: tenant?.email || '',
+      client_name: clientName,
+      first_name: clientName.split(' ')[0]
+    }
+
+    // Try to get template from database
+    const template = await getEmailTemplate(supabase, tenantId, 'welcome')
+    
+    let emailSubject: string
+    let emailHtml: string
+    
+    if (template) {
+      // Use database template
+      const rendered = renderTemplate(template, templateVars)
+      emailSubject = rendered.subject
+      emailHtml = processConditionals(rendered.html, templateVars)
+    } else {
+      // Fallback to default template
+      console.log('Using default welcome email template')
+      emailSubject = defaultTemplates.welcome.subject
+        .replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => templateVars[key] || match)
+      
+      // For backward compatibility with existing hard-coded template
+      emailHtml = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -147,6 +175,7 @@ serve(async (req) => {
         </body>
       </html>
     `
+    }
 
     // Send welcome email using Resend
     const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -158,7 +187,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: `${tenantName} <${RESEND_FROM_EMAIL}>`,
         to: recipientEmail,
-        subject: `🌟 Welkom bij ${tenantName}!`,
+        subject: emailSubject,
         html: emailHtml
       }),
     })

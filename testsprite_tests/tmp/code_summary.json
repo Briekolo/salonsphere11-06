@@ -1,0 +1,214 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "Next.js 15.3.3",
+    "React 18.3.1",
+    "Supabase (PostgreSQL, Auth, Realtime)",
+    "TanStack Query v5",
+    "Jotai (state management)",
+    "Tailwind CSS",
+    "React Hook Form",
+    "Zod (validation)",
+    "Playwright (E2E testing)",
+    "Storybook",
+    "@react-pdf/renderer",
+    "Mollie (payments)",
+    "date-fns",
+    "Lucide React (icons)"
+  ],
+  "features": [
+    {
+      "name": "Authentication & Authorization",
+      "description": "Multi-tenant authentication with role-based access control (admin, staff, client)",
+      "files": [
+        "components/auth/AuthProvider.tsx",
+        "components/auth/SignInForm.tsx",
+        "components/auth/SignUpForm.tsx",
+        "components/staff/StaffAuthProvider.tsx",
+        "components/client/auth/ClientAuthProvider.tsx",
+        "lib/hooks/useStaffAuth.ts",
+        "lib/hooks/useClientAuth.ts",
+        "lib/services/clientAuthService.ts",
+        "middleware.ts"
+      ]
+    },
+    {
+      "name": "Appointment Booking System",
+      "description": "Complete booking management with availability checking, overlap detection, and calendar views",
+      "files": [
+        "components/agenda/CalendarView.tsx",
+        "components/agenda/EnhancedCalendarView.tsx",
+        "components/agenda/AppointmentCard.tsx",
+        "components/agenda/AppointmentDashboard.tsx",
+        "lib/hooks/useBookings.ts",
+        "lib/services/bookingService.ts",
+        "lib/services/availabilityService.ts",
+        "lib/utils/appointment-overlap.ts",
+        "app/appointments/page.tsx"
+      ]
+    },
+    {
+      "name": "Client Management",
+      "description": "Client database with status tracking, appointment history, and search functionality",
+      "files": [
+        "components/clients/ClientsFilters.tsx",
+        "components/clients/ClientsStats.tsx",
+        "components/clients/ClientStatusBadge.tsx",
+        "lib/hooks/useClients.ts",
+        "lib/services/clientService.ts",
+        "lib/services/clientStatusService.ts",
+        "app/clients/page.tsx"
+      ]
+    },
+    {
+      "name": "Staff Management",
+      "description": "Staff profiles, schedules, availability, and service assignments",
+      "files": [
+        "components/staff/StaffLayout.tsx",
+        "components/staff/StaffSidebar.tsx",
+        "components/staff/dashboard/StaffDashboard.tsx",
+        "components/staff/availability/StaffAvailabilityManager.tsx",
+        "lib/hooks/useStaffAvailability.ts",
+        "lib/hooks/useStaffSchedules.ts",
+        "lib/services/staffBookingService.ts",
+        "app/admin/staff/page.tsx"
+      ]
+    },
+    {
+      "name": "Inventory Management",
+      "description": "Product tracking, stock management, low stock alerts, and purchase orders",
+      "files": [
+        "components/inventory/InventoryContent.tsx",
+        "components/inventory/InventoryStats.tsx",
+        "components/inventory/LowStockBanner.tsx",
+        "components/inventory/ProductForm.tsx",
+        "lib/hooks/useInventoryItems.ts",
+        "lib/hooks/usePurchaseOrders.ts",
+        "lib/services/inventoryService.ts",
+        "app/inventory/page.tsx"
+      ]
+    },
+    {
+      "name": "Treatment & Service Management",
+      "description": "Service catalog with categories, pricing, duration, and staff assignments",
+      "files": [
+        "components/treatments/CategoryManagement.tsx",
+        "components/treatments/TreatmentsStats.tsx",
+        "components/treatments/StaffAssignmentsV2.tsx",
+        "lib/hooks/useServices.ts",
+        "lib/hooks/useTreatmentCategories.ts",
+        "lib/services/serviceService.ts",
+        "lib/services/treatmentSeriesService.ts",
+        "app/treatments/page.tsx"
+      ]
+    },
+    {
+      "name": "Dashboard & Analytics",
+      "description": "Business metrics, revenue analytics, appointment stats, and growth indicators",
+      "files": [
+        "components/dashboard/AnalyticsDashboard.tsx",
+        "components/dashboard/KeyMetrics.tsx",
+        "components/dashboard/RevenueAnalytics.tsx",
+        "components/dashboard/GrowthIndicators.tsx",
+        "lib/hooks/useTenantMetrics.ts",
+        "lib/hooks/useRevenueData.ts",
+        "lib/hooks/useExpectedRevenueData.ts",
+        "app/page.tsx"
+      ]
+    },
+    {
+      "name": "Subscription & Billing",
+      "description": "Multi-tenant subscription management with Mollie payment integration",
+      "files": [
+        "lib/services/subscriptionService.ts",
+        "lib/services/mollieService.ts",
+        "lib/services/paymentReconciliationService.ts",
+        "lib/hooks/useSubscription.ts",
+        "lib/hooks/usePaymentPoller.ts",
+        "app/subscription/page.tsx",
+        "app/admin/subscription/page.tsx"
+      ]
+    },
+    {
+      "name": "Email Automation",
+      "description": "Automated email templates, appointment reminders, and notification system",
+      "files": [
+        "lib/services/emailService.ts",
+        "lib/services/emailTemplateService.ts",
+        "lib/hooks/useEmailAutomation.ts",
+        "lib/hooks/useEmailTemplates.ts",
+        "app/email-automation/page.tsx",
+        "app/admin/notifications/templates/[id]/edit/page.tsx"
+      ]
+    },
+    {
+      "name": "Notification System",
+      "description": "In-app notifications with real-time updates and preferences management",
+      "files": [
+        "components/settings/NotificationPreferencesTab.tsx",
+        "lib/services/notificationService.ts",
+        "lib/services/notificationTriggers.ts",
+        "lib/hooks/useNotifications.ts",
+        "lib/hooks/useNotificationSettings.ts",
+        "app/notifications/page.tsx"
+      ]
+    },
+    {
+      "name": "Business Settings",
+      "description": "Salon configuration including hours, booking rules, tax settings, and domain management",
+      "files": [
+        "components/settings/BusinessInfoTab.tsx",
+        "components/settings/OpeningHoursTab.tsx",
+        "components/settings/BookingRulesTab.tsx",
+        "components/settings/TaxSettingsTab.tsx",
+        "lib/hooks/useBusinessInfo.ts",
+        "lib/hooks/useBusinessHours.ts",
+        "lib/services/domainService.ts",
+        "app/settings/page.tsx"
+      ]
+    },
+    {
+      "name": "Client Booking Portal",
+      "description": "Public-facing booking interface with service selection and appointment scheduling",
+      "files": [
+        "app/(client)/[domain]/layout.tsx",
+        "app/(client)/[domain]/services/page.tsx",
+        "app/(client)/[domain]/book/page.tsx",
+        "app/(client)/[domain]/book/[serviceId]/page.tsx",
+        "lib/client/booking-service.ts",
+        "lib/client/tenant-resolver.ts",
+        "components/client/layout/ClientHeader.tsx"
+      ]
+    },
+    {
+      "name": "Google Calendar Integration",
+      "description": "Two-way sync with Google Calendar for appointments",
+      "files": [
+        "lib/services/googleCalendarService.ts",
+        "lib/hooks/useGoogleCalendar.ts",
+        "app/api/google-calendar/sync-appointment/route.ts",
+        "app/api/auth/google/callback/route.ts"
+      ]
+    },
+    {
+      "name": "Real-time Updates",
+      "description": "Live updates for appointments, inventory, and notifications using Supabase Realtime",
+      "files": [
+        "components/providers/RealtimeProvider.tsx",
+        "components/client/providers/ClientRealtimeProvider.tsx",
+        "lib/hooks/useTenantRealtime.ts",
+        "lib/hooks/useInventoryRealtime.ts"
+      ]
+    },
+    {
+      "name": "Multi-tenant Architecture",
+      "description": "Row-level security with tenant isolation and custom domain support",
+      "files": [
+        "lib/hooks/useTenant.ts",
+        "lib/utils/tenant.ts",
+        "lib/services/validationService.ts",
+        "middleware.ts"
+      ]
+    }
+  ]
+}

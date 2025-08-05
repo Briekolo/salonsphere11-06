@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { formatAppointmentTimeRange, logTimezoneConversion } from '../_shared/timezone.ts'
+import { getEmailTemplate, renderTemplate, defaultTemplates, processConditionals } from '../_shared/emailTemplates.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,8 +98,46 @@ serve(async (req) => {
     // Log for debugging
     logTimezoneConversion(appointmentDate, 'Booking Confirmation')
 
-    // Prepare email content
-    const emailHtml = `
+    // Prepare template variables
+    const templateVars = {
+      salon_name: tenantName,
+      salon_address: tenantAddress || '',
+      salon_phone: tenantPhone || '',
+      client_name: clientName,
+      first_name: clientName.split(' ')[0],
+      service_name: serviceName,
+      appointment_date: dateFormatted,
+      appointment_time: `${timeFormatted} - ${endTimeFormatted} ${timezoneAbbr}`,
+      duration_minutes: durationMinutes.toString(),
+      staff_name: staffName || '',
+      notes: notes || '',
+      series_session_number: seriesSessionNumber?.toString() || '',
+      total_sessions: totalSessions?.toString() || '',
+      timezone_notice: timezoneNotice
+    }
+
+    // Try to get template from database
+    // Check both 'appointment_confirmation' and 'booking_confirmation' types for compatibility
+    console.log('Fetching email template for tenant:', tenantId, 'type: appointment_confirmation or booking_confirmation')
+    const template = await getEmailTemplate(supabase, tenantId, 'appointment_confirmation') ||
+                    await getEmailTemplate(supabase, tenantId, 'booking_confirmation')
+    
+    let emailSubject: string
+    let emailHtml: string
+    
+    if (template) {
+      // Use database template
+      const rendered = renderTemplate(template, templateVars)
+      emailSubject = rendered.subject
+      emailHtml = processConditionals(rendered.html, templateVars)
+    } else {
+      // Fallback to default template
+      console.log('Using default booking confirmation template')
+      emailSubject = defaultTemplates.booking_confirmation.subject
+        .replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => templateVars[key] || match)
+      
+      // For backward compatibility with existing hard-coded template
+      emailHtml = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -200,6 +239,7 @@ serve(async (req) => {
         </body>
       </html>
     `
+    }
 
     // Use Resend test email if domain not verified
     const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'
@@ -214,7 +254,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: `${tenantName} <${RESEND_FROM_EMAIL}>`,
         to: recipientEmail,
-        subject: `Afspraakbevestiging - ${serviceName} op ${dateFormatted}`,
+        subject: emailSubject,
         html: emailHtml
       }),
     })

@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "bias72tp@gmail.com",
+  "loginPassword": "bias1234",
+  "executionArgs": {
+    "projectName": "Salonsphere",
+    "projectPath": "/Users/tobiaspottier/Main/Dessaro/Salonsphere/Salonsphere",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-gcOxdBAX5xdgk8e_OrEE6t4yf5gNzevnhCwInUeVIaffkgt_72A0nl-NmVEgSrZHwobJiz7CR8bcsQUMyIdWf-1P2SVQE9ZM9hK47FNpcYHOsD7DyhS7cNNLNTm6YPED1GI"
+    }
+  },
+  "proxy": "http://107efe4a-d3bd-4940-bd33-893dd7722d2b:acEn5XfgSMUV3atzOkxm9D2nJBsxzz7U@tun.testsprite.com:8080"
+}

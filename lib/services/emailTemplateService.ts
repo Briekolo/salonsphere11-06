@@ -112,20 +112,45 @@ export class EmailTemplateService {
 
   // Update template
   static async updateTemplate(templateId: string, updates: Partial<EmailTemplate>) {
-    // If HTML content is being updated, extract new variables
-    if (updates.html_content) {
-      updates.variables = this.extractVariables(updates.html_content)
+    // Map from interface fields to database fields
+    const dbUpdates: any = {}
+    
+    if (updates.name !== undefined) dbUpdates.name = updates.name
+    if (updates.category !== undefined) dbUpdates.type = updates.category
+    if (updates.subject_line !== undefined) dbUpdates.subject = updates.subject_line
+    if (updates.html_content !== undefined) {
+      dbUpdates.body_html = updates.html_content
+      dbUpdates.variables = this.extractVariables(updates.html_content)
     }
+    if (updates.text_content !== undefined) dbUpdates.body_text = updates.text_content
+    if (updates.is_active !== undefined) dbUpdates.active = updates.is_active
+    
+    // Handle direct database field updates (for backward compatibility)
+    if ((updates as any).subject !== undefined) dbUpdates.subject = (updates as any).subject
+    if ((updates as any).body_html !== undefined) {
+      dbUpdates.body_html = (updates as any).body_html
+      dbUpdates.variables = this.extractVariables((updates as any).body_html)
+    }
+    if ((updates as any).body_text !== undefined) dbUpdates.body_text = (updates as any).body_text
 
     const { data, error } = await supabase
       .from('email_templates')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', templateId)
       .select()
       .single()
 
     if (error) throw error
-    return data
+    
+    // Map back to expected structure
+    return {
+      ...data,
+      category: data.type,
+      subject_line: data.subject,
+      html_content: data.body_html,
+      text_content: data.body_text,
+      is_active: data.active
+    }
   }
 
   // Delete template

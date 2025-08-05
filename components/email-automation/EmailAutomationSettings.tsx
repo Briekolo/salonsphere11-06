@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Mail, Users, Clock, TrendingUp, Eye, AlertCircle, CheckCircle, XCircle, Edit3 } from 'lucide-react'
 import { useEmailSettings, useUpdateEmailSettings, useEmailStats, useEmailLogs } from '@/lib/hooks/useEmailAutomation'
+import { useEmailTemplates, useUpdateEmailTemplate } from '@/lib/hooks/useEmailTemplates'
 import { useToast } from '@/components/providers/ToastProvider'
 
 interface TemplateEditorProps {
@@ -83,61 +84,94 @@ export function EmailAutomationSettings() {
   const { data: settings, isLoading: settingsLoading } = useEmailSettings()
   const { data: stats, isLoading: statsLoading } = useEmailStats('this_month')
   const { data: recentLogs, isLoading: logsLoading } = useEmailLogs(10)
+  const { data: templates, isLoading: templatesLoading } = useEmailTemplates()
   const updateSettings = useUpdateEmailSettings()
+  const updateTemplate = useUpdateEmailTemplate()
   const { showToast } = useToast()
   const [showPreview, setShowPreview] = useState<string | null>(null)
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null)
   const [templateData, setTemplateData] = useState<{[key: string]: {subject: string, content: string}}>({
     welcome: {
-      subject: "🌟 Welkom bij [Salon Naam]!",
-      content: `Beste [Klant Voornaam],
+      subject: "🌟 Welkom bij {{salon_name}}!",
+      content: `Beste {{first_name}},
 
-Hartelijk welkom bij [Salon Naam]!
+Hartelijk welkom bij {{salon_name}}!
 
 We zijn verheugd dat u deel uitmaakt van onze salon familie. Bij ons staat kwaliteit en persoonlijke aandacht voorop.
 
 Heeft u vragen of wilt u een nieuwe afspraak maken? Neem gerust contact met ons op.
 
 Met vriendelijke groet,
-Het team van [Salon Naam]`
+Het team van {{salon_name}}`
     },
     confirmation: {
-      subject: "Afspraakbevestiging - [Behandeling] op [Datum]",
-      content: `Beste [Klant Naam],
+      subject: "Afspraakbevestiging - {{service_name}} op {{appointment_date}}",
+      content: `Beste {{client_name}},
 
 Uw afspraak is bevestigd!
 
 Afspraak Details:
-- Behandeling: [Behandeling]
-- Datum: [Datum]
-- Tijd: [Tijd]
-- Medewerker: [Medewerker]
-- Locatie: [Salon Naam], [Salon Adres]
+- Behandeling: {{service_name}}
+- Datum: {{appointment_date}}
+- Tijd: {{appointment_time}}
+- Medewerker: {{staff_name}}
+- Locatie: {{salon_name}}, {{salon_address}}
 
-Wij verheugen ons op uw bezoek. Heeft u vragen? Neem gerust contact met ons op via [Salon Telefoon] of [Salon Email].
+Wij verheugen ons op uw bezoek. Heeft u vragen? Neem gerust contact met ons op via {{salon_phone}} of {{salon_email}}.
 
 Met vriendelijke groet,
-Het team van [Salon Naam]`
+Het team van {{salon_name}}`
     },
     reminder: {
-      subject: "⏰ Herinnering: [Behandeling] morgen om [Tijd]",
-      content: `Beste [Klant Naam],
+      subject: "⏰ Herinnering: {{service_name}} morgen om {{appointment_time}}",
+      content: `Beste {{client_name}},
 
 Dit is een vriendelijke herinnering voor uw aanstaande afspraak:
 
 Afspraak Details:
-- Behandeling: [Behandeling]
-- Datum: [Datum]
-- Tijd: [Tijd]
-- Medewerker: [Medewerker]
-- Locatie: [Salon Naam], [Salon Adres]
+- Behandeling: {{service_name}}
+- Datum: {{appointment_date}}
+- Tijd: {{appointment_time}}
+- Medewerker: {{staff_name}}
+- Locatie: {{salon_name}}, {{salon_address}}
 
-We kijken ernaar uit u te zien! Mocht u uw afspraak willen wijzigen of annuleren, neem dan zo spoedig mogelijk contact met ons op via [Salon Telefoon].
+We kijken ernaar uit u te zien! Mocht u uw afspraak willen wijzigen of annuleren, neem dan zo spoedig mogelijk contact met ons op via {{salon_phone}}.
 
 Met vriendelijke groet,
-Het team van [Salon Naam]`
+Het team van {{salon_name}}`
     }
   })
+
+  // Load templates from database when they become available
+  useEffect(() => {
+    if (templates && templates.length > 0) {
+      const newTemplateData: {[key: string]: {subject: string, content: string}} = {}
+      
+      templates.forEach(template => {
+        if (template.type === 'welcome') {
+          newTemplateData.welcome = {
+            subject: template.subject_line || templateData.welcome.subject,
+            content: template.html_content || templateData.welcome.content
+          }
+        } else if (template.type === 'appointment_confirmation' || template.type === 'booking_confirmation') {
+          newTemplateData.confirmation = {
+            subject: template.subject_line || templateData.confirmation.subject,
+            content: template.html_content || templateData.confirmation.content
+          }
+        } else if (template.type === 'booking_reminder' || template.type === 'appointment_reminder') {
+          newTemplateData.reminder = {
+            subject: template.subject_line || templateData.reminder.subject,
+            content: template.html_content || templateData.reminder.content
+          }
+        }
+      })
+      
+      // Only update if we found templates
+      if (Object.keys(newTemplateData).length > 0) {
+        setTemplateData(prev => ({ ...prev, ...newTemplateData }))
+      }
+    }
+  }, [templates])
 
   const handleToggle = async (type: 'welcome_email_enabled' | 'booking_confirmation_enabled' | 'booking_reminder_enabled', enabled: boolean) => {
     try {
@@ -160,13 +194,38 @@ Het team van [Salon Naam]`
         [templateType]: { subject, content }
       }))
       
-      // In a real implementation, this would save to the database
-      // For now, we'll simulate a successful save
-      showToast('E-mail template succesvol opgeslagen!', 'success')
-      setEditingTemplate(null)
+      // Map frontend template type to database type
+      let dbTemplateType = templateType
+      if (templateType === 'confirmation') {
+        dbTemplateType = 'appointment_confirmation'
+      } else if (templateType === 'reminder') {
+        dbTemplateType = 'appointment_reminder'
+      }
       
-      // Here you would typically call an API to save the template
-      // await updateEmailTemplate.mutateAsync({ type: templateType, subject, content })
+      // Find the template in the database templates
+      const dbTemplate = templates?.find(t => {
+        if (templateType === 'confirmation') {
+          return t.type === 'appointment_confirmation' || t.type === 'booking_confirmation'
+        } else if (templateType === 'reminder') {
+          return t.type === 'appointment_reminder' || t.type === 'booking_reminder'
+        }
+        return t.type === templateType
+      })
+      
+      if (dbTemplate) {
+        // Update the existing template in the database
+        await updateTemplate.mutateAsync({
+          id: dbTemplate.id!,
+          data: {
+            subject: subject,
+            body_html: content,
+            body_text: content // Simple plain text version
+          }
+        })
+      }
+      
+      setEditingTemplate(null)
+      showToast('Template succesvol opgeslagen', 'success')
     } catch (error) {
       console.error('Error saving template:', error)
       showToast('Er is een fout opgetreden bij het opslaan van de template', 'error')
@@ -313,7 +372,7 @@ Het team van [Salon Naam]`
               templateType="welcome"
               title="Welkomst E-mail"
               template={templateData.welcome}
-              variables={['[Salon Naam]', '[Salon Adres]', '[Salon Telefoon]', '[Salon Email]', '[Klant Naam]', '[Klant Voornaam]']}
+              variables={['{{salon_name}}', '{{salon_address}}', '{{salon_phone}}', '{{salon_email}}', '{{client_name}}', '{{first_name}}']}
               onSave={(subject, content) => handleSaveTemplate('welcome', subject, content)}
               onCancel={() => setEditingTemplate(null)}
             />
@@ -391,7 +450,7 @@ Het team van [Salon Naam]`
               templateType="confirmation"
               title="Afspraak Bevestiging"
               template={templateData.confirmation}
-              variables={['[Salon Naam]', '[Salon Adres]', '[Salon Telefoon]', '[Salon Email]', '[Klant Naam]', '[Behandeling]', '[Datum]', '[Tijd]', '[Medewerker]']}
+              variables={['{{salon_name}}', '{{salon_address}}', '{{salon_phone}}', '{{salon_email}}', '{{client_name}}', '{{service_name}}', '{{appointment_date}}', '{{appointment_time}}', '{{staff_name}}']}
               onSave={(subject, content) => handleSaveTemplate('confirmation', subject, content)}
               onCancel={() => setEditingTemplate(null)}
             />
@@ -469,7 +528,7 @@ Het team van [Salon Naam]`
               templateType="reminder"
               title="Afspraak Herinnering"
               template={templateData.reminder}
-              variables={['[Salon Naam]', '[Salon Adres]', '[Salon Telefoon]', '[Salon Email]', '[Klant Naam]', '[Behandeling]', '[Datum]', '[Tijd]', '[Medewerker]']}
+              variables={['{{salon_name}}', '{{salon_address}}', '{{salon_phone}}', '{{salon_email}}', '{{client_name}}', '{{service_name}}', '{{appointment_date}}', '{{appointment_time}}', '{{staff_name}}']}
               onSave={(subject, content) => handleSaveTemplate('reminder', subject, content)}
               onCancel={() => setEditingTemplate(null)}
             />

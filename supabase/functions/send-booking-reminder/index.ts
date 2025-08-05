@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { formatAppointmentTimeRange, logTimezoneConversion } from '../_shared/timezone.ts'
+import { getEmailTemplate, renderTemplate, defaultTemplates, processConditionals } from '../_shared/emailTemplates.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,8 +98,44 @@ serve(async (req) => {
     const now = new Date()
     const hoursUntil = Math.round((appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60))
 
-    // Prepare reminder email content
-    const emailHtml = `
+    // Prepare template variables
+    const templateVars = {
+      salon_name: tenantName,
+      salon_address: tenantAddress || '',
+      salon_phone: tenantPhone || '',
+      client_name: clientName,
+      first_name: clientName.split(' ')[0],
+      service_name: serviceName,
+      appointment_date: dateFormatted,
+      appointment_time: `${timeFormatted} ${timezoneAbbr}`,
+      appointment_time_range: `${timeFormatted} - ${endTimeFormatted} ${timezoneAbbr}`,
+      duration_minutes: durationMinutes.toString(),
+      staff_name: staffName || '',
+      notes: notes || '',
+      hours_until: hoursUntil.toString(),
+      timezone_notice: timezoneNotice
+    }
+
+    // Try to get template from database
+    const template = await getEmailTemplate(supabase, tenantId, 'booking_reminder') || 
+                     await getEmailTemplate(supabase, tenantId, 'appointment_reminder')
+    
+    let emailSubject: string
+    let emailHtml: string
+    
+    if (template) {
+      // Use database template
+      const rendered = renderTemplate(template, templateVars)
+      emailSubject = rendered.subject
+      emailHtml = processConditionals(rendered.html, templateVars)
+    } else {
+      // Fallback to default template
+      console.log('Using default booking reminder template')
+      emailSubject = defaultTemplates.booking_reminder.subject
+        .replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => templateVars[key] || match)
+      
+      // For backward compatibility with existing hard-coded template
+      emailHtml = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -201,6 +238,7 @@ serve(async (req) => {
         </body>
       </html>
     `
+    }
 
     // Send reminder email using Resend
     const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -212,7 +250,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: `${tenantName} <${RESEND_FROM_EMAIL}>`,
         to: recipientEmail,
-        subject: `⏰ Herinnering: ${serviceName} morgen om ${timeFormatted} ${timezoneAbbr}`,
+        subject: emailSubject,
         html: emailHtml
       }),
     })

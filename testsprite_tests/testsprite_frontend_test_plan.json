@@ -1,0 +1,672 @@
+[
+  {
+    "id": "TC001",
+    "title": "Admin Authentication and Role-based Access Control",
+    "description": "Verify that an Admin user can successfully log in, access admin features, and cannot access client or staff-only features.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid Admin credentials."
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is successful."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to admin dashboard and management features."
+      },
+      {
+        "type": "assertion",
+        "description": "Attempt to access client-specific features and confirm access is denied."
+      },
+      {
+        "type": "assertion",
+        "description": "Attempt to access staff-specific features and confirm access is denied."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Staff Authentication and Role-based Access Control",
+    "description": "Verify that a Staff user can log in, manage their availability, view assigned appointments and client details, and cannot access admin or client-only features.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid Staff credentials."
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is successful."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to personal availability settings and assigned appointments."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ability to access client details related to their appointments."
+      },
+      {
+        "type": "assertion",
+        "description": "Attempt to access admin-only features and verify access is denied."
+      },
+      {
+        "type": "assertion",
+        "description": "Attempt to access client-only features and verify access is denied."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Client Authentication and Public Booking Portal Access",
+    "description": "Verify that clients can register, log in, and access the public booking portal with role-specific restrictions.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the client registration page."
+      },
+      {
+        "type": "action",
+        "description": "Complete registration with valid client information."
+      },
+      {
+        "type": "action",
+        "description": "Log in with registered client credentials."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful login and access to client booking interface."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the client cannot access staff/admin-only features."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify client can select services and schedule appointments."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Appointment Booking with Availability and Overlap Detection",
+    "description": "Ensure appointments can be scheduled only when staff and resources are available and overlaps are prevented including recurring appointments.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a client or staff user."
+      },
+      {
+        "type": "action",
+        "description": "Select a service and choose a desired appointment time."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that staff availability is checked and only available times are shown."
+      },
+      {
+        "type": "action",
+        "description": "Schedule an appointment that overlaps with an existing appointment."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm that the system prevents overlap and displays an appropriate message."
+      },
+      {
+        "type": "action",
+        "description": "Schedule a recurring appointment with valid recurrence rules."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all recurring appointment slots respect availability and overlap rules."
+      },
+      {
+        "type": "action",
+        "description": "View appointments in multiple calendar views."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the appointments are correctly displayed in day, week, and month views."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Client Management with Profile Editing and Status Tracking",
+    "description": "Test client profile creation, status updates, appointment history viewing, and filter/search functionality for client lists.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Admin or Staff with client management privileges."
+      },
+      {
+        "type": "action",
+        "description": "Create a new client profile with all mandatory fields."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify client profile is created and saved correctly."
+      },
+      {
+        "type": "action",
+        "description": "Update client status and verify status change is reflected."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that appointment history for the client is displayed accurately."
+      },
+      {
+        "type": "action",
+        "description": "Use filters and search on the client list page."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the list updates correctly based on filter criteria and search terms."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Staff Management with Availability, Service Assignment, and Performance Tracking",
+    "description": "Verify that staff profiles can be updated with availability schedules, assigned to services, and that performance metrics are tracked.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Admin user."
+      },
+      {
+        "type": "action",
+        "description": "Edit a staff member's profile to update availability schedule."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify availability changes are saved and reflected on booking interfaces."
+      },
+      {
+        "type": "action",
+        "description": "Assign staff member to specific services or treatments."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify staff can only be booked for assigned services."
+      },
+      {
+        "type": "action",
+        "description": "Review staff performance metrics on dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify performance stats match expected appointment and revenue data."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Inventory Management and Low Stock Alerts",
+    "description": "Test inventory tracking, stock level updates on usage, issuance of low stock alerts, and purchase order creation workflow.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Inventory Manager or Admin."
+      },
+      {
+        "type": "action",
+        "description": "Add a new product with initial stock."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product is listed with correct stock level."
+      },
+      {
+        "type": "action",
+        "description": "Simulate stock usage by recording product consumption."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify stock levels decrease accordingly."
+      },
+      {
+        "type": "action",
+        "description": "Reduce stock below low stock threshold."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify low stock alert is triggered and visible."
+      },
+      {
+        "type": "action",
+        "description": "Create a purchase order for the low stock item."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify purchase order is saved and stock is updated post-receipt."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Service and Treatment Catalog Management",
+    "description": "Ensure services can be created with correct pricing, category association, duration, and staff assignment, and are editable.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Admin or Staff with service management privileges."
+      },
+      {
+        "type": "action",
+        "description": "Create a new service with name, category, price, duration, and assigned staff."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify service is saved and appears in the catalog."
+      },
+      {
+        "type": "action",
+        "description": "Edit an existing service's details."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates are saved and reflected across booking interfaces."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Dashboard and Analytics Metrics Accuracy",
+    "description": "Validate that the business dashboard displays accurate KPIs, revenue analytics, appointment statistics, and growth indicators in real time.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Admin user."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the business analytics dashboard."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all metrics (KPIs, revenue, appointment stats) are displayed."
+      },
+      {
+        "type": "assertion",
+        "description": "Cross-check dashboard data with backend data samples."
+      },
+      {
+        "type": "action",
+        "description": "Trigger appointment bookings, cancellations, and revenue transactions."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm dashboard data updates in real-time accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Subscription and Billing with Mollie Integration",
+    "description": "Ensure subscription management workflows complete successfully including subscription purchase, renewal, cancellation, and payment processing via Mollie.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Admin with subscription management rights."
+      },
+      {
+        "type": "action",
+        "description": "Initiate a new subscription purchase and select plan options."
+      },
+      {
+        "type": "action",
+        "description": "Complete payment process via Mollie payment gateway."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment is successful and subscription is activated."
+      },
+      {
+        "type": "action",
+        "description": "Renew an existing subscription via Mollie."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm renewal payment is processed and subscription extended."
+      },
+      {
+        "type": "action",
+        "description": "Cancel a subscription and verify cancellation workflow."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure user access is adjusted post-cancellation."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Automated Email Notifications Triggering",
+    "description": "Verify that automated emails including appointment reminders and notifications are sent based on user preferences and trigger conditions.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Set up email templates and triggers in the admin email automation panel."
+      },
+      {
+        "type": "action",
+        "description": "Schedule appointments with different users and configure reminder timings."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appointment reminder emails are sent on schedule."
+      },
+      {
+        "type": "action",
+        "description": "Modify user notification preferences to disable reminders."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that reminder emails are not sent when disabled."
+      },
+      {
+        "type": "action",
+        "description": "Trigger system notification emails like booking confirmations."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify notification emails content and delivery."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Real-time Updates with Supabase Realtime",
+    "description": "Ensure that appointment changes, inventory updates, and notification events propagate instantly to all relevant users via real-time updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as multiple users in different roles (Admin, Staff, Client) on separate devices or browser sessions."
+      },
+      {
+        "type": "action",
+        "description": "Make updates to appointments, inventory stock, and notifications from one session."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the updates appear in other sessions immediately without page reload."
+      },
+      {
+        "type": "action",
+        "description": "Simulate network interruption and restore connection."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that missed real-time updates are synchronized after reconnection."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Google Calendar Two-Way Sync",
+    "description": "Validate that appointments created/updated/deleted within SalonSphere are synchronized to Google Calendar and vice versa without data loss or duplication.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Connect user account to Google Calendar via OAuth."
+      },
+      {
+        "type": "action",
+        "description": "Create a new appointment in SalonSphere."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new appointment appears in Google Calendar."
+      },
+      {
+        "type": "action",
+        "description": "Modify the appointment time in Google Calendar."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated time is reflected in SalonSphere."
+      },
+      {
+        "type": "action",
+        "description": "Delete the appointment in Google Calendar."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm appointment is removed from SalonSphere."
+      },
+      {
+        "type": "action",
+        "description": "Create appointment in Google Calendar."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appointment appears in SalonSphere."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Multi-Tenant Security and Row-Level Isolation",
+    "description": "Confirm that each tenant's data is strictly isolated with row-level security and that users cannot access data from other tenants, ensuring GDPR compliance.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as user from Tenant A."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access data that belongs to Tenant B via UI and API."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied and no data leakage occurs."
+      },
+      {
+        "type": "action",
+        "description": "Execute direct API or database queries with tokens for Tenant A."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm only Tenant A data is accessible."
+      },
+      {
+        "type": "action",
+        "description": "Review logging and audit trails for data access."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify GDPR compliance is maintained in data handling and user consent."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Error Handling for Failed Payment via Mollie",
+    "description": "Test system behavior and user notifications when payment processing via Mollie fails during subscription purchase or renewal.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Initiate subscription payment via Mollie with invalid or declined payment methods."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that transaction failure is detected and user is informed with an appropriate error message."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure no subscription activation or renewal occurs on payment failure."
+      },
+      {
+        "type": "action",
+        "description": "Retry payment with valid method after failure."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful processing and subscription activation."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Booking with Invalid Data and Edge Cases",
+    "description": "Verify system validates input data and handles edge case scenarios like booking outside business hours, booking zero duration services, and extremely long durations.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to book appointment outside configured business hours."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify booking is rejected with descriptive error."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to book a service with zero or negative duration."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm validation error prevents booking."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to book an appointment with excessively long duration beyond allowed maximum."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify system prevents booking and informs user."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Notification Preferences Management",
+    "description": "Test user ability to customize in-app notification preferences and verify notifications respect these settings.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a user with notification settings available."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to notification preferences tab."
+      },
+      {
+        "type": "action",
+        "description": "Change notification settings (enable/disable specific notification types)."
+      },
+      {
+        "type": "assertion",
+        "description": "Save preferences successfully."
+      },
+      {
+        "type": "action",
+        "description": "Trigger events that normally cause in-app notifications."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify notifications are displayed or suppressed according to settings."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Business Settings Configuration and Persistence",
+    "description": "Confirm that business hours, booking rules, tax settings, and domain configurations can be updated by Admin and are persisted correctly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as Admin user."
+      },
+      {
+        "type": "action",
+        "description": "Access business settings pages including hours, booking rules, taxes, and domain."
+      },
+      {
+        "type": "action",
+        "description": "Update business hours to new time ranges."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes are saved and reflected in appointment booking."
+      },
+      {
+        "type": "action",
+        "description": "Modify booking rules such as max appointment duration and buffer times."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm rules are enforced on new bookings."
+      },
+      {
+        "type": "action",
+        "description": "Update tax rates and save."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify tax calculation changes applied on billing and invoices."
+      },
+      {
+        "type": "action",
+        "description": "Configure custom domain and validate domain accessibility."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm custom domain is active and correctly routes to tenant."
+      }
+    ]
+  }
+]
