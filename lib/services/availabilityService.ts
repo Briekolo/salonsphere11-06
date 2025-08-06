@@ -170,7 +170,7 @@ export class AvailabilityService {
 
       // Generate time slots for each staff member
       const allSlots: TimeSlot[] = [];
-      const slotDuration = 30; // 30-minute slots
+      const slotDuration = 15; // 15-minute slots
       
       // Get business hours for this day (using already declared dayOfWeek from line 136)
       const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];

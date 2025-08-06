@@ -156,8 +156,8 @@ export class ExpectedRevenueService {
   }
 
   static async getOccupancyRate(tenantId: string, date: Date): Promise<number> {
-    // Get total available slots (assuming 8 hours per day, 30 min slots = 16 slots)
-    const totalSlots = 16
+    // Get total available slots (assuming 8 hours per day, 15 min slots = 32 slots)
+    const totalSlots = 32
 
     // Get booked slots for the date
     const startOfDay = new Date(date)
