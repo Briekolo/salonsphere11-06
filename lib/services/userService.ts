@@ -38,6 +38,62 @@ export const UserService = {
 
         return data || []
     },
+    
+    async getById(userId: string) {
+        const tenantId = await getCurrentUserTenantId()
+        if (!tenantId) throw new Error("Tenant ID not found")
+        
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .eq('tenant_id', tenantId)
+            .single()
+        
+        if (error) {
+            console.error('Error fetching user by id:', error)
+            throw error
+        }
+        
+        // Also fetch staff schedules for this user
+        const { data: schedules } = await supabase
+            .from('staff_schedules')
+            .select('*')
+            .eq('staff_id', userId)
+            .eq('tenant_id', tenantId)
+            .order('day_of_week')
+        
+        // Convert schedules to working_hours format for UI compatibility
+        const dutchDays = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag']
+        const workingHours: any = {}
+        
+        // First, initialize all days as disabled
+        dutchDays.forEach(day => {
+            workingHours[day] = {
+                start: '09:00',
+                end: '17:00',
+                enabled: false // Default to disabled
+            }
+        })
+        
+        // Then, override with actual schedule data if it exists
+        if (schedules && schedules.length > 0) {
+            schedules.forEach(schedule => {
+                const dayName = dutchDays[schedule.day_of_week]
+                if (dayName) {
+                    workingHours[dayName] = {
+                        start: schedule.start_time.substring(0, 5), // Convert HH:mm:ss to HH:mm
+                        end: schedule.end_time.substring(0, 5),
+                        enabled: schedule.is_active
+                    }
+                }
+            })
+        }
+        
+        data.working_hours = workingHours
+        
+        return data
+    },
 
     async create(userData: CreateUserData) {
         const tenantId = await getCurrentUserTenantId()

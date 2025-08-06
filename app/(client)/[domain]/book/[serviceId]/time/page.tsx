@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/lib/client/tenant-context';
 import { useAvailableSlots, useHoldSlot, useStaffAvailability, useHoldCountdown } from '@/lib/hooks/useAvailability';
 import { supabase } from '@/lib/supabase';
+import { useBusinessHours } from '@/lib/hooks/useBusinessHours';
 import { 
   Calendar as CalendarIcon,
   Clock,
@@ -58,6 +59,7 @@ export default function BookingCalendarPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { tenant } = useTenant();
+  const { businessHours } = useBusinessHours();
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -343,7 +345,16 @@ export default function BookingCalendarPage({
                   const isCurrentMonth = isSameMonth(day, currentMonth);
                   const isSelected = selectedDate && format(selectedDate, 'yyyy-MM-dd') === dateStr;
                   const dayOfWeek = getDay(day); // 0 = Sunday, 1 = Monday, etc.
-                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                  
+                  // Check if salon is closed based on actual business hours
+                  let isSalonClosed = false;
+                  if (businessHours) {
+                    // Map day of week to business hours format
+                    const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                    const dayName = dayMap[dayOfWeek];
+                    const dayHours = businessHours[dayName as keyof typeof businessHours];
+                    isSalonClosed = dayHours?.closed === true;
+                  }
                   
                   // Determine availability reason for tooltip
                   let availabilityReason = '';
@@ -351,12 +362,12 @@ export default function BookingCalendarPage({
                     availabilityReason = 'Verleden datum';
                   } else if (!isCurrentMonth) {
                     availabilityReason = 'Buiten huidige maand';
-                  } else if (!isAvailable && isWeekend) {
-                    availabilityReason = 'Weekend - salon gesloten';
-                  } else if (!isAvailable && !isAnyStaff) {
-                    availabilityReason = `${staff?.first_name} werkt niet op deze dag`;
+                  } else if (!isAvailable && isSalonClosed) {
+                    availabilityReason = 'Salon gesloten';
+                  } else if (!isAvailable && !isAnyStaff && staff) {
+                    availabilityReason = `${staff.first_name} ${staff.last_name} werkt niet op deze dag`;
                   } else if (!isAvailable) {
-                    availabilityReason = 'Geen medewerkers beschikbaar';
+                    availabilityReason = 'Geen medewerkers beschikbaar op deze dag';
                   }
                   
                   return (
@@ -372,7 +383,7 @@ export default function BookingCalendarPage({
                         ${isSelected ? 'bg-[#02011F] text-white shadow-lg' : ''}
                         ${isAvailable && !isPast && isCurrentMonth && !isSelected && !isToday(day) ? 'hover:bg-gray-100 text-[#010009] active:bg-gray-200 border border-transparent hover:border-gray-300' : ''}
                         ${!isAvailable && !isPast && isCurrentMonth ? (
-                          isWeekend 
+                          isSalonClosed 
                             ? 'bg-gray-50 text-gray-400 cursor-not-allowed relative' 
                             : 'bg-red-50 text-red-400 cursor-not-allowed relative'
                         ) : ''}
@@ -410,19 +421,17 @@ export default function BookingCalendarPage({
                   <span className="text-gray-600">Beschikbaar</span>
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-3 h-3 bg-gray-50 rounded relative flex items-center justify-center">
+                    <X className="h-2 w-2 text-gray-400" />
+                  </div>
+                  <span className="text-gray-600">Salon gesloten</span>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <div className="w-3 h-3 bg-red-50 rounded relative flex items-center justify-center">
                     <X className="h-2 w-2 text-red-400" />
                   </div>
-                  <span className="text-gray-600">Geen medewerkers beschikbaar</span>
+                  <span className="text-gray-600">{!isAnyStaff ? 'Medewerker werkt niet' : 'Geen beschikbaarheid'}</span>
                 </div>
-                {!isAnyStaff && (
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-3 h-3 bg-gray-50 rounded relative flex items-center justify-center">
-                      <X className="h-2 w-2 text-gray-400" />
-                    </div>
-                    <span className="text-gray-600">Medewerker werkt niet</span>
-                  </div>
-                )}
               </div>
               
               {monthAvailability && Object.keys(monthAvailability).length > 0 && (

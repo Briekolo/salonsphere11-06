@@ -242,16 +242,6 @@ export default function StaffManagementPage() {
                           <Edit className="h-4 w-4" />
                           Bewerken
                         </button>
-                        <button
-                          onClick={() => {
-                            setShowActionMenu(null);
-                            router.push(`/admin/staff/${member.id}/availability`);
-                          }}
-                          className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        >
-                          <Calendar className="h-4 w-4" />
-                          Bekijk Schema
-                        </button>
                         <hr className="my-1" />
                         <button
                           onClick={() => {
@@ -471,16 +461,6 @@ export default function StaffManagementPage() {
                           >
                             <Edit className="h-4 w-4" />
                             Bewerken
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowActionMenu(null);
-                              router.push(`/admin/staff/${member.id}/availability`);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                          >
-                            <Calendar className="h-4 w-4" />
-                            Bekijk Schema
                           </button>
                           <button
                             onClick={() => handleDeleteStaff(member.id)}

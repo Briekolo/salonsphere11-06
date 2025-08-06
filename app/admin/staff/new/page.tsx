@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
 import { UserService } from '@/lib/services/userService';
+import { useBusinessHours } from '@/lib/hooks/useBusinessHours';
 import { 
   User, 
   Mail, 
@@ -34,6 +35,7 @@ const DAYS = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterda
 export default function NewStaffPage() {
   const { isAdmin, isLoading } = useRequireAdmin();
   const router = useRouter();
+  const { businessHours } = useBusinessHours();
   
   const [formData, setFormData] = useState<StaffFormData>({
     first_name: '',
@@ -43,7 +45,7 @@ export default function NewStaffPage() {
     role: 'staff',
     working_hours: DAYS.reduce((acc, day) => ({
       ...acc,
-      [day]: { start: '09:00', end: '17:00', enabled: day !== 'zondag' }
+      [day]: { start: '09:00', end: '17:00', enabled: false } // Start with all days disabled
     }), {}),
     active: true
   });
@@ -60,6 +62,13 @@ export default function NewStaffPage() {
 
 
   const handleWorkingHoursChange = (day: string, field: 'start' | 'end' | 'enabled', value: any) => {
+    // Check if trying to enable a day when salon is closed
+    if (field === 'enabled' && value === true && !isSalonOpenOnDay(day)) {
+      setError(`De salon is gesloten op ${day}. Medewerkers kunnen niet werken op dagen dat de salon gesloten is.`);
+      setTimeout(() => setError(null), 5000);
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       working_hours: {
@@ -70,6 +79,54 @@ export default function NewStaffPage() {
         }
       }
     }));
+  };
+
+  // Helper function to check if salon is open on a specific day
+  const isSalonOpenOnDay = (dutchDay: string): boolean => {
+    if (!businessHours) return true; // If no business hours loaded, allow all days
+    
+    // Map Dutch day names to English for business hours check
+    const dutchToEnglish: Record<string, string> = {
+      'maandag': 'monday',
+      'dinsdag': 'tuesday',
+      'woensdag': 'wednesday',
+      'donderdag': 'thursday',
+      'vrijdag': 'friday',
+      'zaterdag': 'saturday',
+      'zondag': 'sunday'
+    };
+    
+    const englishDay = dutchToEnglish[dutchDay.toLowerCase()];
+    if (!englishDay) return false;
+    
+    const dayHours = businessHours[englishDay as keyof typeof businessHours];
+    return dayHours ? !dayHours.closed : false;
+  };
+
+  // Get salon hours for a specific day
+  const getSalonHours = (dutchDay: string): { open: string; close: string } | null => {
+    if (!businessHours) return null;
+    
+    const dutchToEnglish: Record<string, string> = {
+      'maandag': 'monday',
+      'dinsdag': 'tuesday',
+      'woensdag': 'wednesday',
+      'donderdag': 'thursday',
+      'vrijdag': 'friday',
+      'zaterdag': 'saturday',
+      'zondag': 'sunday'
+    };
+    
+    const englishDay = dutchToEnglish[dutchDay.toLowerCase()];
+    if (!englishDay) return null;
+    
+    const dayHours = businessHours[englishDay as keyof typeof businessHours];
+    if (!dayHours || dayHours.closed) return null;
+    
+    return {
+      open: dayHours.open || '09:00',
+      close: dayHours.close || '17:00'
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
