@@ -1,4 +1,5 @@
 import { supabase, getCurrentUserTenantId } from '@/lib/supabase'
+import { AvailabilityService } from './availabilityService'
 
 interface CreateUserData {
     email: string
@@ -8,7 +9,7 @@ interface CreateUserData {
     role: 'admin' | 'staff'
     active?: boolean
     specializations?: string[]
-    working_hours?: any
+    working_hours?: any  // Keep for backward compatibility during transition
 }
 
 export const UserService = {
@@ -58,7 +59,7 @@ export const UserService = {
             // Generate a UUID for the new user
             const userId = crypto.randomUUID()
 
-            // Create user in public.users table
+            // Create user in public.users table (without working_hours)
             const { data: publicUser, error: publicError } = await supabase
                 .from('users')
                 .insert({
@@ -71,7 +72,7 @@ export const UserService = {
                     role: userData.role,
                     active: userData.active !== false,
                     specializations: userData.specializations || [],
-                    working_hours: userData.working_hours || {}
+                    working_hours: {}  // Always set to empty, will use staff_schedules instead
                     // Note: 'name' is a generated column, don't include it
                 })
                 .select()
@@ -80,6 +81,35 @@ export const UserService = {
             if (publicError) {
                 console.error('Error creating public user:', publicError)
                 throw publicError
+            }
+
+            // If working_hours provided, convert to staff_schedules
+            if (userData.working_hours && Object.keys(userData.working_hours).length > 0) {
+                try {
+                    // Convert Dutch day names to English for the AvailabilityService
+                    const weekSchedule: any = {}
+                    const dutchToEnglish: Record<string, string> = {
+                        'maandag': 'monday',
+                        'dinsdag': 'tuesday',
+                        'woensdag': 'wednesday',
+                        'donderdag': 'thursday',
+                        'vrijdag': 'friday',
+                        'zaterdag': 'saturday',
+                        'zondag': 'sunday'
+                    }
+                    
+                    Object.entries(userData.working_hours).forEach(([dutchDay, schedule]: [string, any]) => {
+                        const englishDay = dutchToEnglish[dutchDay.toLowerCase()]
+                        if (englishDay) {
+                            weekSchedule[englishDay] = schedule
+                        }
+                    })
+                    
+                    await AvailabilityService.updateStaffSchedule(userId, tenantId, weekSchedule)
+                } catch (scheduleError) {
+                    console.error('Error creating staff schedules:', scheduleError)
+                    // Don't fail the user creation, but log the error
+                }
             }
 
             return {
@@ -99,6 +129,13 @@ export const UserService = {
         const updateData: any = { ...updates }
         // Remove the name field if it exists since it's a generated column
         delete updateData.name
+        
+        // Extract working_hours to handle separately
+        const workingHours = updateData.working_hours
+        delete updateData.working_hours  // Don't update this field in users table
+        
+        // Always set working_hours to empty object in users table
+        updateData.working_hours = {}
 
         const { data, error } = await supabase
             .from('users')
@@ -109,6 +146,36 @@ export const UserService = {
             .single()
 
         if (error) throw error
+        
+        // If working_hours was provided, update staff_schedules
+        if (workingHours && Object.keys(workingHours).length > 0) {
+            try {
+                // Convert Dutch day names to English for the AvailabilityService
+                const weekSchedule: any = {}
+                const dutchToEnglish: Record<string, string> = {
+                    'maandag': 'monday',
+                    'dinsdag': 'tuesday',
+                    'woensdag': 'wednesday',
+                    'donderdag': 'thursday',
+                    'vrijdag': 'friday',
+                    'zaterdag': 'saturday',
+                    'zondag': 'sunday'
+                }
+                
+                Object.entries(workingHours).forEach(([dutchDay, schedule]: [string, any]) => {
+                    const englishDay = dutchToEnglish[dutchDay.toLowerCase()]
+                    if (englishDay) {
+                        weekSchedule[englishDay] = schedule
+                    }
+                })
+                
+                await AvailabilityService.updateStaffSchedule(userId, tenantId, weekSchedule)
+            } catch (scheduleError) {
+                console.error('Error updating staff schedules:', scheduleError)
+                // Don't fail the update, but log the error
+            }
+        }
+        
         return data
     },
 
