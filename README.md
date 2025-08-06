@@ -594,7 +594,6 @@ For support and questions:
 ---
 
 <div align="center">
-  Made with ❤️ in the Netherlands 🇳🇱
   
   © 2025 SalonSphere. All rights reserved.
 </div>
