@@ -55,6 +55,14 @@ export class AvailabilityService {
     staffId?: string
   ): Promise<TimeSlot[]> {
     try {
+      // Get tenant business hours
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('business_hours')
+        .eq('id', tenantId)
+        .single();
+
+      const businessHours = tenant?.business_hours as any;
 
       // Get service details
       const { data: service } = await supabase
@@ -163,13 +171,58 @@ export class AvailabilityService {
       // Generate time slots for each staff member
       const allSlots: TimeSlot[] = [];
       const slotDuration = 30; // 30-minute slots
+      
+      // Get business hours for this day
+      const selectedDate = new Date(date);
+      const dayOfWeek = getDay(selectedDate);
+      const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayKey = dayMap[dayOfWeek];
+      // Business hours can be stored with numeric keys (0-6) or day names
+      // Try numeric key first (which is the current database format)
+      const dayBusinessHours = businessHours?.[dayOfWeek.toString()] || businessHours?.[dayKey];
+      
+      // Check if salon is closed this day
+      if (dayBusinessHours?.closed === true || dayBusinessHours?.closed === 'true') {
+        return []; // No slots available if salon is closed
+      }
+      
+      // Parse business hours open/close times and breaks
+      let businessOpenTime: Date | null = null;
+      let businessCloseTime: Date | null = null;
+      let businessBreaks: Array<{start: Date, end: Date}> = [];
+      
+      if (dayBusinessHours) {
+        if (dayBusinessHours.open) {
+          businessOpenTime = parse(dayBusinessHours.open, 'HH:mm', new Date());
+        }
+        if (dayBusinessHours.close) {
+          businessCloseTime = parse(dayBusinessHours.close, 'HH:mm', new Date());
+        }
+        if (dayBusinessHours.breaks && Array.isArray(dayBusinessHours.breaks)) {
+          businessBreaks = dayBusinessHours.breaks.map((breakTime: any) => ({
+            start: parse(breakTime.start, 'HH:mm', new Date()),
+            end: parse(breakTime.end, 'HH:mm', new Date())
+          }));
+        }
+      }
 
       for (const staff of staffMembers) {
         const schedule = schedules.find(s => s.staff_id === staff.id);
         if (!schedule) continue;
 
-        const startTime = parse(schedule.start_time, 'HH:mm:ss', new Date());
-        const endTime = parse(schedule.end_time, 'HH:mm:ss', new Date());
+        const staffStartTime = parse(schedule.start_time, 'HH:mm:ss', new Date());
+        const staffEndTime = parse(schedule.end_time, 'HH:mm:ss', new Date());
+        
+        // Use the later of staff start time or business open time
+        const startTime = businessOpenTime && isAfter(businessOpenTime, staffStartTime) 
+          ? businessOpenTime 
+          : staffStartTime;
+          
+        // Use the earlier of staff end time or business close time
+        const endTime = businessCloseTime && isBefore(businessCloseTime, staffEndTime)
+          ? businessCloseTime
+          : staffEndTime;
+          
         let currentTime = startTime;
 
         // Use custom duration if available for this staff member, otherwise use service default
@@ -181,6 +234,22 @@ export class AvailabilityService {
 
           // Check if slot is available
           let isAvailable = true;
+          
+          // Check if slot falls during a break time
+          const slotStartTime = currentTime;
+          const slotEndTime = addMinutes(currentTime, effectiveDuration);
+          
+          for (const breakTime of businessBreaks) {
+            // Check if slot overlaps with break time
+            if (
+              (slotStartTime >= breakTime.start && slotStartTime < breakTime.end) ||
+              (slotEndTime > breakTime.start && slotEndTime <= breakTime.end) ||
+              (slotStartTime <= breakTime.start && slotEndTime >= breakTime.end)
+            ) {
+              isAvailable = false;
+              break;
+            }
+          }
 
           // Check against existing bookings
           const hasConflict = existingBookings?.some(booking => {
@@ -443,29 +512,59 @@ export class AvailabilityService {
     staffId?: string
   ): Promise<Record<string, boolean>> {
     try {
+      // Get business hours for the tenant
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('business_hours')
+        .eq('id', tenantId)
+        .single();
+
+      const businessHours = tenant?.business_hours as any;
+      
       // Get all dates in range
       const dates: Record<string, boolean> = {};
       let currentDate = new Date(startDate);
       const end = new Date(endDate);
 
+      // Map day numbers to business hours keys
+      const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
       while (currentDate <= end) {
         const dateStr = format(currentDate, 'yyyy-MM-dd');
         const dayOfWeek = getDay(currentDate);
-
-        // Check if any staff works on this day
-        const query = supabase
-          .from('staff_schedules')
-          .select('staff_id')
-          .eq('tenant_id', tenantId)
-          .eq('day_of_week', dayOfWeek)
-          .eq('is_active', true);
-
-        if (staffId) {
-          query.eq('staff_id', staffId);
+        
+        // First check if the salon is open on this day according to business hours
+        let salonOpen = true;
+        if (businessHours) {
+          // Business hours can be stored with numeric keys (0-6) or day names
+          // Try numeric key first (which is the current database format)
+          const dayHours = businessHours[dayOfWeek.toString()] || businessHours[dayMap[dayOfWeek]];
+          
+          if (dayHours && (dayHours.closed === true || dayHours.closed === 'true')) {
+            salonOpen = false;
+          }
         }
 
-        const { data: schedules } = await query;
-        dates[dateStr] = (schedules && schedules.length > 0);
+        // Only check staff schedules if salon is open
+        if (salonOpen) {
+          // Check if any staff works on this day
+          const query = supabase
+            .from('staff_schedules')
+            .select('staff_id')
+            .eq('tenant_id', tenantId)
+            .eq('day_of_week', dayOfWeek)
+            .eq('is_active', true);
+
+          if (staffId) {
+            query.eq('staff_id', staffId);
+          }
+
+          const { data: schedules } = await query;
+          dates[dateStr] = (schedules && schedules.length > 0);
+        } else {
+          // Salon is closed this day
+          dates[dateStr] = false;
+        }
 
         currentDate = addDays(currentDate, 1);
       }
