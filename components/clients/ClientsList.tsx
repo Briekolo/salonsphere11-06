@@ -4,6 +4,7 @@ import { Phone, Mail, MoreVertical, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { useClients, Client } from '@/lib/hooks/useClients'
+import { sanitizeSearchHighlight } from '@/lib/utils/sanitize'
 import { ClientStatusBadge } from './ClientStatusBadge'
 import { ClientStatusDropdown } from './ClientStatusDropdown'
 import { ClientStatus } from '@/lib/services/clientStatusService'
@@ -43,7 +44,9 @@ interface ClientsListProps {
 const highlightMatch = (text: string, query: string): string => {
   if (!query.trim()) return text
   const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-  return text.replace(regex, '<mark class="bg-yellow-200 rounded px-1">$1</mark>')
+  const highlighted = text.replace(regex, '<mark class="bg-yellow-200 rounded px-1">$1</mark>')
+  // Sanitize the highlighted text to prevent XSS
+  return sanitizeSearchHighlight(highlighted)
 }
 
 // Helper function to determine which field matched

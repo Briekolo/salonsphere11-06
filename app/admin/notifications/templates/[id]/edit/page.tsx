@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAdmin } from '@/lib/hooks/use-admin';
+import { sanitizeHtml } from '@/lib/utils/sanitize';
 import { 
   Mail, 
   Save,
@@ -258,7 +259,8 @@ Het team van {{salon_name}}`,
       html = html.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), sampleValues[key] || key);
     });
     
-    return html;
+    // Sanitize HTML to prevent XSS attacks
+    return sanitizeHtml(html);
   };
 
   if (isLoading || loading) {
