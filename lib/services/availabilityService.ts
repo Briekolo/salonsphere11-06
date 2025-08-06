@@ -172,9 +172,7 @@ export class AvailabilityService {
       const allSlots: TimeSlot[] = [];
       const slotDuration = 30; // 30-minute slots
       
-      // Get business hours for this day
-      const selectedDate = new Date(date);
-      const dayOfWeek = getDay(selectedDate);
+      // Get business hours for this day (using already declared dayOfWeek from line 136)
       const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const dayKey = dayMap[dayOfWeek];
       // Business hours can be stored with numeric keys (0-6) or day names
@@ -237,14 +235,14 @@ export class AvailabilityService {
           
           // Check if slot falls during a break time
           const slotStartTime = currentTime;
-          const slotEndTime = addMinutes(currentTime, effectiveDuration);
+          const slotActualEndTime = addMinutes(currentTime, effectiveDuration);
           
           for (const breakTime of businessBreaks) {
             // Check if slot overlaps with break time
             if (
               (slotStartTime >= breakTime.start && slotStartTime < breakTime.end) ||
-              (slotEndTime > breakTime.start && slotEndTime <= breakTime.end) ||
-              (slotStartTime <= breakTime.start && slotEndTime >= breakTime.end)
+              (slotActualEndTime > breakTime.start && slotActualEndTime <= breakTime.end) ||
+              (slotStartTime <= breakTime.start && slotActualEndTime >= breakTime.end)
             ) {
               isAvailable = false;
               break;
