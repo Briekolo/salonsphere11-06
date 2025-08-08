@@ -10,3 +10,5 @@ dist/
 build/
 tsconfig.tsbuildinfo
 .claude/
+# MCP config
+.cursor/mcp.json
