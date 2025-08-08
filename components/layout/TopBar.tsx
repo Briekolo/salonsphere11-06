@@ -6,7 +6,7 @@ import { nl } from 'date-fns/locale'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { supabase } from '@/lib/supabase'
+import { useUserProfile } from '@/lib/hooks/useUserProfile'
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown'
 import { NotificationWrapper } from '@/components/notifications/NotificationWrapper'
 import { SafeNotificationButton } from '@/components/ui/SafeNotificationButton'
@@ -25,8 +25,7 @@ export function TopBar({ onMobileSidebarToggle }: TopBarProps) {
   const today = new Date()
   const [greeting, setGreeting] = useState('')
   const { user, signOut } = useAuth()
-  const [firstName, setFirstName] = useState<string | null>(null)
-  const [isLoadingName, setIsLoadingName] = useState(true)
+  const { firstName, initials, isLoading: isLoadingName } = useUserProfile()
   const { logoUrl, salonName } = useBusinessLogo()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
@@ -45,72 +44,7 @@ export function TopBar({ onMobileSidebarToggle }: TopBarProps) {
     }
   }, [onMobileSidebarToggle])
 
-  useEffect(() => {
-    async function fetchFirstName() {
-      if (!user) {
-        setIsLoadingName(false)
-        return
-      }
-      
-      try {
-        // First try to get from user metadata (faster)
-        const userMetaName = user.user_metadata?.first_name
-        if (userMetaName) {
-          setFirstName(userMetaName)
-          setIsLoadingName(false)
-          return
-        }
-
-        // Then try database with retry
-        let retries = 0
-        const maxRetries = 3
-        
-        while (retries < maxRetries) {
-          const { data, error } = await supabase
-            .from('users')
-            .select('first_name')
-            .eq('id', user.id)
-            .single()
-            
-          if (!error && data?.first_name) {
-            setFirstName(data.first_name)
-            setIsLoadingName(false)
-            return
-          }
-          
-          if (error && error.code !== 'PGRST116') { // Not a "not found" error
-            console.warn(`Failed to fetch user name (attempt ${retries + 1}):`, error)
-          }
-          
-          retries++
-          if (retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * retries)) // Exponential backoff
-          }
-        }
-        
-        // Fallback to email-based name
-        const emailName = user.email?.split('@')[0] || 'Gebruiker'
-        setFirstName(emailName)
-      } catch (err) {
-        console.error('Error fetching user name:', err)
-        const emailName = user.email?.split('@')[0] || 'Gebruiker'
-        setFirstName(emailName)
-      } finally {
-        setIsLoadingName(false)
-      }
-    }
-    
-    fetchFirstName()
-  }, [user])
-
   const name = firstName ?? 'Gebruiker'
-
-  const initials = (firstName ?? user?.email?.split('@')[0] ?? 'Gebruiker')
-    .split(' ')
-    .map((n: string) => n.charAt(0))
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
 
   useEffect(() => {
     setGreeting(getGreeting())

@@ -5,6 +5,8 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
 import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo'
+import { useUserProfile } from '@/lib/hooks/useUserProfile'
+import { useToast } from '@/components/providers/ToastProvider'
 import { useRouter } from 'next/navigation'
 import { Loader2, User, Mail, Phone, Shield, Calendar, Clock, Save, ArrowLeft } from 'lucide-react'
 
@@ -25,22 +27,33 @@ export default function ProfilePage() {
   const { user: authUser } = useAuth()
   const { tenantId, loading: tenantLoading } = useTenant()
   const { salonName } = useBusinessLogo()
+  const { invalidateProfile } = useUserProfile()
   const router = useRouter()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [dbUser, setDbUser] = useState<DbUser | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ first_name: '', last_name: '', phone: '' })
+  const isClient = authUser?.user_metadata?.user_type === 'client'
 
   useEffect(() => {
     let isActive = true
     async function load() {
       if (!authUser) { setLoading(false); return }
+      if (isClient && (tenantLoading || !tenantId)) { return }
       setLoading(true)
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .maybeSingle()
+      const { data, error } = isClient
+        ? await supabase
+            .from('clients')
+            .select('*')
+            .eq('auth_user_id', authUser.id)
+            .eq('tenant_id', tenantId!)
+            .maybeSingle()
+        : await supabase
+            .from('users')
+            .select('*')
+            .eq('id', authUser.id)
+            .maybeSingle()
 
       if (!isActive) return
       if (!error && data) {
@@ -55,7 +68,7 @@ export default function ProfilePage() {
     }
     load()
     return () => { isActive = false }
-  }, [authUser])
+  }, [authUser, isClient, tenantId, tenantLoading])
 
   const initials = useMemo(() => {
     const base = (dbUser?.first_name || '') + ' ' + (dbUser?.last_name || '')
@@ -72,19 +85,60 @@ export default function ProfilePage() {
     e.preventDefault()
     if (!dbUser) return
     setSaving(true)
-    const { error } = await supabase
-      .from('users')
-      .update({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        phone: form.phone,
-        name: `${form.first_name} ${form.last_name}`.trim()
-      })
-      .eq('id', dbUser.id)
-    setSaving(false)
-    if (!error) {
-      setDbUser({ ...dbUser, ...form })
+    const { error } = isClient
+      ? await supabase
+          .from('clients')
+          .update({
+            first_name: form.first_name,
+            last_name: form.last_name,
+            phone: form.phone,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('auth_user_id', authUser.id)
+          .eq('tenant_id', tenantId!)
+      : await supabase
+          .from('users')
+          .update({
+            first_name: form.first_name,
+            last_name: form.last_name,
+            phone: form.phone
+          })
+          .eq('id', dbUser.id)
+    if (error) {
+      setSaving(false)
+      console.error('Profile save error:', error)
+      showToast(`Opslaan mislukt: ${error.message || 'controleer rechten.'}`, 'error')
+      return
     }
+
+    // Re-fetch to confirm persisted update
+    const { data: fresh, error: fetchErr } = isClient
+      ? await supabase
+          .from('clients')
+          .select('*')
+          .eq('auth_user_id', authUser.id)
+          .eq('tenant_id', tenantId!)
+          .maybeSingle()
+      : await supabase
+          .from('users')
+          .select('*')
+          .eq('id', dbUser.id)
+          .maybeSingle()
+
+    setSaving(false)
+    if (fetchErr) {
+      // Fallback: update local state even if refetch fails
+      setDbUser({ ...dbUser, ...form })
+      showToast('Opgeslagen (niet kunnen verifiëren).', 'success')
+      // Still invalidate the profile to trigger refresh
+      invalidateProfile()
+      return
+    }
+
+    if (fresh) setDbUser(fresh as DbUser)
+    // Invalidate the user profile query to update all components
+    invalidateProfile()
+    showToast('Opgeslagen.', 'success')
   }
 
   if (loading) {
