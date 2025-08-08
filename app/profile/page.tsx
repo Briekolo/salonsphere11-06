@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useTenant } from '@/lib/hooks/useTenant'
-import { Loader2, User, Mail, Phone, Shield, Calendar, Clock, Save } from 'lucide-react'
+import { useBusinessLogo } from '@/lib/hooks/useBusinessLogo'
+import { useRouter } from 'next/navigation'
+import { Loader2, User, Mail, Phone, Shield, Calendar, Clock, Save, ArrowLeft } from 'lucide-react'
 
 type DbUser = {
   id: string
@@ -22,6 +24,8 @@ type DbUser = {
 export default function ProfilePage() {
   const { user: authUser } = useAuth()
   const { tenantId, loading: tenantLoading } = useTenant()
+  const { salonName } = useBusinessLogo()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [dbUser, setDbUser] = useState<DbUser | null>(null)
   const [saving, setSaving] = useState(false)
@@ -102,9 +106,18 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Mijn Profiel</h1>
-          <p className="text-gray-600 mt-2">Beheer je persoonlijke gegevens en instellingen</p>
+        <div className="mb-8 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Mijn Profiel</h1>
+            <p className="text-gray-600 mt-2">Beheer je persoonlijke gegevens en instellingen</p>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="btn-secondary inline-flex items-center gap-2 h-10"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Terug naar dashboard
+          </button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -129,7 +142,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-3 text-gray-700">
                   <User className="w-4 h-4" />
-                  <span>Tenant: {dbUser?.tenant_id || '-'}</span>
+                  <span>Salon: {salonName || '—'}</span>
                 </div>
                 {typeof dbUser?.active === 'boolean' && (
                   <div className="flex items-center gap-3 text-gray-700">
@@ -222,9 +235,5 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-}
-
-export const metadata = {
-  title: 'Mijn Profiel - SalonSphere',
 }
 
