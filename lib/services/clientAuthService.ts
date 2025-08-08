@@ -41,6 +41,9 @@ class ClientAuthService {
       // may not have proper permissions. We'll handle duplicates via unique constraints.
 
       // Create auth user with Supabase Auth
+      // LET OP (development): in de Supabase Auth-instellingen staat e-mailbevestiging UIT,
+      // zodat de gebruiker direct kan inloggen na registratie.
+      // Schakel dit in productie AAN voor veiligheid.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -61,29 +64,33 @@ class ClientAuthService {
       // Wait for the auth user to be fully created
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Sign in immediately after signup to ensure proper session with claims
+      // Direct na sign-up inloggen om een sessie te krijgen (werkt alleen zonder e-mailbevestiging)
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
       })
 
-      if (signInError || !signInData.session) {
-        console.error('Failed to sign in after signup:', signInError)
-        // Continue anyway, as the auth user was created
+      const hasActiveSession = !!signInData?.session
+      if (signInError || !hasActiveSession) {
+        console.warn('Sign-in direct na registratie is niet gelukt of vereist e-mailbevestiging:', signInError)
       }
 
       // Create new client record
+      // Note: auth_user_id will be set by database trigger if column exists
+      const clientData: any = {
+        tenant_id: tenantId,
+        email: data.email,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone,
+        marketing_consent: data.marketingConsent
+      };
+
+      // Laat het koppelen van auth_user_id aan de database trigger over.
+
       const { data: newClient, error: createError } = await supabase
         .from('clients')
-        .insert({
-          tenant_id: tenantId,
-          email: data.email,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          phone: data.phone,
-          marketing_consent: data.marketingConsent,
-          auth_user_id: authData.user.id
-        })
+        .insert(clientData)
         .select()
         .single()
 
@@ -104,6 +111,11 @@ class ClientAuthService {
       }
 
       const client = newClient
+
+      // Als er (nog) geen sessie is (bijv. e-mailbevestiging vereist), geef duidelijke melding terug
+      if (!hasActiveSession) {
+        return { client: null, error: new Error('Account aangemaakt. Bevestig uw e-mailadres via de link die we u zojuist hebben gemaild om in te loggen.') }
+      }
 
       return { client, error: null }
     } catch (error) {
@@ -145,13 +157,26 @@ class ClientAuthService {
         return { client: null, error: new Error('Account not found for this salon') }
       }
 
-      // Get client record
-      const { data: client, error: clientError } = await supabase
+      // Get client record - try by auth_user_id first, fall back to email
+      let { data: client, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('auth_user_id', authData.user.id)
         .eq('tenant_id', tenantId)
         .single()
+
+      // If not found by auth_user_id, try by email (for backward compatibility)
+      if (!client || clientError) {
+        const result = await supabase
+          .from('clients')
+          .select('*')
+          .eq('email', data.email)
+          .eq('tenant_id', tenantId)
+          .single()
+        
+        client = result.data;
+        clientError = result.error;
+      }
 
       if (clientError || !client) {
         await supabase.auth.signOut()
@@ -181,11 +206,24 @@ class ClientAuthService {
         return null
       }
 
-      const { data: client } = await supabase
+      // Try to get client by auth_user_id first
+      let { data: client } = await supabase
         .from('clients')
         .select('*')
         .eq('auth_user_id', user.id)
         .single()
+
+      // If not found by auth_user_id, try by email (for backward compatibility)
+      if (!client) {
+        const result = await supabase
+          .from('clients')
+          .select('*')
+          .eq('email', user.email)
+          .eq('tenant_id', user.user_metadata.tenant_id)
+          .single()
+        
+        client = result.data;
+      }
 
       return client
     } catch (error) {
@@ -207,12 +245,12 @@ class ClientAuthService {
       // Verify client exists for this tenant
       const { data: client } = await supabase
         .from('clients')
-        .select('auth_user_id')
+        .select('*')
         .eq('email', email)
         .eq('tenant_id', tenantId)
         .single()
 
-      if (!client || !client.auth_user_id) {
+      if (!client) {
         return { error: new Error('No account found with this email address') }
       }
 

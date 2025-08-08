@@ -24,6 +24,12 @@ export async function middleware(req: NextRequest) {
     /^\/[^\/]+\/contact/.test(pathname) || // Contact page
     /^\/[^\/]+\/auth/.test(pathname) || // Client auth pages
     /^\/[^\/]+\/account/.test(pathname) || // Client account pages
+    // Legal pages are public
+    /^\/[^\/]+\/terms/.test(pathname) || // Terms page
+    /^\/[^\/]+\/privacy/.test(pathname) || // Privacy page
+    /^\/[^\/]+\/cookies/.test(pathname) || // Cookie policy page
+    /^\/[^\/]+\/content-policy/.test(pathname) || // Content policy page
+    /^\/[^\/]+\/legal-notice/.test(pathname) || // Legal notice page
     /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
   ) {
     return NextResponse.next()
@@ -93,6 +99,12 @@ export async function middleware(req: NextRequest) {
     /^\/[^\/]+\/services/.test(pathname) || // Services page
     /^\/[^\/]+\/staff/.test(pathname) || // Staff page
     /^\/[^\/]+\/contact/.test(pathname) || // Contact page
+    // Legal pages are public
+    /^\/[^\/]+\/terms/.test(pathname) || // Terms page
+    /^\/[^\/]+\/privacy/.test(pathname) || // Privacy page
+    /^\/[^\/]+\/cookies/.test(pathname) || // Cookie policy page
+    /^\/[^\/]+\/content-policy/.test(pathname) || // Content policy page
+    /^\/[^\/]+\/legal-notice/.test(pathname) || // Legal notice page
     /^\/[^\/]+$/.test(pathname) && pathname !== '/' // Domain landing page
   ) {
     return response

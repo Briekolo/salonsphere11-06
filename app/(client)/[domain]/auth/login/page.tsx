@@ -31,7 +31,7 @@ export default function ClientLoginPage({ params }: { params: Promise<{ domain: 
       } else if (client) {
         // Redirect to dashboard or back to original page
         const returnUrl = searchParams.get('returnUrl')
-        router.push(returnUrl || `/${resolvedParams.domain}/account/dashboard`)
+      router.push(returnUrl || `/${resolvedParams.domain}/account`)
       }
     } catch (err) {
       setError('Er is een fout opgetreden. Probeer het opnieuw.')

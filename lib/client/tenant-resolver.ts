@@ -20,6 +20,7 @@ export interface TenantInfo {
     cancellation_hours: number;
     allow_guest_booking: boolean;
   };
+  business_hours?: any; // JSONB format with numeric keys 0-6
   logo_url?: string;
   description?: string;
   address?: string;

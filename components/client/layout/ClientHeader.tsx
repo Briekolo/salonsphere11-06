@@ -52,10 +52,7 @@ export function ClientHeader({ domain }: ClientHeaderProps) {
 
   const navigation = [
     { name: 'Home', href: `/${domain}` },
-    { name: 'Behandelingen', href: `/${domain}/services` },
-    { name: 'Team', href: `/${domain}/team` },
-    { name: 'Gallery', href: `/${domain}/gallery` },
-    { name: 'Reviews', href: `/${domain}/reviews` },
+    { name: 'Behandelingen', href: `/${domain}/book` },
     { name: 'Contact', href: `/${domain}/contact` },
   ];
 

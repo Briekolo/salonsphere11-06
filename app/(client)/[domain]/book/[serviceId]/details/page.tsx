@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { useClientAuthContext } from '@/components/client/auth/ClientAuthProvider';
 
 interface Service {
   id: string;
@@ -44,6 +45,7 @@ export default function ClientDetailsPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { tenant } = useTenant();
+  const { client, loading: authLoading, isAuthenticated } = useClientAuthContext();
   
   // Get booking details from URL params
   const bookingDate = searchParams.get('date') || '';
@@ -68,6 +70,7 @@ export default function ClientDetailsPage({
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [autoRedirected, setAutoRedirected] = useState(false);
   
   // Hold management
   const { currentHold, releaseSlot } = useHoldSlot();
@@ -92,6 +95,52 @@ export default function ClientDetailsPage({
       router.push(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}/time`);
     }
   }, [isExpired, currentHold]);
+
+  // Prefill form with authenticated client data when available
+  useEffect(() => {
+    if (!isAuthenticated || !client) return;
+    setFormData(prev => ({
+      firstName: prev.firstName || client.first_name || '',
+      lastName: prev.lastName || client.last_name || '',
+      email: prev.email || client.email || '',
+      phone: prev.phone || client.phone || '',
+      notes: prev.notes,
+      marketingOptIn: prev.marketingOptIn || client.marketing_consent || false,
+      createAccount: false
+    }));
+  }, [isAuthenticated, client]);
+
+  // If logged in and we have all required details, skip this step automatically
+  useEffect(() => {
+    if (autoRedirected) return;
+    if (authLoading) return;
+    if (!isAuthenticated || !client) return;
+
+    const hasAllRequired = Boolean(
+      (client.first_name && client.first_name.trim()) &&
+      (client.last_name && client.last_name.trim()) &&
+      (client.email && client.email.trim()) &&
+      (client.phone && client.phone.trim())
+    );
+
+    if (hasAllRequired) {
+      const queryParams = new URLSearchParams({
+        date: bookingDate,
+        time: bookingTime,
+        staff: staffId,
+        staffName: staffName,
+        firstName: client.first_name || '',
+        lastName: client.last_name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        notes: '',
+        marketingOptIn: (client.marketing_consent ?? false).toString(),
+        createAccount: 'false'
+      });
+      setAutoRedirected(true);
+      router.replace(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}/confirm?${queryParams.toString()}`);
+    }
+  }, [authLoading, isAuthenticated, client, autoRedirected, bookingDate, bookingTime, staffId, staffName, resolvedParams.domain, resolvedParams.serviceId, router]);
 
   const fetchDetails = async () => {
     if (!tenant?.id) return;
@@ -271,6 +320,16 @@ export default function ClientDetailsPage({
               <h2 className="text-lg font-medium text-[#010009] mb-4 sm:mb-6" style={{ fontFamily: 'Outfit, Inter, sans-serif' }}>
                 Contactgegevens
               </h2>
+              {isAuthenticated && client && (
+                <div className="mb-4 sm:mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                  Ingelogd als <span className="font-medium">{client.first_name} {client.last_name}</span> ({client.email}).
+                  {!(client.phone && client.phone.trim()) && (
+                    <>
+                      {' '}Vul alstublieft uw telefoonnummer aan om door te gaan.
+                    </>
+                  )}
+                </div>
+              )}
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* First Name */}
@@ -288,6 +347,7 @@ export default function ClientDetailsPage({
                       ${errors.firstName ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="Jan"
+                    disabled={isAuthenticated && !!(client && client.first_name && client.first_name.trim())}
                   />
                   {errors.firstName && (
                     <p className="mt-1 text-xs text-red-500">{errors.firstName}</p>
@@ -309,6 +369,7 @@ export default function ClientDetailsPage({
                       ${errors.lastName ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="Jansen"
+                    disabled={isAuthenticated && !!(client && client.last_name && client.last_name.trim())}
                   />
                   {errors.lastName && (
                     <p className="mt-1 text-xs text-red-500">{errors.lastName}</p>
@@ -330,6 +391,7 @@ export default function ClientDetailsPage({
                       ${errors.email ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="jan.jansen@email.nl"
+                    disabled={isAuthenticated && !!(client && client.email && client.email.trim())}
                   />
                   {errors.email && (
                     <p className="mt-1 text-xs text-red-500">{errors.email}</p>
@@ -351,6 +413,7 @@ export default function ClientDetailsPage({
                       ${errors.phone ? 'border-red-500' : 'border-gray-300'}
                     `}
                     placeholder="06 12345678"
+                    disabled={isAuthenticated && !!(client && client.phone && client.phone.trim())}
                   />
                   {errors.phone && (
                     <p className="mt-1 text-xs text-red-500">{errors.phone}</p>
@@ -387,17 +450,19 @@ export default function ClientDetailsPage({
                   </span>
                 </label>
 
-                <label className="flex items-start gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.createAccount}
-                    onChange={(e) => setFormData({ ...formData, createAccount: e.target.checked })}
-                    className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] min-h-[16px] min-w-[16px]"
-                  />
-                  <span className="text-sm text-gray-600 leading-relaxed">
-                    Maak een account aan voor sneller boeken in de toekomst
-                  </span>
-                </label>
+                {!isAuthenticated && (
+                  <label className="flex items-start gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-gray-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.createAccount}
+                      onChange={(e) => setFormData({ ...formData, createAccount: e.target.checked })}
+                      className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] min-h-[16px] min-w-[16px]"
+                    />
+                    <span className="text-sm text-gray-600 leading-relaxed">
+                      Maak een account aan voor sneller boeken in de toekomst
+                    </span>
+                  </label>
+                )}
               </div>
 
               {/* Submit Button */}

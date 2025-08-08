@@ -64,8 +64,8 @@ export default function ClientRegisterPage({ params }: { params: Promise<{ domai
       if (error) {
         setError(error.message)
       } else if (client) {
-        // Redirect to dashboard after successful registration
-        router.push(`/${resolvedParams.domain}/account/dashboard`)
+        // Redirect to account home na succesvolle registratie
+        router.push(`/${resolvedParams.domain}/account`)
       }
     } catch (err) {
       setError('Er is een fout opgetreden. Probeer het opnieuw.')

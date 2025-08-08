@@ -572,7 +572,7 @@ export default function SettingsPage() {
               value={profile.vat_number}
               onChange={(e) => handleInputChange('vat_number', e.target.value)}
               className={getInputClassName('vat_number')}
-              placeholder="NL123456789B01"
+              placeholder="NL123456789B01 of BE0123456789"
             />
             {validationErrors.vat_number && (
               <p className="text-red-500 text-xs mt-1">{validationErrors.vat_number}</p>
@@ -580,14 +580,14 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              KvK Nummer
+              Ondernemingsnummer / KvK
             </label>
             <input
               type="text"
               value={profile.chamber_of_commerce}
               onChange={(e) => handleInputChange('chamber_of_commerce', e.target.value)}
               className={getInputClassName('chamber_of_commerce')}
-              placeholder="12345678"
+              placeholder="BE0123456789 of 12345678"
             />
             {validationErrors.chamber_of_commerce && (
               <p className="text-red-500 text-xs mt-1">{validationErrors.chamber_of_commerce}</p>

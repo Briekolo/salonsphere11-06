@@ -18,73 +18,78 @@ export class ValidationService {
     return { isValid: true };
   }
 
-  // Phone validation (Dutch format)
+  // Phone validation (allows any format)
   static validatePhone(phone: string): ValidationResult {
     if (!phone) {
       return { isValid: true }; // Phone is optional
     }
     
-    // Remove all spaces, dashes, and parentheses
+    // Remove all spaces, dashes, and parentheses for validation
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
     
-    // Dutch phone number formats: +31, 0031, or 06
-    const phoneRegex = /^(\+31|0031|0)[1-9]\d{8}$/;
+    // Allow any phone number with at least 5 digits (to accommodate various international formats)
+    const phoneRegex = /^\+?\d{5,}$/;
     if (!phoneRegex.test(cleanPhone)) {
-      return { isValid: false, error: 'Voer een geldig Nederlands telefoonnummer in' };
+      return { isValid: false, error: 'Voer een geldig telefoonnummer in' };
     }
     
     return { isValid: true };
   }
 
-  // VAT number validation (Dutch format)
+  // VAT number validation (supports Dutch and Belgian formats)
   static validateVATNumber(vatNumber: string): ValidationResult {
     if (!vatNumber) {
       return { isValid: true }; // VAT number is optional
     }
     
-    // Remove spaces and convert to uppercase
-    const cleanVAT = vatNumber.replace(/\s/g, '').toUpperCase();
+    // Remove spaces, dots and convert to uppercase
+    const cleanVAT = vatNumber.replace(/[\s\.]/g, '').toUpperCase();
     
     // Dutch VAT format: NL + 9 digits + B + 2 digits
-    const vatRegex = /^NL\d{9}B\d{2}$/;
-    if (!vatRegex.test(cleanVAT)) {
-      return { isValid: false, error: 'BTW nummer moet het formaat NL123456789B01 hebben' };
+    // Belgian VAT format: BE + 10 digits (same as enterprise number)
+    const dutchVatRegex = /^NL\d{9}B\d{2}$/;
+    const belgianVatRegex = /^BE\d{10}$/;
+    
+    if (!dutchVatRegex.test(cleanVAT) && !belgianVatRegex.test(cleanVAT)) {
+      return { isValid: false, error: 'BTW nummer moet het formaat NL123456789B01 of BE0123456789 hebben' };
     }
     
     return { isValid: true };
   }
 
-  // Chamber of Commerce validation (Dutch KvK)
+  // Company registration validation (supports Dutch KvK and Belgian enterprise number)
   static validateKvKNumber(kvkNumber: string): ValidationResult {
     if (!kvkNumber) {
-      return { isValid: true }; // KvK number is optional
+      return { isValid: true }; // Company registration is optional
     }
     
-    // Remove spaces
-    const cleanKvK = kvkNumber.replace(/\s/g, '');
+    // Remove spaces and dots
+    const cleanNumber = kvkNumber.replace(/[\s\.]/g, '').toUpperCase();
     
     // Dutch KvK format: 8 digits
+    // Belgian enterprise number format: BE followed by 10 digits (or just 10 digits)
     const kvkRegex = /^\d{8}$/;
-    if (!kvkRegex.test(cleanKvK)) {
-      return { isValid: false, error: 'KvK nummer moet 8 cijfers bevatten' };
+    const belgianRegex = /^(BE)?\d{10}$/;
+    
+    if (!kvkRegex.test(cleanNumber) && !belgianRegex.test(cleanNumber)) {
+      return { isValid: false, error: 'Voer een geldig ondernemingsnummer in (BE0123456789 of 12345678)' };
     }
     
     return { isValid: true };
   }
 
-  // Postal code validation (Dutch format)
+  // Postal code validation (allows any format)
   static validatePostalCode(postalCode: string): ValidationResult {
     if (!postalCode) {
       return { isValid: true }; // Postal code is optional
     }
     
-    // Remove spaces and convert to uppercase
-    const cleanCode = postalCode.replace(/\s/g, '').toUpperCase();
+    // Just check that it's not empty after trimming
+    const cleanCode = postalCode.trim();
     
-    // Dutch postal code format: 4 digits + 2 letters
-    const postalRegex = /^\d{4}[A-Z]{2}$/;
-    if (!postalRegex.test(cleanCode)) {
-      return { isValid: false, error: 'Postcode moet het formaat 1234AB hebben' };
+    // Allow any postal code format with at least 3 characters
+    if (cleanCode.length < 3) {
+      return { isValid: false, error: 'Voer een geldige postcode in' };
     }
     
     return { isValid: true };
