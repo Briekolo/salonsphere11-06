@@ -273,7 +273,7 @@ export function TopBar({ onMobileSidebarToggle }: TopBarProps) {
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false)
-                    // Navigate to profile when implemented
+                    router.push('/profile')
                   }}
                   className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
                 >
