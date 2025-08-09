@@ -19,11 +19,11 @@ function SubscriptionPageContent() {
     subscriptionStatus, 
     subscription, 
     loading: subscriptionLoading,
-    createTrial,
+    createTrialAsync,
     isCreatingTrial,
-    simulatePayment,
+    simulatePaymentAsync,
     isSimulatingPayment,
-    createPayment,
+    createPaymentAsync,
     isCreatingPayment,
     syncPaymentStatus,
     isSyncingPaymentStatus,
@@ -132,7 +132,7 @@ function SubscriptionPageContent() {
   const handleStartTrial = async (planId: string) => {
     try {
       setSelectedPlan(planId)
-      await createTrial(planId)
+      await createTrialAsync(planId)
       router.push('/')
     } catch (error) {
       console.error('Error starting trial:', error)
@@ -143,7 +143,7 @@ function SubscriptionPageContent() {
   const handleUpgrade = async (planId: string) => {
     try {
       setSelectedPlan(planId)
-      await createPayment(planId)
+      await createPaymentAsync(planId)
       // Note: createPayment will redirect to Mollie, so no need to redirect here
     } catch (error) {
       console.error('Error creating payment:', error)
@@ -154,7 +154,7 @@ function SubscriptionPageContent() {
   const handleSimulatePayment = async (planId: string) => {
     try {
       setSelectedPlan(planId)
-      await simulatePayment(planId)
+      await simulatePaymentAsync(planId)
       router.push('/')
     } catch (error) {
       console.error('Error simulating payment:', error)

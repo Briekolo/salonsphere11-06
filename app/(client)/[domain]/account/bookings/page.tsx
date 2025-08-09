@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useClientAuthContext } from '@/components/client/auth/ClientAuthProvider';
 import { useTenant } from '@/lib/client/tenant-context';
 import { supabase } from '@/lib/supabase';
+import { BookingService } from '@/lib/client/booking-service';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { 
@@ -25,20 +26,17 @@ interface Booking {
   id: string;
   service_id: string;
   staff_id: string;
-  booking_date: string;
-  booking_time: string;
+  scheduled_at: string;
   duration_minutes: number;
   status: string;
-  price: number;
+  price?: number;
   notes?: string | null;
-  start_time?: string;
-  end_time?: string;
   services: {
     name: string;
     duration_minutes: number;
-    category: string;
+    price?: number;
   } | null;
-  users: {
+  staff?: {
     first_name: string | null;
     last_name: string | null;
   } | null;
@@ -67,30 +65,10 @@ export default function BookingsPage({ params }: { params: Promise<{ domain: str
   }, [client, tenant]);
 
   const fetchBookings = async () => {
-    if (!client || !tenant) return;
-    
+    if (!client) return;
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          services (
-            name,
-            duration_minutes,
-            category
-          ),
-          users!bookings_staff_id_fkey (
-            first_name,
-            last_name
-          )
-        `)
-        .eq('client_id', client.id)
-        .eq('tenant_id', tenant.id)
-        .order('start_time', { ascending: false });
-
-      if (error) throw error;
-      
-      setBookings(data || []);
+      const data = await BookingService.getClientBookings(client.id);
+      setBookings((data as unknown as Booking[]) || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
     } finally {
@@ -135,11 +113,11 @@ export default function BookingsPage({ params }: { params: Promise<{ domain: str
 
   const now = new Date();
   const upcomingBookings = bookings.filter(b => {
-    const bookingDateTime = new Date(`${b.booking_date}T${b.booking_time}`);
+    const bookingDateTime = new Date(b.scheduled_at);
     return bookingDateTime >= now && b.status !== 'cancelled';
   });
   const pastBookings = bookings.filter(b => {
-    const bookingDateTime = new Date(`${b.booking_date}T${b.booking_time}`);
+    const bookingDateTime = new Date(b.scheduled_at);
     return bookingDateTime < now || b.status === 'cancelled';
   });
 
@@ -235,7 +213,7 @@ export default function BookingsPage({ params }: { params: Promise<{ domain: str
         <div className="space-y-4">
           {displayedBookings.map((booking) => {
             const statusBadge = getStatusBadge(booking.status);
-            const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+            const bookingDateTime = new Date(booking.scheduled_at);
             const canCancel = booking.status !== 'cancelled' && 
                             booking.status !== 'completed' && 
                             bookingDateTime > now;
@@ -276,14 +254,14 @@ export default function BookingsPage({ params }: { params: Promise<{ domain: str
                       <div className="flex items-center gap-2 text-gray-600">
                         <User className="h-4 w-4" />
                         <span>
-                          {booking.users?.first_name} {booking.users?.last_name}
+                          {booking.staff?.first_name} {booking.staff?.last_name}
                         </span>
                       </div>
                       
                       <div className="flex items-center gap-2 text-gray-600">
                         <Euro className="h-4 w-4" />
                         <span className="font-medium">
-                          €{booking.price.toFixed(2)}
+                          €{((booking.price ?? booking.services?.price ?? 0)).toFixed(2)}
                         </span>
                       </div>
                     </div>

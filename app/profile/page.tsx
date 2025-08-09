@@ -40,20 +40,48 @@ export default function ProfilePage() {
     let isActive = true
     async function load() {
       if (!authUser) { setLoading(false); return }
-      if (isClient && (tenantLoading || !tenantId)) { return }
+      // Wacht voor zowel client als admin op tenantId
+      if (tenantLoading || !tenantId) { return }
       setLoading(true)
-      const { data, error } = isClient
-        ? await supabase
-            .from('clients')
-            .select('*')
-            .eq('auth_user_id', authUser.id)
-            .eq('tenant_id', tenantId!)
-            .maybeSingle()
-        : await supabase
-            .from('users')
-            .select('*')
-            .eq('id', authUser.id)
-            .maybeSingle()
+      if (isClient) {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('auth_user_id', authUser.id)
+          .eq('tenant_id', tenantId!)
+          .maybeSingle()
+        if (!isActive) return
+        if (!error && data) {
+          setDbUser(data as DbUser)
+          setForm({
+            first_name: data.first_name ?? '',
+            last_name: data.last_name ?? '',
+            phone: data.phone ?? ''
+          })
+        }
+        setLoading(false)
+        return
+      }
+
+      // Staff/admin branch: try by id+tenant first, then fallback to email+tenant
+      const byId = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .eq('tenant_id', tenantId!)
+        .maybeSingle()
+      let data = byId.data as DbUser | null
+      let error = byId.error
+      if (!data) {
+        const byEmail = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', authUser.email)
+          .eq('tenant_id', tenantId!)
+          .maybeSingle()
+        data = byEmail.data as DbUser | null
+        error = byEmail.error
+      }
 
       if (!isActive) return
       if (!error && data) {
@@ -84,6 +112,7 @@ export default function ProfilePage() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!dbUser) return
+    if (!tenantId) { showToast('Geen tenant gevonden.', 'error'); return }
     setSaving(true)
     const { error } = isClient
       ? await supabase
@@ -101,9 +130,11 @@ export default function ProfilePage() {
           .update({
             first_name: form.first_name,
             last_name: form.last_name,
-            phone: form.phone
+            phone: form.phone,
+            updated_at: new Date().toISOString(),
           })
           .eq('id', dbUser.id)
+          .eq('tenant_id', tenantId!)
     if (error) {
       setSaving(false)
       console.error('Profile save error:', error)
@@ -123,6 +154,7 @@ export default function ProfilePage() {
           .from('users')
           .select('*')
           .eq('id', dbUser.id)
+          .eq('tenant_id', tenantId!)
           .maybeSingle()
 
     setSaving(false)

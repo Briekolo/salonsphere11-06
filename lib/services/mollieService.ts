@@ -19,12 +19,11 @@ export interface MollieCustomerRequest {
 }
 
 class MollieService {
-  private client: MollieClient
+  private client!: MollieClient
   private initialized = false
 
   constructor() {
-    // Initialize client when first used
-    this.initClient()
+    // Defer initialization until first use
   }
 
   private initClient() {

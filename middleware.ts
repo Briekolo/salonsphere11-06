@@ -68,17 +68,7 @@ export async function middleware(req: NextRequest) {
     return response
   }
 
-  // Handle onboarding - only accessible for authenticated users without tenant_id
-  if (pathname.startsWith('/onboarding')) {
-    if (!session) {
-      // Not authenticated, redirect to sign-in
-      const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/auth/sign-in'
-      return NextResponse.redirect(redirectUrl)
-    }
-    // Allow access to onboarding for authenticated users
-    return response
-  }
+  // Onboarding pagina wordt niet langer gebruikt
 
   // Handle subscription page - only accessible for authenticated users
   if (pathname.startsWith('/subscription')) {
@@ -125,14 +115,14 @@ export async function middleware(req: NextRequest) {
     console.log(`[Middleware] Session found for ${pathname}, user: ${session.user.email}`)
   }
 
-  // Onboarding: als tenant_id ontbreekt, forceer redirect
+  // Onboarding verwijderd: als tenant_id ontbreekt, stuur naar subscription
   const { user } = session
   // @ts-ignore
   const tenantId = user?.user_metadata?.tenant_id
   if (!tenantId) {
-    const onboardingUrl = req.nextUrl.clone()
-    onboardingUrl.pathname = '/onboarding'
-    return NextResponse.redirect(onboardingUrl)
+    const subscriptionUrl = req.nextUrl.clone()
+    subscriptionUrl.pathname = '/subscription'
+    return NextResponse.redirect(subscriptionUrl)
   }
 
   // Subscription check: if user has tenant but no active subscription, redirect to subscription page

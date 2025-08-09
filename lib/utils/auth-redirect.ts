@@ -29,8 +29,8 @@ export async function checkAuthAndRedirect() {
     const tenantId = user.user_metadata?.tenant_id
     
     if (!tenantId) {
-      console.log('No tenant_id, redirecting to onboarding')
-      window.location.replace('/onboarding')
+      console.log('No tenant_id, redirecting to subscription')
+      window.location.replace('/subscription')
       return true
     }
     
