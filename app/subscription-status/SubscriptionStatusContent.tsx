@@ -28,8 +28,9 @@ export default function SubscriptionStatusContent() {
   const MAX_CHECKS = 15
   
   useEffect(() => {
-    // If no payment parameters, redirect to onboarding
-    if (!paymentId || !tenantId || success !== 'true') {
+    // If no required parameters, redirect to onboarding
+    // Note: paymentId is optional - we can check subscription status without it
+    if (!tenantId || success !== 'true') {
       router.replace('/onboarding')
       return
     }
@@ -213,8 +214,12 @@ export default function SubscriptionStatusContent() {
                       Hulp nodig?
                     </p>
                     <p className="text-xs text-amber-700">
-                      Als dit probleem blijft bestaan, neem dan contact op met support@salonsphere.nl 
-                      met uw betalingsreferentie: <code className="bg-amber-100 px-1 py-0.5 rounded">{paymentId}</code>
+                      Als dit probleem blijft bestaan, neem dan contact op met support@salonsphere.nl
+                      {paymentId && (
+                        <>
+                          {' '}met uw betalingsreferentie: <code className="bg-amber-100 px-1 py-0.5 rounded">{paymentId}</code>
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -224,11 +229,13 @@ export default function SubscriptionStatusContent() {
         </div>
         
         {/* Additional info */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-gray-500">
-            Betalingsreferentie: {paymentId}
-          </p>
-        </div>
+        {paymentId && (
+          <div className="mt-4 text-center">
+            <p className="text-xs text-gray-500">
+              Betalingsreferentie: {paymentId}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
