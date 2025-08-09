@@ -44,76 +44,9 @@ export default function OnboardingForm() {
       const paymentId = searchParams.get('payment')
       
       if (success === 'true' && tenantParam) {
-        // Payment was successful, complete onboarding
-        setLoading(true)
-        try {
-          // First, try to get the current session
-          let { data: { session } } = await supabase.auth.getSession()
-          
-          // If no session, try to refresh
-          if (!session) {
-            console.log('No session found, attempting to refresh...')
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-            
-            if (refreshError || !refreshData.session) {
-              console.error('Failed to refresh session:', refreshError)
-              // If refresh fails, redirect to sign-in
-              router.replace('/auth/sign-in')
-              return
-            }
-            
-            session = refreshData.session
-          }
-          
-          const token = session.access_token
-          
-          // If we have a payment ID, ensure it's properly processed
-          if (paymentId) {
-            const handleResponse = await fetch('/api/subscription/handle-payment-redirect', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                paymentId,
-                tenantId: tenantParam
-              })
-            })
-            
-            if (!handleResponse.ok) {
-              console.error('Failed to handle payment redirect')
-            }
-          }
-          
-          // Update user metadata with tenant_id if not already set
-          const { data: userData } = await supabase
-            .from('users')
-            .select('tenant_id')
-            .eq('id', session.user.id)
-            .single()
-          
-          if (userData?.tenant_id && userData.tenant_id !== session.user.user_metadata?.tenant_id) {
-            // Update the auth metadata to include tenant_id
-            await supabase.auth.updateUser({
-              data: { tenant_id: userData.tenant_id }
-            })
-            
-            // Refresh session to get updated metadata
-            await supabase.auth.refreshSession()
-          }
-          
-          // Small delay to ensure all updates are processed
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          // Redirect to dashboard
-          router.replace('/')
-        } catch (err: any) {
-          console.error('Error completing onboarding:', err)
-          setError('Er is een fout opgetreden bij het voltooien van de registratie.')
-        } finally {
-          setLoading(false)
-        }
+        // Payment was successful, redirect to subscription status page
+        // The subscription-status page will handle polling for activation
+        router.replace(`/subscription-status?success=true&tenant=${tenantParam}&payment=${paymentId || ''}`)
       } else if (paymentError === 'payment_failed') {
         setError('Betaling mislukt. Probeer het opnieuw.')
         if (tenantParam) {

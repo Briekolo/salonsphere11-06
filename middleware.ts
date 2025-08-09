@@ -81,6 +81,19 @@ export async function middleware(req: NextRequest) {
     return response
   }
 
+  // Handle subscription-status page - accessible for authenticated users checking payment status
+  if (pathname.startsWith('/subscription-status')) {
+    if (!session) {
+      // Not authenticated, redirect to sign-in
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/auth/sign-in'
+      redirectUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
+    // Allow access to subscription-status page for authenticated users
+    return response
+  }
+
   // Public client module routes
   if (
     /^\/[^\/]+\/book/.test(pathname) || // Booking flow
@@ -124,7 +137,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Subscription check: if user has tenant but no active subscription, redirect to onboarding page
-  if (!pathname.startsWith('/onboarding')) {
+  // Skip this check for onboarding and subscription-status pages
+  if (!pathname.startsWith('/onboarding') && !pathname.startsWith('/subscription-status')) {
     try {
       const { data: hasSubscription } = await supabase
         .rpc('has_active_subscription', { tenant_uuid: tenantId })
