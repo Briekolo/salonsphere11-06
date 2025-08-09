@@ -256,7 +256,7 @@ class MollieService {
    */
   getSuccessUrl(tenantId: string, paymentId?: string): string {
     const baseUrl = this.getBaseUrl()
-    const url = `${baseUrl}/subscription?success=true&tenant=${tenantId}`
+    const url = `${baseUrl}/onboarding?success=true&tenant=${tenantId}`
     return paymentId ? `${url}&payment=${paymentId}` : url
   }
 
@@ -265,7 +265,7 @@ class MollieService {
    */
   getFailureUrl(tenantId: string): string {
     const baseUrl = this.getBaseUrl()
-    return `${baseUrl}/subscription?error=payment_failed&tenant=${tenantId}`
+    return `${baseUrl}/onboarding?error=payment_failed&tenant=${tenantId}`
   }
 }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { subscriptionService } from '@/lib/services/subscriptionService'
+import { subscriptionServiceServer } from '@/lib/services/subscriptionService.server'
 import { mollieService } from '@/lib/services/mollieService'
 
 export async function POST(request: NextRequest) {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the plan exists
-    const plan = await subscriptionService.getSubscriptionPlan(planId)
+    const plan = await subscriptionServiceServer.getSubscriptionPlan(planId)
     if (!plan) {
       return NextResponse.json(
         { error: 'Invalid plan ID' },
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if tenant already has a subscription
-    let subscription = await subscriptionService.getTenantSubscription(tenantId)
+    let subscription = await subscriptionServiceServer.getTenantSubscription(tenantId)
     let mollieCustomerId: string | null = null
 
     if (subscription && subscription.mollie_customer_id) {
@@ -101,10 +101,12 @@ export async function POST(request: NextRequest) {
     // Create payment in Mollie
     try {
       const paymentAmount = mollieService.formatAmount(plan.price_cents)
+      
+      // First create the payment without payment ID in redirect URL
       const payment = await mollieService.createPayment({
         amount: paymentAmount,
         description: `${plan.name} Subscription - ${tenantData.name}`,
-        redirectUrl: mollieService.getSuccessUrl(tenantId), // Will update with payment ID after creation
+        redirectUrl: mollieService.getSuccessUrl(tenantId),
         webhookUrl: mollieService.getWebhookUrl(),
         customerId: mollieCustomerId,
         metadata: {
@@ -113,46 +115,26 @@ export async function POST(request: NextRequest) {
           subscriptionId: subscription?.id || 'new'
         }
       })
+      
+      // Now we have the payment ID, update the redirect URL
+      // Note: We'll handle the payment ID extraction from Mollie's redirect instead
+      console.log(`[Payment Creation] Payment created with ID: ${payment.id}`)
 
       // Create or update subscription record
-      const now = new Date()
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate())
-
       if (subscription) {
         // Update existing subscription
-        await supabase
-          .from('subscriptions')
-          .update({
-            plan_id: planId,
-            status: 'unpaid',
-            current_period_start: now.toISOString(),
-            current_period_end: nextMonth.toISOString(),
-            mollie_customer_id: mollieCustomerId,
-            trial_end: null,
-            cancelled_at: null
-          })
-          .eq('id', subscription.id)
+        subscription = await subscriptionServiceServer.updateSubscriptionWithPayment(
+          subscription.id,
+          planId,
+          mollieCustomerId
+        )
       } else {
         // Create new subscription
-        const { data: newSubscription, error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .insert({
-            tenant_id: tenantId,
-            plan_id: planId,
-            status: 'unpaid',
-            current_period_start: now.toISOString(),
-            current_period_end: nextMonth.toISOString(),
-            mollie_customer_id: mollieCustomerId
-          })
-          .select()
-          .single()
-
-        if (subscriptionError || !newSubscription) {
-          console.error('Failed to create subscription:', subscriptionError)
-          throw new Error(`Failed to create subscription: ${subscriptionError?.message || 'Unknown error'}`)
-        }
-
-        subscription = newSubscription
+        subscription = await subscriptionServiceServer.createSubscription(
+          tenantId,
+          planId,
+          mollieCustomerId
+        )
       }
 
       // Ensure subscription exists before creating payment record
@@ -161,35 +143,19 @@ export async function POST(request: NextRequest) {
       }
 
       // Create payment record and ensure it's committed
-      const { data: paymentRecordData, error: paymentInsertError } = await supabase
-        .from('subscription_payments')
-        .insert({
-          subscription_id: subscription.id,
-          amount_cents: plan.price_cents,
-          currency: plan.currency,
-          status: 'pending',
-          mollie_payment_id: payment.id,
-          period_start: now.toISOString(),
-          period_end: nextMonth.toISOString()
-        })
-        .select()
-        .single()
+      const paymentRecordData = await subscriptionServiceServer.createPaymentRecord(
+        subscription.id,
+        plan.price_cents,
+        plan.currency,
+        payment.id
+      )
 
-      if (paymentInsertError) {
-        console.error('Failed to create payment record:', paymentInsertError)
-        throw new Error(`Failed to create payment record: ${paymentInsertError.message}`)
-      }
-
+      const now = new Date()
       console.log(`[Payment Creation] Payment record created with ID: ${paymentRecordData.id} for Mollie payment: ${payment.id}`)
       console.log(`[Payment Creation] Payment tracking started at ${now.toISOString()} - will check for webhook delivery`)
 
-      // Update the payment URL to include the payment ID for status checking on redirect
+      // Get the checkout URL from Mollie
       const checkoutUrl = payment.getCheckoutUrl()
-      const updatedCheckoutUrl = checkoutUrl ? 
-        checkoutUrl.replace(
-          mollieService.getSuccessUrl(tenantId),
-          mollieService.getSuccessUrl(tenantId, payment.id)
-        ) : payment.getCheckoutUrl()
 
       // Schedule a fallback reconciliation check after 30 seconds if webhook doesn't arrive
       const fallbackDelayMs = 30 * 1000 // 30 seconds
@@ -197,7 +163,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        paymentUrl: updatedCheckoutUrl || payment.getCheckoutUrl(),
+        paymentUrl: checkoutUrl || payment.getCheckoutUrl(),
         paymentId: payment.id,
         subscription: subscription,
         paymentRecordId: paymentRecordData.id,

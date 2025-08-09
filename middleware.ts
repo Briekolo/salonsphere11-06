@@ -68,10 +68,8 @@ export async function middleware(req: NextRequest) {
     return response
   }
 
-  // Onboarding pagina wordt niet langer gebruikt
-
-  // Handle subscription page - only accessible for authenticated users
-  if (pathname.startsWith('/subscription')) {
+  // Handle onboarding page - only accessible for authenticated users
+  if (pathname.startsWith('/onboarding')) {
     if (!session) {
       // Not authenticated, redirect to sign-in
       const redirectUrl = req.nextUrl.clone()
@@ -79,7 +77,7 @@ export async function middleware(req: NextRequest) {
       redirectUrl.searchParams.set('next', pathname)
       return NextResponse.redirect(redirectUrl)
     }
-    // Allow access to subscription page for authenticated users
+    // Allow access to onboarding page for authenticated users
     return response
   }
 
@@ -115,38 +113,38 @@ export async function middleware(req: NextRequest) {
     console.log(`[Middleware] Session found for ${pathname}, user: ${session.user.email}`)
   }
 
-  // Onboarding verwijderd: als tenant_id ontbreekt, stuur naar subscription
+  // If tenant_id is missing, redirect to onboarding
   const { user } = session
   // @ts-ignore
   const tenantId = user?.user_metadata?.tenant_id
   if (!tenantId) {
-    const subscriptionUrl = req.nextUrl.clone()
-    subscriptionUrl.pathname = '/subscription'
-    return NextResponse.redirect(subscriptionUrl)
+    const onboardingUrl = req.nextUrl.clone()
+    onboardingUrl.pathname = '/onboarding'
+    return NextResponse.redirect(onboardingUrl)
   }
 
-  // Subscription check: if user has tenant but no active subscription, redirect to subscription page
-  if (!pathname.startsWith('/subscription')) {
+  // Subscription check: if user has tenant but no active subscription, redirect to onboarding page
+  if (!pathname.startsWith('/onboarding')) {
     try {
       const { data: hasSubscription } = await supabase
         .rpc('has_active_subscription', { tenant_uuid: tenantId })
       
       if (!hasSubscription) {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Middleware] No active subscription for tenant ${tenantId}, redirecting to subscription page`)
+          console.log(`[Middleware] No active subscription for tenant ${tenantId}, redirecting to onboarding page`)
         }
-        const subscriptionUrl = req.nextUrl.clone()
-        subscriptionUrl.pathname = '/subscription'
-        return NextResponse.redirect(subscriptionUrl)
+        const onboardingUrl = req.nextUrl.clone()
+        onboardingUrl.pathname = '/onboarding'
+        return NextResponse.redirect(onboardingUrl)
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error(`[Middleware] Error checking subscription: ${error}`)
       }
-      // On error, redirect to subscription page to be safe
-      const subscriptionUrl = req.nextUrl.clone()
-      subscriptionUrl.pathname = '/subscription'
-      return NextResponse.redirect(subscriptionUrl)
+      // On error, redirect to onboarding page to be safe
+      const onboardingUrl = req.nextUrl.clone()
+      onboardingUrl.pathname = '/onboarding'
+      return NextResponse.redirect(onboardingUrl)
     }
   }
 

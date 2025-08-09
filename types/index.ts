@@ -4,7 +4,7 @@ export interface Salon {
   address: string
   phone: string
   email: string
-  subscription_tier: 'starter' | 'growth' | 'pro'
+  subscription_tier: 'essential'
   created_at: string
   updated_at: string
 }
