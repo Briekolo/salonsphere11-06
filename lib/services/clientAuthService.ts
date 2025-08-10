@@ -41,9 +41,7 @@ class ClientAuthService {
       // may not have proper permissions. We'll handle duplicates via unique constraints.
 
       // Create auth user with Supabase Auth
-      // LET OP (development): in de Supabase Auth-instellingen staat e-mailbevestiging UIT,
-      // zodat de gebruiker direct kan inloggen na registratie.
-      // Schakel dit in productie AAN voor veiligheid.
+      // Email confirmation is disabled - accounts are created immediately
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -53,7 +51,8 @@ class ClientAuthService {
             last_name: data.lastName,
             user_type: 'client',
             tenant_id: tenantId
-          }
+          },
+          emailRedirectTo: undefined // Don't send confirmation email
         }
       })
 
@@ -64,15 +63,15 @@ class ClientAuthService {
       // Wait for the auth user to be fully created
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Direct na sign-up inloggen om een sessie te krijgen (werkt alleen zonder e-mailbevestiging)
+      // Automatically sign in after signup since email confirmation is disabled
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
       })
 
-      const hasActiveSession = !!signInData?.session
-      if (signInError || !hasActiveSession) {
-        console.warn('Sign-in direct na registratie is niet gelukt of vereist e-mailbevestiging:', signInError)
+      // Sign in should always work since we're not requiring email confirmation
+      if (signInError) {
+        console.warn('Auto sign-in after registration failed:', signInError)
       }
 
       // Create new client record
@@ -112,11 +111,7 @@ class ClientAuthService {
 
       const client = newClient
 
-      // Als er (nog) geen sessie is (bijv. e-mailbevestiging vereist), geef duidelijke melding terug
-      if (!hasActiveSession) {
-        return { client: null, error: new Error('Account aangemaakt. Bevestig uw e-mailadres via de link die we u zojuist hebben gemaild om in te loggen.') }
-      }
-
+      // Account is successfully created and user is logged in
       return { client, error: null }
     } catch (error) {
       return { client: null, error: error as Error }
@@ -214,7 +209,7 @@ class ClientAuthService {
         .single()
 
       // If not found by auth_user_id, try by email (for backward compatibility)
-      if (!client) {
+      if (!client && user.email) {
         const result = await supabase
           .from('clients')
           .select('*')
