@@ -30,19 +30,27 @@ class ClientAuthService {
    * Register a new client with Supabase Auth and create client record
    */
   async register(data: ClientRegistrationData): Promise<ClientAuthResponse> {
+    console.log('[ClientAuth] Starting registration for:', data.email)
+    
     try {
       // Get tenant ID from domain
+      console.log('[ClientAuth] Getting tenant ID for domain:', data.domain)
       const tenantId = await getTenantIdFromDomain(data.domain)
       if (!tenantId) {
+        console.error('[ClientAuth] No tenant ID found for domain:', data.domain)
         return { client: null, error: new Error('Invalid salon domain') }
       }
+      console.log('[ClientAuth] Got tenant ID:', tenantId)
 
       // Skip the existing client check during registration since anonymous users
       // may not have proper permissions. We'll handle duplicates via unique constraints.
 
       // Create auth user with Supabase Auth
       // Email confirmation is disabled - accounts are created immediately
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      console.log('[ClientAuth] Calling supabase.auth.signUp...')
+      
+      // Add timeout to prevent infinite hanging
+      const signUpPromise = supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -55,15 +63,38 @@ class ClientAuthService {
           emailRedirectTo: undefined // Don't send confirmation email
         }
       })
+      
+      // Set a 30 second timeout
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Registration timeout - please try again')), 30000)
+      )
+      
+      const { data: authData, error: authError } = await Promise.race([
+        signUpPromise,
+        timeoutPromise
+      ]).catch(error => {
+        console.error('[ClientAuth] SignUp error:', error)
+        return { data: null, error }
+      })
 
-      if (authError || !authData.user) {
+      console.log('[ClientAuth] SignUp response:', { 
+        hasData: !!authData, 
+        hasUser: !!authData?.user,
+        userId: authData?.user?.id,
+        error: authError 
+      })
+
+      if (authError || !authData?.user) {
+        console.error('[ClientAuth] SignUp failed:', authError)
         return { client: null, error: authError || new Error('Failed to create account') }
       }
 
       // Wait for the auth user to be fully created
+      console.log('[ClientAuth] Waiting for auth user to be created...')
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Automatically sign in after signup since email confirmation is disabled
+      console.log('[ClientAuth] Auto signing in after registration...')
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
@@ -71,7 +102,9 @@ class ClientAuthService {
 
       // Sign in should always work since we're not requiring email confirmation
       if (signInError) {
-        console.warn('Auto sign-in after registration failed:', signInError)
+        console.warn('[ClientAuth] Auto sign-in after registration failed:', signInError)
+      } else {
+        console.log('[ClientAuth] Auto sign-in successful')
       }
 
       // Create new client record
@@ -86,6 +119,7 @@ class ClientAuthService {
       };
 
       // Laat het koppelen van auth_user_id aan de database trigger over.
+      console.log('[ClientAuth] Creating client record with data:', clientData)
 
       const { data: newClient, error: createError } = await supabase
         .from('clients')
@@ -93,9 +127,15 @@ class ClientAuthService {
         .select()
         .single()
 
+      console.log('[ClientAuth] Client creation result:', { 
+        hasClient: !!newClient, 
+        clientId: newClient?.id,
+        error: createError 
+      })
+
       if (createError || !newClient) {
         // Handle specific errors
-        console.error('Client creation error:', createError);
+        console.error('[ClientAuth] Client creation error:', createError);
         
         if (createError?.message?.includes('duplicate key') || 
             createError?.message?.includes('unique constraint')) {
@@ -111,9 +151,11 @@ class ClientAuthService {
 
       const client = newClient
 
+      console.log('[ClientAuth] Registration completed successfully for:', data.email)
       // Account is successfully created and user is logged in
       return { client, error: null }
     } catch (error) {
+      console.error('[ClientAuth] Unexpected registration error:', error)
       return { client: null, error: error as Error }
     }
   }
