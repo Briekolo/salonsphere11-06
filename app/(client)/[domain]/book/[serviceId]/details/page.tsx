@@ -65,8 +65,7 @@ export default function ClientDetailsPage({
     email: '',
     phone: '',
     notes: '',
-    marketingOptIn: false,
-    createAccount: false
+    marketingOptIn: false
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -105,8 +104,7 @@ export default function ClientDetailsPage({
       email: prev.email || client.email || '',
       phone: prev.phone || client.phone || '',
       notes: prev.notes,
-      marketingOptIn: prev.marketingOptIn || client.marketing_consent || false,
-      createAccount: false
+      marketingOptIn: prev.marketingOptIn || client.marketing_consent || false
     }));
   }, [isAuthenticated, client]);
 
@@ -134,8 +132,7 @@ export default function ClientDetailsPage({
         email: client.email || '',
         phone: client.phone || '',
         notes: '',
-        marketingOptIn: (client.marketing_consent ?? false).toString(),
-        createAccount: 'false'
+        marketingOptIn: (client.marketing_consent ?? false).toString()
       });
       setAutoRedirected(true);
       router.replace(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}/confirm?${queryParams.toString()}`);
@@ -217,8 +214,7 @@ export default function ClientDetailsPage({
       email: formData.email,
       phone: formData.phone,
       notes: formData.notes,
-      marketingOptIn: formData.marketingOptIn.toString(),
-      createAccount: formData.createAccount.toString()
+      marketingOptIn: formData.marketingOptIn.toString()
     });
     
     router.push(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}/confirm?${queryParams.toString()}`);
@@ -449,20 +445,6 @@ export default function ClientDetailsPage({
                     Ik wil graag op de hoogte blijven van nieuws en aanbiedingen
                   </span>
                 </label>
-
-                {!isAuthenticated && (
-                  <label className="flex items-start gap-3 cursor-pointer p-2 -m-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.createAccount}
-                      onChange={(e) => setFormData({ ...formData, createAccount: e.target.checked })}
-                      className="mt-0.5 w-4 h-4 text-[#02011F] border-gray-300 rounded focus:ring-[#02011F] min-h-[16px] min-w-[16px]"
-                    />
-                    <span className="text-sm text-gray-600 leading-relaxed">
-                      Maak een account aan voor sneller boeken in de toekomst
-                    </span>
-                  </label>
-                )}
               </div>
 
               {/* Submit Button */}

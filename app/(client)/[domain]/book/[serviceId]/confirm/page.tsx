@@ -60,8 +60,7 @@ export default function BookingConfirmationPage({
     email: searchParams.get('email') || '',
     phone: searchParams.get('phone') || '',
     notes: searchParams.get('notes') || '',
-    marketingOptIn: searchParams.get('marketingOptIn') === 'true',
-    createAccount: searchParams.get('createAccount') === 'true'
+    marketingOptIn: searchParams.get('marketingOptIn') === 'true'
   };
   
   const [loading, setLoading] = useState(true);
