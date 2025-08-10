@@ -33,9 +33,26 @@ class ClientAuthService {
     console.log('[ClientAuth] Starting registration for:', data.email)
     
     try {
-      // Get tenant ID from domain
+      // Get tenant ID from domain with timeout
       console.log('[ClientAuth] Getting tenant ID for domain:', data.domain)
-      const tenantId = await getTenantIdFromDomain(data.domain)
+      
+      // Add timeout to tenant resolution
+      const tenantPromise = getTenantIdFromDomain(data.domain)
+      const tenantTimeoutPromise = new Promise<null>((_, reject) => 
+        setTimeout(() => reject(new Error('Tenant lookup timeout')), 10000) // 10 second timeout
+      )
+      
+      let tenantId: string | null = null
+      try {
+        tenantId = await Promise.race([
+          tenantPromise,
+          tenantTimeoutPromise
+        ]) as string | null
+      } catch (error) {
+        console.error('[ClientAuth] Tenant lookup error:', error)
+        return { client: null, error: new Error('Could not find salon. Please check the URL and try again.') }
+      }
+      
       if (!tenantId) {
         console.error('[ClientAuth] No tenant ID found for domain:', data.domain)
         return { client: null, error: new Error('Invalid salon domain') }

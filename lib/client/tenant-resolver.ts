@@ -40,6 +40,8 @@ export interface TenantInfo {
  * 3. Path-based (e.g., salonsphere.nl/salon/beautysalon)
  */
 export async function resolveTenant(domain: string): Promise<TenantInfo | null> {
+  console.log('[resolveTenant] Starting resolution for domain:', domain);
+  
   try {
     // For development, extract subdomain from the path
     // In production, this would check actual domain/subdomain
@@ -48,6 +50,7 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
     if (isDevelopment) {
       // In development: /salon-name/services -> extract "salon-name"
       const subdomain = domain;
+      console.log('[resolveTenant] Development mode - looking for subdomain:', subdomain);
       
       // Try database query for all subdomains
       const { data, error } = await supabase
@@ -57,13 +60,39 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
         .single();
         
       if (error) {
-        console.error('Tenant not found in database:', subdomain, error);
+        console.error('[resolveTenant] Tenant not found in database:', subdomain, error);
         return null;
       }
       
+      console.log('[resolveTenant] Found tenant:', data?.id, data?.name);
       return data as TenantInfo;
     } else {
       // In production: check actual domain
+      console.log('[resolveTenant] Production mode - checking domain:', domain);
+      
+      // For client registration, we just need to check by subdomain directly
+      // The domain parameter is already the subdomain (e.g., "SalonBias")
+      try {
+        console.log('[resolveTenant] Checking subdomain directly:', domain);
+        const { data: tenant, error } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('subdomain', domain)
+          .single();
+        
+        if (tenant && !error) {
+          console.log('[resolveTenant] Found tenant by subdomain:', tenant.id, tenant.name);
+          return tenant as TenantInfo;
+        }
+        
+        if (error) {
+          console.log('[resolveTenant] Subdomain lookup error:', error);
+        }
+      } catch (queryError) {
+        console.error('[resolveTenant] Query error:', queryError);
+      }
+      
+      // If not found by subdomain, try the original logic
       try {
         // First check custom domain
         const { data: customDomainTenant, error: customDomainError } = await supabase
@@ -74,17 +103,19 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
           .single();
           
         if (customDomainTenant) {
+          console.log('[resolveTenant] Found by custom domain:', customDomainTenant.id);
           return customDomainTenant as TenantInfo;
         }
         
-        console.log('Custom domain not found, checking subdomain...', customDomainError);
+        console.log('[resolveTenant] Custom domain not found:', customDomainError);
       } catch (error) {
-        console.log('Custom domain query failed, trying subdomain...', error);
+        console.log('[resolveTenant] Custom domain query failed:', error);
       }
       
       try {
-        // Then check subdomain
+        // Then check subdomain with domain parsing
         const subdomain = domain.split('.')[0];
+        console.log('[resolveTenant] Checking parsed subdomain:', subdomain);
         const { data: subdomainTenant, error: subdomainError } = await supabase
           .from('tenants')
           .select('*')
@@ -92,12 +123,13 @@ export async function resolveTenant(domain: string): Promise<TenantInfo | null> 
           .single();
           
         if (subdomainTenant) {
+          console.log('[resolveTenant] Found by parsed subdomain:', subdomainTenant.id);
           return subdomainTenant as TenantInfo;
         }
         
-        console.log('Subdomain not found:', subdomainError);
+        console.log('[resolveTenant] Subdomain not found:', subdomainError);
       } catch (error) {
-        console.log('Subdomain query failed:', error);
+        console.log('[resolveTenant] Subdomain query failed:', error);
       }
     }
     
