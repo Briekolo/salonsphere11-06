@@ -47,6 +47,21 @@ export default function ClientDetailsPage({
   const { tenant } = useTenant();
   const { client, loading: authLoading, isAuthenticated } = useClientAuthContext();
   
+  // Debug logging for auth state
+  console.log('[BOOKING-DETAILS] Initial auth state:', {
+    isAuthenticated,
+    authLoading,
+    hasClient: !!client,
+    clientData: client ? {
+      id: client.id,
+      firstName: client.first_name,
+      lastName: client.last_name,
+      email: client.email,
+      phone: client.phone,
+      tenantId: client.tenant_id
+    } : null
+  });
+  
   // Get booking details from URL params
   const bookingDate = searchParams.get('date') || '';
   const bookingTime = searchParams.get('time') || '';
@@ -76,13 +91,23 @@ export default function ClientDetailsPage({
   const { formattedTime, isExpired } = useHoldCountdown(currentHold?.expires_at || null);
 
   useEffect(() => {
+    console.log('[BOOKING-DETAILS] Checking booking params:', {
+      bookingDate,
+      bookingTime,
+      staffId,
+      staffName,
+      tenantId: tenant?.id
+    });
+    
     if (!bookingDate || !bookingTime || !staffId) {
       // Missing required params, redirect back
+      console.log('[BOOKING-DETAILS] Missing required params, redirecting back');
       router.push(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}`);
       return;
     }
     
     if (tenant?.id) {
+      console.log('[BOOKING-DETAILS] Fetching service and staff details');
       fetchDetails();
     }
   }, [tenant, bookingDate, bookingTime, staffId]);
@@ -97,7 +122,19 @@ export default function ClientDetailsPage({
 
   // Prefill form with authenticated client data when available
   useEffect(() => {
-    if (!isAuthenticated || !client) return;
+    if (!isAuthenticated || !client) {
+      console.log('[BOOKING-DETAILS] Not prefilling form - not authenticated or no client data');
+      return;
+    }
+    
+    console.log('[BOOKING-DETAILS] Prefilling form with client data:', {
+      firstName: client.first_name,
+      lastName: client.last_name,
+      email: client.email,
+      phone: client.phone,
+      marketingConsent: client.marketing_consent
+    });
+    
     setFormData(prev => ({
       firstName: prev.firstName || client.first_name || '',
       lastName: prev.lastName || client.last_name || '',
@@ -110,9 +147,25 @@ export default function ClientDetailsPage({
 
   // If logged in and we have all required details, skip this step automatically
   useEffect(() => {
-    if (autoRedirected) return;
-    if (authLoading) return;
-    if (!isAuthenticated || !client) return;
+    console.log('[BOOKING-DETAILS] Auto-redirect check:', {
+      autoRedirected,
+      authLoading,
+      isAuthenticated,
+      hasClient: !!client
+    });
+    
+    if (autoRedirected) {
+      console.log('[BOOKING-DETAILS] Already auto-redirected, skipping');
+      return;
+    }
+    if (authLoading) {
+      console.log('[BOOKING-DETAILS] Auth still loading, waiting...');
+      return;
+    }
+    if (!isAuthenticated || !client) {
+      console.log('[BOOKING-DETAILS] Not authenticated or no client, not auto-redirecting');
+      return;
+    }
 
     const hasAllRequired = Boolean(
       (client.first_name && client.first_name.trim()) &&
@@ -120,6 +173,14 @@ export default function ClientDetailsPage({
       (client.email && client.email.trim()) &&
       (client.phone && client.phone.trim())
     );
+    
+    console.log('[BOOKING-DETAILS] Required fields check:', {
+      hasAllRequired,
+      firstName: client.first_name,
+      lastName: client.last_name,
+      email: client.email,
+      phone: client.phone
+    });
 
     if (hasAllRequired) {
       const queryParams = new URLSearchParams({
@@ -134,38 +195,57 @@ export default function ClientDetailsPage({
         notes: '',
         marketingOptIn: (client.marketing_consent ?? false).toString()
       });
+      
+      console.log('[BOOKING-DETAILS] Auto-redirecting to confirm page with params:', queryParams.toString());
       setAutoRedirected(true);
       router.replace(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}/confirm?${queryParams.toString()}`);
+    } else {
+      console.log('[BOOKING-DETAILS] Missing required fields, showing details form');
     }
   }, [authLoading, isAuthenticated, client, autoRedirected, bookingDate, bookingTime, staffId, staffName, resolvedParams.domain, resolvedParams.serviceId, router]);
 
   const fetchDetails = async () => {
-    if (!tenant?.id) return;
+    if (!tenant?.id) {
+      console.log('[BOOKING-DETAILS] No tenant ID, skipping fetch');
+      return;
+    }
 
     try {
       // Fetch service
-      const { data: serviceData } = await supabase
+      console.log('[BOOKING-DETAILS] Fetching service:', resolvedParams.serviceId);
+      const { data: serviceData, error: serviceError } = await supabase
         .from('services')
         .select('*')
         .eq('id', resolvedParams.serviceId)
         .eq('tenant_id', tenant.id)
         .single();
 
+      if (serviceError) {
+        console.error('[BOOKING-DETAILS] Error fetching service:', serviceError);
+      } else {
+        console.log('[BOOKING-DETAILS] Service fetched:', serviceData);
+      }
       setService(serviceData);
 
       // Fetch staff if not "any"
       if (staffId && staffId !== 'any') {
-        const { data: staffData } = await supabase
+        console.log('[BOOKING-DETAILS] Fetching staff:', staffId);
+        const { data: staffData, error: staffError } = await supabase
           .from('users')
           .select('id, first_name, last_name')
           .eq('id', staffId)
           .eq('tenant_id', tenant.id)
           .single();
 
+        if (staffError) {
+          console.error('[BOOKING-DETAILS] Error fetching staff:', staffError);
+        } else {
+          console.log('[BOOKING-DETAILS] Staff fetched:', staffData);
+        }
         setStaff(staffData);
       }
     } catch (error) {
-      console.error('Error fetching details:', error);
+      console.error('[BOOKING-DETAILS] Unexpected error fetching details:', error);
     } finally {
       setLoading(false);
     }
@@ -201,7 +281,12 @@ export default function ClientDetailsPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    console.log('[BOOKING-DETAILS] Form submitted with data:', formData);
+    
+    if (!validateForm()) {
+      console.log('[BOOKING-DETAILS] Form validation failed');
+      return;
+    }
     
     // Navigate to confirmation page with all data
     const queryParams = new URLSearchParams({
@@ -217,6 +302,7 @@ export default function ClientDetailsPage({
       marketingOptIn: formData.marketingOptIn.toString()
     });
     
+    console.log('[BOOKING-DETAILS] Navigating to confirm page with params:', queryParams.toString());
     router.push(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}/confirm?${queryParams.toString()}`);
   };
 

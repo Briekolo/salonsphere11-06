@@ -6,6 +6,7 @@ import { useTenant } from '@/lib/client/tenant-context';
 import { useHoldSlot, useInvalidateAvailability } from '@/lib/hooks/useAvailability';
 import { supabase } from '@/lib/supabase';
 import { BookingService } from '@/lib/client/booking-service';
+import { useClientAuthContext } from '@/components/client/auth/ClientAuthProvider';
 import { 
   ArrowLeft,
   CheckCircle,
@@ -48,6 +49,21 @@ export default function BookingConfirmationPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { tenant } = useTenant();
+  const { client: authClient, isAuthenticated } = useClientAuthContext();
+  
+  console.log('[BOOKING-CONFIRM] Initial state:', {
+    isAuthenticated,
+    hasAuthClient: !!authClient,
+    authClientData: authClient ? {
+      id: authClient.id,
+      email: authClient.email,
+      firstName: authClient.first_name,
+      lastName: authClient.last_name,
+      phone: authClient.phone,
+      tenantId: authClient.tenant_id
+    } : null,
+    tenantId: tenant?.id
+  });
   
   // Get all booking details from URL params
   const bookingData = {
@@ -78,57 +94,107 @@ export default function BookingConfirmationPage({
   const { invalidateAvailability } = useInvalidateAvailability();
 
   useEffect(() => {
+    console.log('[BOOKING-CONFIRM] Validating booking data:', {
+      bookingData,
+      hasAllRequired: Boolean(
+        bookingData.date && bookingData.time && bookingData.staffId && 
+        bookingData.firstName && bookingData.lastName && bookingData.email && bookingData.phone
+      )
+    });
+    
     // Validate required data
     if (!bookingData.date || !bookingData.time || !bookingData.staffId || 
         !bookingData.firstName || !bookingData.lastName || !bookingData.email || !bookingData.phone) {
+      console.log('[BOOKING-CONFIRM] Missing required data, redirecting back');
       router.push(`/${resolvedParams.domain}/book/${resolvedParams.serviceId}`);
       return;
     }
     
     if (tenant?.id) {
+      console.log('[BOOKING-CONFIRM] Fetching service and staff details');
       fetchDetails();
+    } else {
+      console.log('[BOOKING-CONFIRM] No tenant ID yet, waiting...');
     }
   }, [tenant]);
 
   const fetchDetails = async () => {
-    if (!tenant?.id) return;
+    if (!tenant?.id) {
+      console.log('[BOOKING-CONFIRM] No tenant ID in fetchDetails');
+      return;
+    }
 
     try {
       // Fetch service
-      const { data: serviceData } = await supabase
+      console.log('[BOOKING-CONFIRM] Fetching service:', resolvedParams.serviceId);
+      const { data: serviceData, error: serviceError } = await supabase
         .from('services')
         .select('*')
         .eq('id', resolvedParams.serviceId)
         .eq('tenant_id', tenant.id)
         .single();
 
+      if (serviceError) {
+        console.error('[BOOKING-CONFIRM] Error fetching service:', serviceError);
+      } else {
+        console.log('[BOOKING-CONFIRM] Service fetched:', serviceData);
+      }
       setService(serviceData);
 
       // Fetch staff if not "any"
       if (bookingData.staffId && bookingData.staffId !== 'any') {
-        const { data: staffData } = await supabase
+        console.log('[BOOKING-CONFIRM] Fetching staff:', bookingData.staffId);
+        const { data: staffData, error: staffError } = await supabase
           .from('users')
           .select('id, first_name, last_name')
           .eq('id', bookingData.staffId)
           .eq('tenant_id', tenant.id)
           .single();
 
+        if (staffError) {
+          console.error('[BOOKING-CONFIRM] Error fetching staff:', staffError);
+        } else {
+          console.log('[BOOKING-CONFIRM] Staff fetched:', staffData);
+        }
         setStaff(staffData);
       }
     } catch (error) {
-      console.error('Error fetching details:', error);
+      console.error('[BOOKING-CONFIRM] Unexpected error fetching details:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirmBooking = async () => {
-    if (!tenant?.id || !service) return;
+    console.log('[BOOKING-CONFIRM] Starting booking confirmation process');
+    console.log('[BOOKING-CONFIRM] Current state:', {
+      tenantId: tenant?.id,
+      hasService: !!service,
+      serviceId: service?.id,
+      isAuthenticated,
+      hasAuthClient: !!authClient,
+      bookingData
+    });
+    
+    if (!tenant?.id || !service) {
+      console.error('[BOOKING-CONFIRM] Missing tenant or service, cannot proceed');
+      return;
+    }
     
     setSubmitting(true);
     
     try {
       // Create or find the client
+      console.log('[BOOKING-CONFIRM] Creating or finding client with data:', {
+        tenantId: tenant.id,
+        firstName: bookingData.firstName,
+        lastName: bookingData.lastName,
+        email: bookingData.email,
+        phone: bookingData.phone,
+        isAuthenticated,
+        authClientId: authClient?.id
+      });
+      
       const client = await BookingService.createOrFindClient({
         tenantId: tenant.id,
         firstName: bookingData.firstName,
@@ -139,8 +205,15 @@ export default function BookingConfirmationPage({
         marketingConsent: bookingData.marketingOptIn
       });
       
+      console.log('[BOOKING-CONFIRM] Client result:', {
+        clientId: client?.id,
+        clientEmail: client?.email,
+        clientTenantId: client?.tenant_id
+      });
+      
       // Release any existing hold
       if (currentHold) {
+        console.log('[BOOKING-CONFIRM] Confirming hold:', currentHold.id);
         try {
           await confirmBooking({
             holdId: currentHold.id,
@@ -152,13 +225,25 @@ export default function BookingConfirmationPage({
               notes: bookingData.notes
             }
           });
+          console.log('[BOOKING-CONFIRM] Hold confirmed successfully');
         } catch (holdError) {
-          console.log('Hold confirmation failed, proceeding with direct booking creation');
+          console.log('[BOOKING-CONFIRM] Hold confirmation failed, proceeding with direct booking creation:', holdError);
         }
+      } else {
+        console.log('[BOOKING-CONFIRM] No hold to confirm');
       }
       
       // Create the actual booking
       const scheduledAt = new Date(`${bookingData.date}T${bookingData.time}`);
+      
+      console.log('[BOOKING-CONFIRM] Creating booking with data:', {
+        tenantId: tenant.id,
+        clientId: client.id,
+        serviceId: service.id,
+        staffId: bookingData.staffId === 'any' ? undefined : bookingData.staffId,
+        scheduledAt: scheduledAt.toISOString(),
+        durationMinutes: service.duration_minutes
+      });
       
       const booking = await BookingService.createBooking({
         tenantId: tenant.id,
@@ -172,18 +257,35 @@ export default function BookingConfirmationPage({
         source: 'client' // Always send confirmation emails for client bookings
       });
       
+      console.log('[BOOKING-CONFIRM] Booking created successfully:', {
+        bookingId: booking.id,
+        bookingClientId: booking.client_id,
+        bookingServiceId: booking.service_id
+      });
+      
       setBookingId(booking.id);
       setBookingComplete(true);
       
       // Invalidate availability cache to remove the booked time slot
+      console.log('[BOOKING-CONFIRM] Invalidating availability cache');
       invalidateAvailability(tenant.id, bookingData.date);
       
-      // TODO: Send confirmation email using Supabase Edge Functions
-      // TODO: Add email reminder scheduling
+    } catch (error: any) {
+      console.error('[BOOKING-CONFIRM] Error creating booking:', error);
+      console.error('[BOOKING-CONFIRM] Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        isRLSError: error?.message?.includes('row-level security') || error?.code === '42501'
+      });
       
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      alert('Er is een fout opgetreden bij het maken van de afspraak. Probeer het opnieuw.');
+      if (error?.message?.includes('row-level security') || error?.code === '42501') {
+        console.error('[RLS-ERROR] Row Level Security violation detected');
+        alert('Er is een beveiligingsfout opgetreden. Probeer uit te loggen en opnieuw in te loggen.');
+      } else {
+        alert('Er is een fout opgetreden bij het maken van de afspraak. Probeer het opnieuw.');
+      }
     } finally {
       setSubmitting(false);
     }

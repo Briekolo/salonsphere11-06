@@ -30,15 +30,32 @@ export interface ClientData {
 export class BookingService {
   // Create or find client
   static async createOrFindClient(data: ClientData) {
+    console.log('[BOOKING-SERVICE] createOrFindClient called with:', {
+      tenantId: data.tenantId,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone
+    });
+    
     // First check if client exists
+    console.log('[BOOKING-SERVICE] Checking if client exists with email:', data.email);
     const { data: existingClient, error: findError } = await supabase
       .from('clients')
       .select('*')
       .eq('tenant_id', data.tenantId)
       .eq('email', data.email)
       .single();
+    
+    console.log('[BOOKING-SERVICE] Client search result:', {
+      found: !!existingClient,
+      clientId: existingClient?.id,
+      error: findError?.message,
+      errorCode: findError?.code
+    });
 
     if (existingClient) {
+      console.log('[BOOKING-SERVICE] Client exists, updating info');
       // Update client info if needed
       const { data: updatedClient, error: updateError } = await supabase
         .from('clients')
@@ -54,26 +71,62 @@ export class BookingService {
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[BOOKING-SERVICE] Error updating client:', {
+          error: updateError.message,
+          code: updateError.code,
+          hint: updateError.hint,
+          isRLSError: updateError.message?.includes('row-level security') || updateError.code === '42501'
+        });
+        throw updateError;
+      }
+      
+      console.log('[BOOKING-SERVICE] Client updated successfully:', {
+        clientId: updatedClient?.id,
+        email: updatedClient?.email
+      });
       return updatedClient;
     }
 
     // Create new client
+    console.log('[BOOKING-SERVICE] Client not found, creating new client');
+    const insertData = {
+      tenant_id: data.tenantId,
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      notes: data.notes,
+      marketing_consent: data.marketingConsent
+    };
+    console.log('[BOOKING-SERVICE] Insert data:', insertData);
+    
     const { data: newClient, error: createError } = await supabase
       .from('clients')
-      .insert({
-        tenant_id: data.tenantId,
-        first_name: data.firstName,
-        last_name: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        notes: data.notes,
-        marketing_consent: data.marketingConsent
-      })
+      .insert(insertData)
       .select()
       .single();
 
-    if (createError) throw createError;
+    if (createError) {
+      console.error('[BOOKING-SERVICE] Error creating client:', {
+        error: createError.message,
+        code: createError.code,
+        hint: createError.hint,
+        details: createError.details,
+        isRLSError: createError.message?.includes('row-level security') || createError.code === '42501'
+      });
+      
+      if (createError.message?.includes('row-level security') || createError.code === '42501') {
+        console.error('[RLS-ERROR] Cannot create client due to RLS policy');
+      }
+      throw createError;
+    }
+    
+    console.log('[BOOKING-SERVICE] New client created successfully:', {
+      clientId: newClient?.id,
+      email: newClient?.email,
+      tenantId: newClient?.tenant_id
+    });
 
     // Send welcome email if enabled for new clients created during booking
     try {
@@ -91,21 +144,34 @@ export class BookingService {
 
   // Create booking
   static async createBooking(data: CreateBookingData) {
+    console.log('[BOOKING-SERVICE] createBooking called with:', {
+      tenantId: data.tenantId,
+      clientId: data.clientId,
+      serviceId: data.serviceId,
+      staffId: data.staffId,
+      scheduledAt: data.scheduledAt,
+      source: data.source
+    });
+    
+    const insertData = {
+      tenant_id: data.tenantId,
+      client_id: data.clientId,
+      service_id: data.serviceId,
+      staff_id: data.staffId || null,
+      scheduled_at: data.scheduledAt,
+      duration_minutes: data.durationMinutes,
+      is_paid: data.isPaid || false,
+      payment_method: data.paymentMethod,
+      payment_confirmed_at: data.isPaid ? new Date().toISOString() : null,
+      notes: data.notes,
+      internal_notes: data.internalNotes
+    };
+    
+    console.log('[BOOKING-SERVICE] Booking insert data:', insertData);
+    
     const { data: booking, error } = await supabase
       .from('bookings')
-      .insert({
-        tenant_id: data.tenantId,
-        client_id: data.clientId,
-        service_id: data.serviceId,
-        staff_id: data.staffId || null,
-        scheduled_at: data.scheduledAt,
-        duration_minutes: data.durationMinutes,
-        is_paid: data.isPaid || false,
-        payment_method: data.paymentMethod,
-        payment_confirmed_at: data.isPaid ? new Date().toISOString() : null,
-        notes: data.notes,
-        internal_notes: data.internalNotes
-      })
+      .insert(insertData)
       .select(`
         *,
         clients (
@@ -127,7 +193,26 @@ export class BookingService {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[BOOKING-SERVICE] Error creating booking:', {
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+        isRLSError: error.message?.includes('row-level security') || error.code === '42501'
+      });
+      
+      if (error.message?.includes('row-level security') || error.code === '42501') {
+        console.error('[RLS-ERROR] Cannot create booking due to RLS policy');
+      }
+      throw error;
+    }
+    
+    console.log('[BOOKING-SERVICE] Booking created successfully:', {
+      bookingId: booking?.id,
+      clientId: booking?.client_id,
+      serviceId: booking?.service_id
+    });
 
     // Send booking confirmation email based on source and settings
     const shouldSendEmail = data.sendConfirmationEmail && (

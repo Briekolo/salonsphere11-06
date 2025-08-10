@@ -182,17 +182,29 @@ class ClientAuthService {
    */
   async login(data: ClientLoginData): Promise<ClientAuthResponse> {
     try {
+      console.log('[CLIENT-AUTH] Login attempt for:', data.email, 'domain:', data.domain);
+      
       // Get tenant ID from domain
       const tenantId = await getTenantIdFromDomain(data.domain)
       if (!tenantId) {
+        console.error('[CLIENT-AUTH] No tenant found for domain:', data.domain);
         return { client: null, error: new Error('Invalid salon domain') }
       }
+      console.log('[CLIENT-AUTH] Tenant ID resolved:', tenantId);
 
       // Sign in with Supabase Auth
+      console.log('[CLIENT-AUTH] Attempting sign in with Supabase Auth');
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
       })
+
+      console.log('[CLIENT-AUTH] Sign in result:', {
+        success: !!authData?.user,
+        userId: authData?.user?.id,
+        userType: authData?.user?.user_metadata?.user_type,
+        error: authError?.message
+      });
 
       if (authError || !authData.user) {
         return { client: null, error: authError || new Error('Invalid email or password') }
@@ -212,15 +224,22 @@ class ClientAuthService {
       }
 
       // Get client record - try by auth_user_id first, fall back to email
+      console.log('[CLIENT-AUTH] Fetching client record for auth_user_id:', authData.user.id);
       let { data: client, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('auth_user_id', authData.user.id)
         .eq('tenant_id', tenantId)
         .single()
+      
+      console.log('[CLIENT-AUTH] Client fetch by auth_user_id:', {
+        found: !!client,
+        error: clientError?.message
+      });
 
       // If not found by auth_user_id, try by email (for backward compatibility)
       if (!client || clientError) {
+        console.log('[CLIENT-AUTH] Trying to fetch client by email:', data.email);
         const result = await supabase
           .from('clients')
           .select('*')
@@ -230,13 +249,20 @@ class ClientAuthService {
         
         client = result.data;
         clientError = result.error;
+        
+        console.log('[CLIENT-AUTH] Client fetch by email:', {
+          found: !!client,
+          error: clientError?.message
+        });
       }
 
       if (clientError || !client) {
+        console.error('[CLIENT-AUTH] Client profile not found, signing out');
         await supabase.auth.signOut()
         return { client: null, error: clientError || new Error('Client profile not found') }
       }
 
+      console.log('[CLIENT-AUTH] Login successful for client:', client.id);
       return { client, error: null }
     } catch (error) {
       return { client: null, error: error as Error }
@@ -255,20 +281,43 @@ class ClientAuthService {
    */
   async getCurrentClient(): Promise<Client | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      console.log('[CLIENT-AUTH] Getting current authenticated client');
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      console.log('[CLIENT-AUTH] Auth user result:', {
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email,
+        userType: user?.user_metadata?.user_type,
+        tenantId: user?.user_metadata?.tenant_id,
+        error: userError?.message
+      });
+      
       if (!user || user.user_metadata.user_type !== 'client') {
+        console.log('[CLIENT-AUTH] Not a client user, returning null');
         return null
       }
 
       // Try to get client by auth_user_id first
-      let { data: client } = await supabase
+      console.log('[CLIENT-AUTH] Fetching client by auth_user_id:', user.id);
+      let { data: client, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('auth_user_id', user.id)
         .single()
+      
+      console.log('[CLIENT-AUTH] Client fetch by auth_user_id result:', {
+        found: !!client,
+        clientId: client?.id,
+        clientEmail: client?.email,
+        clientTenantId: client?.tenant_id,
+        error: clientError?.message,
+        errorCode: clientError?.code
+      });
 
       // If not found by auth_user_id, try by email (for backward compatibility)
       if (!client && user.email) {
+        console.log('[CLIENT-AUTH] Client not found by auth_user_id, trying by email:', user.email);
         const result = await supabase
           .from('clients')
           .select('*')
@@ -277,11 +326,35 @@ class ClientAuthService {
           .single()
         
         client = result.data;
+        
+        console.log('[CLIENT-AUTH] Client fetch by email result:', {
+          found: !!client,
+          clientId: client?.id,
+          clientTenantId: client?.tenant_id,
+          error: result.error?.message,
+          errorCode: result.error?.code
+        });
+        
+        if (result.error?.message?.includes('row-level security') || result.error?.code === '42501') {
+          console.error('[RLS-ERROR] Cannot fetch client due to RLS policy when searching by email');
+        }
       }
 
+      console.log('[CLIENT-AUTH] Final client result:', {
+        found: !!client,
+        clientId: client?.id,
+        clientEmail: client?.email,
+        clientTenantId: client?.tenant_id
+      });
+      
       return client
-    } catch (error) {
-      console.error('Error getting current client:', error)
+    } catch (error: any) {
+      console.error('[CLIENT-AUTH] Error getting current client:', error);
+      console.error('[CLIENT-AUTH] Error details:', {
+        message: error?.message,
+        code: error?.code,
+        hint: error?.hint
+      });
       return null
     }
   }
