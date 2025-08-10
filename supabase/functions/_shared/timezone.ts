@@ -5,20 +5,22 @@
 
 /**
  * Check if a given date is in Daylight Saving Time for Belgium/Brussels
- * DST runs from last Sunday of March to last Sunday of October
+ * DST runs from last Sunday of March at 01:00 UTC to last Sunday of October at 01:00 UTC
+ * At 01:00 UTC (02:00 local), clocks move forward to 03:00 local (DST starts)
+ * At 01:00 UTC (03:00 local), clocks move back to 02:00 local (DST ends)
  */
 export function isBelgiumDST(date: Date): boolean {
   const year = date.getUTCFullYear()
   
-  // Get last Sunday of March (start of DST)
-  const marchLastSunday = new Date(Date.UTC(year, 2, 31)) // March 31
+  // Get last Sunday of March at 01:00 UTC (start of DST)
+  const marchLastSunday = new Date(Date.UTC(year, 2, 31, 1, 0, 0)) // March 31 at 01:00 UTC
   marchLastSunday.setUTCDate(31 - marchLastSunday.getUTCDay())
   
-  // Get last Sunday of October (end of DST)
-  const octoberLastSunday = new Date(Date.UTC(year, 9, 31)) // October 31
+  // Get last Sunday of October at 01:00 UTC (end of DST)
+  const octoberLastSunday = new Date(Date.UTC(year, 9, 31, 1, 0, 0)) // October 31 at 01:00 UTC
   octoberLastSunday.setUTCDate(31 - octoberLastSunday.getUTCDay())
   
-  // Check if date is between last Sunday of March and last Sunday of October
+  // Check if date is between last Sunday of March at 01:00 UTC and last Sunday of October at 01:00 UTC
   return date >= marchLastSunday && date < octoberLastSunday
 }
 
@@ -62,17 +64,19 @@ export function formatBelgiumTime(utcDate: Date): string {
 /**
  * Format date for Belgium locale
  */
-export function formatBelgiumDate(date: Date): string {
-  // Note: toLocaleDateString might not work correctly in Deno environment
-  // Using manual formatting for consistency
+export function formatBelgiumDate(utcDate: Date): string {
+  // Convert to Belgium time first to get correct day
+  const localDate = convertToBelgiumTime(utcDate)
+  
   const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag']
   const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 
                   'juli', 'augustus', 'september', 'oktober', 'november', 'december']
   
-  const dayName = days[date.getUTCDay()]
-  const day = date.getUTCDate()
-  const month = months[date.getUTCMonth()]
-  const year = date.getUTCFullYear()
+  // Use UTC methods on the converted local date since we've already applied the offset
+  const dayName = days[localDate.getUTCDay()]
+  const day = localDate.getUTCDate()
+  const month = months[localDate.getUTCMonth()]
+  const year = localDate.getUTCFullYear()
   
   return `${dayName} ${day} ${month} ${year}`
 }
@@ -88,6 +92,13 @@ export function formatAppointmentTimeRange(startDate: Date, durationMinutes: num
   timezoneAbbr: string
   timezoneNotice: string
 } {
+  // Debug logging for incoming date
+  console.log('[TIMEZONE-DEBUG] formatAppointmentTimeRange input:', {
+    startDate: startDate.toISOString(),
+    startDateLocal: startDate.toString(),
+    durationMinutes
+  })
+  
   const localStartDate = convertToBelgiumTime(startDate)
   const localEndDate = new Date(localStartDate.getTime() + durationMinutes * 60000)
   
@@ -100,6 +111,16 @@ export function formatAppointmentTimeRange(startDate: Date, durationMinutes: num
   const endTimeFormatted = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`
   const dateFormatted = formatBelgiumDate(startDate)
   const timezoneAbbr = getBelgiumTimezoneAbbr(startDate)
+  
+  // Debug logging for output
+  console.log('[TIMEZONE-DEBUG] formatAppointmentTimeRange output:', {
+    localStartDate: localStartDate.toISOString(),
+    timeFormatted,
+    endTimeFormatted,
+    dateFormatted,
+    timezoneAbbr,
+    offset: getBelgiumOffset(startDate)
+  })
   
   return {
     timeFormatted,
@@ -121,10 +142,13 @@ export function logTimezoneConversion(originalDate: Date, context: string) {
   
   console.log(`[${context}] Belgium timezone conversion:`, {
     original: originalDate.toISOString(),
+    originalString: originalDate.toString(),
     isDST,
-    offset,
+    offset: `UTC+${offset}`,
     localTime: localDate.toISOString(),
+    localTimeString: localDate.toString(),
     formatted,
-    timezone: 'Europe/Brussels'
+    timezone: 'Europe/Brussels',
+    currentTime: new Date().toISOString()
   })
 }

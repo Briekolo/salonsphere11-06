@@ -234,7 +234,18 @@ export default function BookingConfirmationPage({
       }
       
       // Create the actual booking
+      // The date and time are in local Belgium time, so we need to handle this properly
       const scheduledAt = new Date(`${bookingData.date}T${bookingData.time}`);
+      
+      console.log('[BOOKING-CONFIRM] Date creation debug:', {
+        inputDate: bookingData.date,
+        inputTime: bookingData.time,
+        combinedString: `${bookingData.date}T${bookingData.time}`,
+        scheduledAtLocal: scheduledAt.toString(),
+        scheduledAtISO: scheduledAt.toISOString(),
+        scheduledAtUTC: scheduledAt.toUTCString(),
+        timezoneOffset: scheduledAt.getTimezoneOffset()
+      });
       
       console.log('[BOOKING-CONFIRM] Creating booking with data:', {
         tenantId: tenant.id,

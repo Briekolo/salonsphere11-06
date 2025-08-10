@@ -51,7 +51,15 @@ serve(async (req) => {
       totalSessions
     }: BookingConfirmationRequest = await req.json()
 
-    console.log('Booking confirmation request:', { bookingId, recipientEmail, clientName, tenantId })
+    console.log('Booking confirmation request:', { 
+      bookingId, 
+      recipientEmail, 
+      clientName, 
+      tenantId,
+      scheduledAt,
+      scheduledAtType: typeof scheduledAt,
+      durationMinutes
+    })
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -89,6 +97,13 @@ serve(async (req) => {
     }
 
     // Format date and time using Belgium timezone
+    console.log('[BOOKING-CONFIRMATION] Processing scheduledAt:', {
+      receivedValue: scheduledAt,
+      receivedType: typeof scheduledAt,
+      parsedDate: new Date(scheduledAt).toISOString(),
+      parsedLocal: new Date(scheduledAt).toString()
+    })
+    
     const appointmentDate = new Date(scheduledAt)
     
     // Use the shared timezone utility for Belgium
@@ -97,6 +112,14 @@ serve(async (req) => {
     
     // Log for debugging
     logTimezoneConversion(appointmentDate, 'Booking Confirmation')
+    
+    console.log('[BOOKING-CONFIRMATION] Formatted time info:', {
+      timeFormatted,
+      endTimeFormatted,
+      dateFormatted,
+      timezoneAbbr,
+      fullTimeRange: `${timeFormatted} - ${endTimeFormatted} ${timezoneAbbr}`
+    })
 
     // Prepare template variables
     const templateVars = {
